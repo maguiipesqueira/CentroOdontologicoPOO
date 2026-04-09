@@ -1,9 +1,9 @@
 package Modelo;
-
 import java.time.LocalDate;
 import java.util.Objects;
 
 public class Paciente {
+
 //Atributos: son las caracteristicas del objeto // Encapsulamiento - los atributos se ponen privados
     private int id;
     private String nombre;
@@ -15,9 +15,10 @@ public class Paciente {
 
 //Metodos - el primero siempre tiene que ser el constructor (permite la creacion de los objetos)
 //Unico metodo que se llama como la clase misma
-
     //Constructores con parametros
+
     public Paciente (int id, String nombre, String apellido, int dni, String email, LocalDate fechaAlta, Domicilio domicilio){
+
         this.id =id;
         this.nombre = nombre;
         this.apellido = apellido;
@@ -25,6 +26,7 @@ public class Paciente {
         this.email = email;
         this.fechaAlta = fechaAlta;
         this.domicilio = domicilio;
+
     } // parentesis del constructor
 
     public Paciente (int id, String nombre, String apellido, int dni, String email){
@@ -37,27 +39,32 @@ public class Paciente {
 
     //Constructor por defecto
     public Paciente(){}
-
     //Encapsulamiento -> Salida - nombre - parametros - exception (opcional)
     //GETTER
     public String getNombre (){
         return this.nombre;
     }
+
     public String getApellido(){
         return this.apellido;
     }
+
     public int getId(){
         return this.id;
     }
+
     public int getDni(){
         return this.dni;
     }
+
     public String getEmail(){
         return this.email;
     }
+
     public LocalDate getFechaAlta(){
         return this.fechaAlta;
     }
+
     public Domicilio getDomicilio(){
         return this.domicilio;
     }
@@ -66,6 +73,7 @@ public class Paciente {
     public void setId(int id){
         this.id = id;
     }
+
     public void setNombre(String nombre){
         this.nombre = nombre;
     }
@@ -88,6 +96,14 @@ public class Paciente {
 
     public void setDomicilio(Domicilio domicilio) {
         this.domicilio = domicilio;
+    }
+
+    public String getNombreCompleto() {
+        return this.nombre + " " + this.apellido;
+    }
+
+    public boolean tieneDomicilio() {
+        return this.domicilio != null;
     }
 
 //metodo
@@ -114,22 +130,7 @@ public class Paciente {
 
     @Override
     public String toString() {
-        return "Paciente{" +
-                "id=" + id +
-                ", nombre='" + nombre + '\'' +
-                ", apellido='" + apellido + '\'' +
-                ", dni=" + dni +
-                ", email='" + email + '\'' +
-                ", fechaAlta=" + fechaAlta +
-                ", domicilio=" + domicilio +
-                '}';
+        return "Paciente ID: " + id + " | " + getNombreCompleto() + " | DNI: " + dni + " | Domicilio: " + domicilio.toString();
     }
 
-    //COMPARANDO NOMBRES
-    public boolean compararNombrePaciente(Paciente otroPaciente){
-        if(this.nombre == otroPaciente.getNombre()){
-            return true;
-        }
-        return false;
-    }
 }

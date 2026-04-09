@@ -15,6 +15,6 @@ public class General extends Odontologo {
     //Metodo toString() heredado
     @Override
     public String toString() {
-        return "General{}" + super.toString();
+        return "Especialidad: General | " + super.toString();
     }
 }

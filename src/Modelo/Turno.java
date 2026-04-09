@@ -1,5 +1,4 @@
 package Modelo;
-
 import java.time.LocalDate;
 import java.time.LocalTime;
 
@@ -10,10 +9,10 @@ public class Turno {
     private Odontologo odontologo;
     private LocalDate fecha;
     private LocalTime hora;
+    private EstadoTurno estado;
 
     //constructor por defecto
     public Turno(){}
-
     //Contructor con parametros
     public Turno(int id, Paciente paciente, Odontologo odontologo, LocalDate fecha, LocalTime hora) {
         this.id = id;
@@ -27,6 +26,7 @@ public class Turno {
     public int getId() {
         return id;
     }
+
     public void setId(int id) {
         this.id = id;
     }
@@ -34,6 +34,7 @@ public class Turno {
     public Paciente getPaciente() {
         return paciente;
     }
+
     public void setPaciente(Paciente paciente) {
         this.paciente = paciente;
     }
@@ -41,6 +42,7 @@ public class Turno {
     public Odontologo getOdontologo() {
         return odontologo;
     }
+
     public void setOdontologo(Odontologo odontologo) {
         this.odontologo = odontologo;
     }
@@ -48,6 +50,7 @@ public class Turno {
     public LocalDate getFecha() {
         return fecha;
     }
+
     public void setFecha(LocalDate fecha) {
         this.fecha = fecha;
     }
@@ -55,19 +58,33 @@ public class Turno {
     public LocalTime getHora() {
         return hora;
     }
+
     public void setHora(LocalTime hora) {
         this.hora = hora;
+    }
+    public EstadoTurno getEstado(){
+        return estado;
+    }
+
+    public void setEstado(EstadoTurno estado) {
+        this.estado = estado;
+    }
+
+    // cambia el estado a confirmado
+    public void confirmarTurno() {
+        this.estado = EstadoTurno.CONFIRMADO;
+    }
+    //cambia el estado a cancelado
+    public void cancelarTurno() {
+        this.estado = EstadoTurno.CANCELADO;
     }
 
     //Metodo toString()
     @Override
     public String toString() {
-        return "Turno{" +
-                "id=" + id +
-                ", paciente=" + paciente +
-                ", odontologo=" + odontologo +
-                ", fecha=" + fecha +
-                ", hora=" + hora +
-                '}';
+        return "TURNO #" + id + " | Paciente: " + paciente.getNombreCompleto() +
+                " | Odontólogo: " + odontologo.getNombreCompleto() +
+                " | Fecha: " + fecha + " Hora: " + hora + " | Estado: " + estado;
     }
+
 }

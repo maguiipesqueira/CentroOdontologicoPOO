@@ -51,15 +51,11 @@ public class Odontologo {
         System.out.println("Apellido: "+getApellido());
         System.out.println("Numero de matricula: " +getMatricula());
     }
-
+    public String getNombreCompleto() {
+        return this.nombre + " " + this.apellido;
+    }
     @Override
     public String toString() {
-        return "Odontologo{" +
-                "id=" + getId() +
-                ", nombre='" + getNombre() + '\'' +
-                ", apellido='" + getApellido() + '\'' +
-                ", matricula=" + getMatricula() +
-                '}';
-
+        return "ID: " + id + " | " + getNombreCompleto() + " | Matrícula: " + matricula;
     }
 }

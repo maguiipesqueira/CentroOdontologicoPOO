@@ -15,6 +15,6 @@ public class Ortodoncista extends Odontologo{
     //Metodo toString() heredado
     @Override
     public String toString() {
-        return "Ortodoncista{}" + super.toString();
+        return "Especialidad: Ortodoncista | " + super.toString();
     }
 }

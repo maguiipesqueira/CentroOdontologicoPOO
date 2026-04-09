@@ -46,14 +46,20 @@ public class Domicilio {
         this.provincia = provincia;
     }
 
+//metodos de negocio
+    //dirección completa --> calle, número, localidad y provincia
+    public String obtenerDireccionCompleta() {
+        return calle + " " + numero + ", " + localidad + ", " + provincia;
+    }
+
+    // validacion si es de provincia
+    public boolean esDeProvincia(String provinciaBusqueda) {
+        return this.provincia.equalsIgnoreCase(provinciaBusqueda);
+    }
+
     //Metodo toString()
     @Override
     public String toString() {
-        return "Domicilio{" +
-                "calle='" + calle + '\'' +
-                ", numero=" + numero +
-                ", localidad='" + localidad + '\'' +
-                ", provincia='" + provincia + '\'' +
-                '}';
+        return calle + " " + numero + " (" + localidad + ", " + provincia + ")";
     }
 }
