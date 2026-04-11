@@ -58,7 +58,12 @@ public class Recepcionista {
 
     //de odontologos
     public void altaOdontologo(Odontologo odontologo) {
-        this.odontologos.add(odontologo);
+        if (odontologo.getMatricula() > 0) {
+            this.odontologos.add(odontologo);
+            System.out.println("El odontólogo " + odontologo.getNombre() + " fue dado de alta correctamente.");
+        } else {
+            System.out.println("ERROR: No se puede dar de alta al odontólogo " + odontologo.getNombre() + ". La matrícula " + odontologo.getMatricula() + " no es válida.");
+        }
     }
 
     public Odontologo buscarPorMatricula(int matricula) {
