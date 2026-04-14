@@ -23,8 +23,8 @@ public class Main {
 
         // domicilio+paciente
         Domicilio dom1 = new Domicilio("Necochea", 581, "Lobos", "Buenos Aires");
-        Paciente pac1 = new Paciente(1, "Fátima", "Persi", 46113226, "fatimap@gmail.com", LocalDate.now(), dom1);
-
+        Paciente pac1 = new Paciente(1, "Fatima", "Persi", 46113226, "fatimap@gmail.com", LocalDate.now(), dom1);
+      //  System.out.println(pac1.getNombre());
         Domicilio dom2 = new Domicilio("Rosas", 120, "Temperley", "Buenos Aires");
         Paciente pac2 = new Paciente(2, "Magali", "Pesqueira", 354473, "maga@mail.com", LocalDate.now(), dom2);
 
