@@ -45,12 +45,6 @@ public class Odontologo {
         this.matricula = matricula;
     }
 
-    public void mostrarDatosOdontologo(){
-        System.out.println("Datos del odontologo cargado: "+getId());
-        System.out.println("Nombre: "+getNombre());
-        System.out.println("Apellido: "+getApellido());
-        System.out.println("Numero de matricula: " +getMatricula());
-    }
     public String getNombreCompleto() {
         return this.nombre + " " + this.apellido;
     }

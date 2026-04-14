@@ -106,16 +106,6 @@ public class Paciente {
         return this.domicilio != null;
     }
 
-//metodo
-    public void mostrarDatosPaciente(){
-        System.out.println("Datos del paciente cargado: "+getId());
-        System.out.println("Nombre: "+getNombre());
-        System.out.println("Apellido: "+getApellido());
-        System.out.println("Cedula: "+getDni());
-        System.out.println("Email: "+getEmail());
-        System.out.println("Fecha de alta: "+getFechaAlta());
-    }
-
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
