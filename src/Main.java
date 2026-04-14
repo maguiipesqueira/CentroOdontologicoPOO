@@ -8,16 +8,16 @@ public class Main {
         Recepcionista recepcionista = new Recepcionista();
         // registro de odontologos
         System.out.println("--- REGISTRANDO ODONTÓLOGOS EN EL SISTEMA ---");
-        Odontologo odon1 = new Cirujano(10, "Guillermina", "Cotrone", 1234);
-        Odontologo odon2 = new Ortodoncista(11, "Tomas", "Barea", 5678);
-        Odontologo odon3 = new General(12, "Camilo", "Hunter", 9012);
-        Odontologo odon4 = new General(13, "Juan", "Gonzales", 0);
+        Odontologo odon1 = new Cirujano(10, "Guillermina", "Cotrone", 1234,"Extraccion de muela");
+        Odontologo odon2 = new Ortodoncista(11, "Tomas", "Barea", 5678,"Brackets invisibles");
+        Odontologo odon3 = new General(12, "Camilo", "Hunter", 9012,"Limpieza");
+        Odontologo odon4 = new General(13, "Juan", "Gonzales", 0, "Tratamiento de conducto");
 
         // llama al metodo
-        recepcionista.altaOdontologo(odon1);
-        recepcionista.altaOdontologo(odon2);
-        recepcionista.altaOdontologo(odon3);
-        recepcionista.altaOdontologo(odon4);
+        System.out.println(recepcionista.altaOdontologo(odon1));
+        System.out.println(recepcionista.altaOdontologo(odon2));
+        System.out.println(recepcionista.altaOdontologo(odon3));
+        System.out.println(recepcionista.altaOdontologo(odon4));
 
         System.out.println("-------------------------------------------\n");
 

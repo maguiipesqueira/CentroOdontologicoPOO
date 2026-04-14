@@ -4,7 +4,7 @@ import java.util.Objects;
 
 public class Paciente {
 
-//Atributos: son las caracteristicas del objeto // Encapsulamiento - los atributos se ponen privados
+    //Atributos: son las caracteristicas del objeto // Encapsulamiento - los atributos se ponen privados
     private int id;
     private String nombre;
     private String apellido;
@@ -106,13 +106,14 @@ public class Paciente {
         return this.domicilio != null;
     }
 
+    //Compara si dos objetos son iguales
     @Override
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         Paciente paciente = (Paciente) o;
         return id == paciente.id && dni == paciente.dni && Objects.equals(nombre, paciente.nombre) && Objects.equals(apellido, paciente.apellido) && Objects.equals(email, paciente.email);
     }
-
+    // identificador unico
     @Override
     public int hashCode() {
         return Objects.hash(id, nombre, apellido, dni, email);
