@@ -11,7 +11,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
-import java.util.Optional;
 import java.util.Scanner;
 
 /**
@@ -74,16 +73,20 @@ public class ControladorTurno {
 
         System.out.print("  ID del paciente: ");
         long pacienteId = leerLong();
-        Optional<Paciente> paciente = servicioPaciente.buscarPorId(pacienteId);
-        if (paciente.isEmpty()) {
+
+        Paciente paciente = servicioPaciente.buscarPorId(pacienteId);
+
+        if (paciente == null) {
             System.out.println("  ERROR: No existe un paciente con ID " + pacienteId + ".");
             return;
         }
 
         System.out.print("  ID del odontólogo: ");
         long odontologoId = leerLong();
-        Optional<Odontologo> odontologo = servicioOdontologo.buscarPorId(odontologoId);
-        if (odontologo.isEmpty()) {
+
+        Odontologo odontologo = servicioOdontologo.buscarPorId(odontologoId);
+
+        if (odontologo == null) {
             System.out.println("  ERROR: No existe un odontólogo con ID " + odontologoId + ".");
             return;
         }
@@ -96,21 +99,26 @@ public class ControladorTurno {
         LocalTime hora = leerHora();
         if (hora == null) return;
 
-        try {
-            Turno turno = servicioTurno.registrarTurno(paciente.get(), odontologo.get(), fecha, hora);
+        Turno turno = servicioTurno.registrarTurno(paciente, odontologo, fecha, hora);
+
+        if (turno != null) {
             System.out.println("  ✔ Turno registrado exitosamente: " + turno);
-        } catch (IllegalArgumentException e) {
-            System.out.println("  " + e.getMessage());
+        } else {
+            System.out.println("  No se pudo registrar el turno.");
         }
     }
 
     private void buscarPorId() {
         System.out.print("  Ingrese el ID del turno: ");
         long id = leerLong();
-        servicioTurno.buscarPorId(id).ifPresentOrElse(
-                t -> System.out.println("  Turno encontrado: " + t),
-                () -> System.out.println("  No se encontró un turno con ID " + id + ".")
-        );
+
+        Turno turno = servicioTurno.buscarPorId(id);
+
+        if (turno != null) {
+            System.out.println("  Turno encontrado: " + turno);
+        } else {
+            System.out.println("  No se encontró un turno con ID " + id + ".");
+        }
     }
 
     private void listarTodos() {
@@ -148,45 +156,47 @@ public class ControladorTurno {
     private void confirmarTurno() {
         System.out.print("  ID del turno a confirmar: ");
         long id = leerLong();
-        try {
-            servicioTurno.confirmarTurno(id);
+
+        Turno turno = servicioTurno.confirmarTurno(id);
+
+        if (turno != null) {
             System.out.println("  ✔ Turno #" + id + " confirmado.");
-        } catch (Exception e) {
-            System.out.println("  " + e.getMessage());
+        } else {
+            System.out.println("  No se pudo confirmar el turno.");
         }
     }
 
     private void cancelarTurno() {
         System.out.print("  ID del turno a cancelar: ");
         long id = leerLong();
-        try {
-            servicioTurno.cancelarTurno(id);
+
+        Turno turno = servicioTurno.cancelarTurno(id);
+
+        if (turno != null) {
             System.out.println("  ✔ Turno #" + id + " cancelado.");
-        } catch (Exception e) {
-            System.out.println("  " + e.getMessage());
+        } else {
+            System.out.println("  No se pudo cancelar el turno.");
         }
     }
 
     private void completarTurno() {
         System.out.print("  ID del turno a completar: ");
         long id = leerLong();
-        try {
-            servicioTurno.completarTurno(id);
+
+        Turno turno = servicioTurno.completarTurno(id);
+
+        if (turno != null) {
             System.out.println("  ✔ Turno #" + id + " marcado como completado.");
-        } catch (Exception e) {
-            System.out.println("  " + e.getMessage());
+        } else {
+            System.out.println("  No se pudo completar el turno.");
         }
     }
 
     private void eliminarTurno() {
         System.out.print("  ID del turno a eliminar: ");
         long id = leerLong();
-        try {
-            servicioTurno.eliminarTurno(id);
-            System.out.println("  ✔ Turno #" + id + " eliminado del sistema.");
-        } catch (Exception e) {
-            System.out.println("  " + e.getMessage());
-        }
+
+        servicioTurno.eliminarTurno(id);
     }
 
     // --- Utilidades ---

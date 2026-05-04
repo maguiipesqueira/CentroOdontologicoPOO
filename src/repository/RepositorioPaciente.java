@@ -19,8 +19,8 @@ public class RepositorioPaciente implements IRepositorio<Paciente> {
     }
 
     @Override
-    public Optional<Paciente> buscarPorId(Long id) {
-        return Optional.ofNullable(almacenamiento.get(id));
+    public Paciente buscarPorId(Long id) {
+        return almacenamiento.get(id);
     }
 
     @Override
@@ -42,19 +42,21 @@ public class RepositorioPaciente implements IRepositorio<Paciente> {
 
     /**
      * Busca un paciente por DNI.
-     * Patrón GRASP Expert: el repositorio conoce la colección y puede buscar en ella.
+     * Devuelve el paciente si existe, o null si no existe.
      */
-    public Optional<Paciente> buscarPorDni(int dni) {
-        return almacenamiento.values().stream()
-                .filter(p -> p.getDni() == dni)
-                .findFirst();
+    public Paciente buscarPorDni(int dni) {
+        for (Paciente p : almacenamiento.values()) {
+            if (p.getDni() == dni) {
+                return p;
+            }
+        }
+        return null;
     }
 
     /**
-     * Verifica si ya existe un paciente con ese DNI (para validaciones del service).
+     * Verifica si ya existe un paciente con ese DNI.
      */
     public boolean existeDni(int dni) {
-        return almacenamiento.values().stream()
-                .anyMatch(p -> p.getDni() == dni);
+        return buscarPorDni(dni) != null;
     }
 }

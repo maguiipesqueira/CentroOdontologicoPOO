@@ -24,9 +24,6 @@ public class Main {
 
     public static void main(String[] args) {
 
-        // -------------------------------------------------------
-        // Construcción del grafo de dependencias (manual DI)
-        // -------------------------------------------------------
         RepositorioPaciente repoPaciente     = new RepositorioPaciente();
         RepositorioOdontologo repoOdontologo = new RepositorioOdontologo();
         RepositorioTurno repoTurno           = new RepositorioTurno();
@@ -39,17 +36,10 @@ public class Main {
 
         ControladorPaciente ctrlPaciente     = new ControladorPaciente(servPaciente, scanner);
         ControladorOdontologo ctrlOdontologo = new ControladorOdontologo(servOdontologo, scanner);
-        ControladorTurno ctrlTurno           = new ControladorTurno(servTurno, servPaciente,
-                                                                      servOdontologo, scanner);
+        ControladorTurno ctrlTurno           = new ControladorTurno(servTurno, servPaciente, servOdontologo, scanner);
 
-        // -------------------------------------------------------
-        // Carga de datos de prueba (equivale a la primera entrega)
-        // -------------------------------------------------------
         cargarDatosDePrueba(servPaciente, servOdontologo, servTurno);
 
-        // -------------------------------------------------------
-        // Menú principal
-        // -------------------------------------------------------
         int opcion;
         do {
             System.out.println("\n╔══════════════════════════════════════════╗");
@@ -80,51 +70,42 @@ public class Main {
         scanner.close();
     }
 
-    /**
-     * Carga datos iniciales para demostración, respetando la lógica de negocio de los servicios.
-     */
     private static void cargarDatosDePrueba(ServicioPaciente servPaciente,
-                                             ServicioOdontologo servOdontologo,
-                                             ServicioTurno servTurno) {
+                                            ServicioOdontologo servOdontologo,
+                                            ServicioTurno servTurno) {
+
         System.out.println("\n  [Cargando datos de prueba...]");
 
-        // Odontólogos (polimorfismo: distintos subtipos de Odontologo)
-        Odontologo od1 = new Cirujano(1L, "Guillermina", "Cotrone", 1234, "Extracción de muela");
-        Odontologo od2 = new Ortodoncista(2L, "Tomas", "Barea", 5678, "Brackets invisibles");
-        Odontologo od3 = new General(3L, "Camilo", "Hunter", 9012, "Limpieza");
+        Odontologo od1 = new Cirujano(1L, "Guillermina", "Cotrone", 1234, TipoCirugia.EXTRACCION_MUELA);
+        Odontologo od2 = new Ortodoncista(2L, "Tomas", "Barea", 5678, TipoOrtodoncia.BRACKETS_CERAMICOS);
+        Odontologo od3 = new General(3L, "Camilo", "Hunter", 9012, TipoConsulta.LIMPIEZA);
 
-        try {
-            servOdontologo.registrarOdontologo(od1);
-            servOdontologo.registrarOdontologo(od2);
-            servOdontologo.registrarOdontologo(od3);
-        } catch (Exception e) {
-            System.out.println("  Advertencia carga odontólogos: " + e.getMessage());
-        }
+        servOdontologo.registrarOdontologo(od1);
+        servOdontologo.registrarOdontologo(od2);
+        servOdontologo.registrarOdontologo(od3);
 
-        // Pacientes
         Domicilio dom1 = new Domicilio("Necochea", 581, "Lobos", "Buenos Aires", TipoHogar.CASA);
         Domicilio dom2 = new Domicilio("Rosas", 120, "Temperley", "Buenos Aires", TipoHogar.PH);
         Domicilio dom3 = new Domicilio("Avenida Mayo", 450, "Bariloche", "Río Negro", TipoHogar.DEPARTAMENTO);
 
-        try {
-            servPaciente.registrarPaciente("Fátima", "Persi", 46113226, "fatimap@gmail.com", dom1);
-            servPaciente.registrarPaciente("Magali", "Pesqueira", 354473, "maga@mail.com", dom2);
-            servPaciente.registrarPaciente("Jesús", "Cambronero", 4448544, "jesus@mail.com", dom3);
-        } catch (Exception e) {
-            System.out.println("  Advertencia carga pacientes: " + e.getMessage());
+        servPaciente.registrarPaciente("Fátima", "Persi", 46113226, "fatimap@gmail.com", dom1);
+        servPaciente.registrarPaciente("Magali", "Pesqueira", 354473, "maga@mail.com", dom2);
+        servPaciente.registrarPaciente("Jesús", "Cambronero", 4448544, "jesus@mail.com", dom3);
+
+        Paciente p1 = servPaciente.buscarPorDni(46113226);
+        Paciente p2 = servPaciente.buscarPorDni(354473);
+        Paciente p3 = servPaciente.buscarPorDni(4448544);
+
+        if (p1 != null) {
+            servTurno.registrarTurno(p1, od1, LocalDate.of(2026, 5, 20), LocalTime.of(15, 30));
         }
 
-        // Turnos
-        try {
-            Paciente p1 = servPaciente.buscarPorDni(46113226).orElseThrow();
-            Paciente p2 = servPaciente.buscarPorDni(354473).orElseThrow();
-            Paciente p3 = servPaciente.buscarPorDni(4448544).orElseThrow();
-
-            servTurno.registrarTurno(p1, od1, LocalDate.of(2026, 5, 20), LocalTime.of(15, 30));
+        if (p2 != null) {
             servTurno.registrarTurno(p2, od2, LocalDate.of(2026, 5, 21), LocalTime.of(10, 0));
+        }
+
+        if (p3 != null) {
             servTurno.registrarTurno(p3, od3, LocalDate.of(2026, 5, 22), LocalTime.of(18, 15));
-        } catch (Exception e) {
-            System.out.println("  Advertencia carga turnos: " + e.getMessage());
         }
 
         System.out.println("  [Datos de prueba cargados correctamente]\n");

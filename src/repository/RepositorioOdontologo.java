@@ -18,8 +18,8 @@ public class RepositorioOdontologo implements IRepositorio<Odontologo> {
     }
 
     @Override
-    public Optional<Odontologo> buscarPorId(Long id) {
-        return Optional.ofNullable(almacenamiento.get(id));
+    public Odontologo buscarPorId(Long id) {
+        return almacenamiento.get(id);
     }
 
     @Override
@@ -41,19 +41,21 @@ public class RepositorioOdontologo implements IRepositorio<Odontologo> {
 
     /**
      * Busca un odontólogo por matrícula.
-     * Patrón GRASP Expert: el repositorio es quien conoce la colección.
+     * Devuelve el odontólogo si existe, o null si no existe.
      */
-    public Optional<Odontologo> buscarPorMatricula(int matricula) {
-        return almacenamiento.values().stream()
-                .filter(o -> o.getMatricula() == matricula)
-                .findFirst();
+    public Odontologo buscarPorMatricula(int matricula) {
+        for (Odontologo o : almacenamiento.values()) {
+            if (o.getMatricula() == matricula) {
+                return o;
+            }
+        }
+        return null;
     }
 
     /**
      * Verifica si ya existe un odontólogo con esa matrícula.
      */
     public boolean existeMatricula(int matricula) {
-        return almacenamiento.values().stream()
-                .anyMatch(o -> o.getMatricula() == matricula);
+        return buscarPorMatricula(matricula) != null;
     }
 }

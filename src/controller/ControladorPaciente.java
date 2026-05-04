@@ -6,7 +6,6 @@ import entity.TipoHogar;
 import service.ServicioPaciente;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Scanner;
 
 /**
@@ -77,20 +76,23 @@ public class ControladorPaciente {
 
         Domicilio domicilio = new Domicilio(calle, numero, localidad, provincia, tipoHogar);
 
-        try {
-            Paciente nuevo = servicio.registrarPaciente(nombre, apellido, dni, email, domicilio);
+        Paciente nuevo = servicio.registrarPaciente(nombre, apellido, dni, email, domicilio);
+
+        if (nuevo != null) {
             System.out.println("  ✔ Paciente registrado exitosamente: " + nuevo);
-        } catch (IllegalArgumentException e) {
-            System.out.println("  " + e.getMessage());
+        } else {
+            System.out.println("  No se pudo registrar el paciente.");
         }
     }
 
     private void buscarPorId() {
         System.out.print("  Ingrese el ID del paciente: ");
         long id = leerLong();
-        Optional<Paciente> paciente = servicio.buscarPorId(id);
-        if (paciente.isPresent()) {
-            System.out.println("  Paciente encontrado: " + paciente.get());
+
+        Paciente paciente = servicio.buscarPorId(id);
+
+        if (paciente != null) {
+            System.out.println("  Paciente encontrado: " + paciente);
         } else {
             System.out.println("  No se encontró un paciente con ID " + id + ".");
         }
@@ -99,9 +101,11 @@ public class ControladorPaciente {
     private void buscarPorDni() {
         System.out.print("  Ingrese el DNI del paciente: ");
         int dni = leerEntero();
-        Optional<Paciente> paciente = servicio.buscarPorDni(dni);
-        if (paciente.isPresent()) {
-            System.out.println("  Paciente encontrado: " + paciente.get());
+
+        Paciente paciente = servicio.buscarPorDni(dni);
+
+        if (paciente != null) {
+            System.out.println("  Paciente encontrado: " + paciente);
         } else {
             System.out.println("  No se encontró un paciente con DNI " + dni + ".");
         }
@@ -127,23 +131,20 @@ public class ControladorPaciente {
         System.out.print("  Nuevo email: ");
         String email = scanner.nextLine().trim();
 
-        try {
-            servicio.actualizarPaciente(id, nombre, apellido, email, null);
+        Paciente actualizado = servicio.actualizarPaciente(id, nombre, apellido, email, null);
+
+        if (actualizado != null) {
             System.out.println("  ✔ Paciente actualizado correctamente.");
-        } catch (IllegalArgumentException e) {
-            System.out.println("  " + e.getMessage());
+        } else {
+            System.out.println("  No se pudo actualizar el paciente.");
         }
     }
 
     private void eliminarPaciente() {
         System.out.print("  ID del paciente a eliminar: ");
         long id = leerLong();
-        try {
-            servicio.eliminarPaciente(id);
-            System.out.println("  ✔ Paciente eliminado correctamente.");
-        } catch (IllegalArgumentException e) {
-            System.out.println("  " + e.getMessage());
-        }
+
+        servicio.eliminarPaciente(id);
     }
 
     // --- Utilidades de lectura ---

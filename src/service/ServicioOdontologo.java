@@ -4,7 +4,6 @@ import entity.Odontologo;
 import repository.RepositorioOdontologo;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Servicio para la gestión de Odontólogos.
@@ -16,76 +15,121 @@ public class ServicioOdontologo {
     private final RepositorioOdontologo repositorio;
 
     public ServicioOdontologo(RepositorioOdontologo repositorio) {
+
         this.repositorio = repositorio;
     }
 
     /**
-     * Registra un odontólogo con validaciones.
+     * Registra un odontólogo.
+     * Valida datos básicos y evita duplicados por matrícula.
      * Se recibe la entidad ya construida (puede ser Cirujano, Ortodoncista o General).
      * Polimorfismo: el método acepta cualquier subtipo de Odontologo.
      */
     public Odontologo registrarOdontologo(Odontologo odontologo) {
-        validarMatricula(odontologo.getMatricula());
-        validarNombreApellido(odontologo.getNombre(), odontologo.getApellido());
 
-        if (repositorio.existeMatricula(odontologo.getMatricula())) {
-            throw new IllegalArgumentException(
-                    "ERROR: Ya existe un odontólogo con matrícula " + odontologo.getMatricula() + ".");
-        }
+        if (!validarObjeto(odontologo)) return null;
+        if (!validarNombreApellido(odontologo.getNombre(), odontologo.getApellido())) return null;
+        if (!validarMatricula(odontologo.getMatricula())) return null;
+        if (!validarDuplicado(odontologo.getMatricula())) return null;
 
         repositorio.guardar(odontologo);
+
+        System.out.println("Odontólogo registrado correctamente.");
         return odontologo;
     }
 
-    public Optional<Odontologo> buscarPorId(long id) {
+    // Buscar por ID
+    public Odontologo buscarPorId(long id) {
         return repositorio.buscarPorId(id);
     }
 
-    public Optional<Odontologo> buscarPorMatricula(int matricula) {
+    // Buscar por matrícula
+    public Odontologo buscarPorMatricula(int matricula) {
         return repositorio.buscarPorMatricula(matricula);
     }
 
+    // Listar todos
     public List<Odontologo> listarTodos() {
         return repositorio.listarTodos();
     }
 
-    /**
-     * Actualiza nombre y apellido de un odontólogo existente.
-     */
-    public void actualizarOdontologo(long id, String nombre, String apellido) {
-        Odontologo odontologo = repositorio.buscarPorId(id)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "ERROR: No existe un odontólogo con ID " + id + "."));
+    // Actualizar odontólogo
+    public Odontologo actualizarOdontologo(long id, String nombre, String apellido) {
 
-        validarNombreApellido(nombre, apellido);
+        Odontologo odontologo = buscarPorId(id);
+
+        if (odontologo == null) {
+            System.out.println("Error: no existe un odontólogo con ese ID.");
+            return null;
+        }
+
+        if (!validarNombreApellido(nombre, apellido)) return null;
 
         odontologo.setNombre(nombre);
         odontologo.setApellido(apellido);
+
         repositorio.actualizar(odontologo);
+
+        return odontologo;
     }
 
-    /**
-     * Elimina un odontólogo por ID.
-     */
+    // Eliminar odontólogo
     public void eliminarOdontologo(long id) {
-        repositorio.buscarPorId(id)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "ERROR: No existe un odontólogo con ID " + id + "."));
+
+        Odontologo odontologo = buscarPorId(id);
+
+        if (odontologo == null) {
+            System.out.println("Error: no existe un odontólogo con ese ID.");
+            return;
+        }
+
         repositorio.eliminar(id);
     }
 
-    // --- Validaciones ---
+    // =========================
+    // VALIDACIONES
+    // =========================
 
-    private void validarMatricula(int matricula) {
-        if (matricula <= 0)
-            throw new IllegalArgumentException(
-                    "ERROR: La matrícula debe ser un número positivo. Matrícula recibida: " + matricula);
+    private boolean validarObjeto(Odontologo odontologo) {
+        if (odontologo == null) {
+            System.out.println("Error: el odontólogo no puede ser nulo.");
+            return false;
+        }
+        return true;
     }
 
-    private void validarNombreApellido(String nombre, String apellido) {
-        if (nombre == null || nombre.isBlank())
-            throw new IllegalArgumentException("ERROR: El nombre no puede estar vacío.");
-        if (apellido == null || apellido.isBlank())
-            throw new IllegalArgumentException("ERROR: El apellido no puede estar vacío.");
+    private boolean validarNombreApellido(String nombre, String apellido) {
+
+        if (nombre == null || nombre.isBlank()) {
+            System.out.println("Error: el nombre no puede estar vacío.");
+            return false;
+        }
+
+        if (apellido == null || apellido.isBlank()) {
+            System.out.println("Error: el apellido no puede estar vacío.");
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean validarMatricula(int matricula) {
+
+        if (matricula <= 0) {
+            System.out.println("Error: la matrícula debe ser mayor a cero.");
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean validarDuplicado(int matricula) {
+
+        if (repositorio.existeMatricula(matricula)) {
+            System.out.println("Error: ya existe un odontólogo con esa matrícula.");
+            return false;
+        }
+
+        return true;
     }
 }

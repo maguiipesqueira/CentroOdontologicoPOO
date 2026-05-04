@@ -34,4 +34,6 @@ public class Odontologo {
     public String toString() {
         return "ID: " + id + " | " + getNombreCompleto() + " | Matrícula: " + matricula;
     }
+
+
 }

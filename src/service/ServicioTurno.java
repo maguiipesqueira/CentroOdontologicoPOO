@@ -9,7 +9,6 @@ import repository.RepositorioTurno;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Servicio para la gestión de Turnos.
@@ -30,24 +29,25 @@ public class ServicioTurno {
      * Valida que no haya solapamiento de turno para el mismo odontólogo, fecha y hora.
      */
     public Turno registrarTurno(Paciente paciente, Odontologo odontologo,
-                                 LocalDate fecha, LocalTime hora) {
-        validarFecha(fecha);
-        validarHora(hora);
+                                LocalDate fecha, LocalTime hora) {
+
+        if (!validarFecha(fecha)) return null;
+        if (!validarHora(hora)) return null;
 
         if (repositorio.existeTurnoSolapado(odontologo.getId(), fecha, hora)) {
-            throw new IllegalArgumentException(
-                    "ERROR: El odontólogo " + odontologo.getNombreCompleto() +
-                    " ya tiene un turno asignado el " + fecha + " a las " + hora + ".");
+            System.out.println("Error: el odontólogo ya tiene un turno en esa fecha y hora.");
+            return null;
         }
 
         long id = repositorio.siguienteId();
-        // Patrón Creator: ServicioTurno tiene todos los datos para crear el Turno
+
         Turno turno = new Turno(id, paciente, odontologo, fecha, hora);
         repositorio.guardar(turno);
+
         return turno;
     }
 
-    public Optional<Turno> buscarPorId(long id) {
+    public Turno buscarPorId(long id) {
         return repositorio.buscarPorId(id);
     }
 
@@ -66,66 +66,88 @@ public class ServicioTurno {
     /**
      * Cancela un turno por ID. Solo se puede cancelar si está PENDIENTE o CONFIRMADO.
      */
-    public void cancelarTurno(long id) {
-        Turno turno = repositorio.buscarPorId(id)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "ERROR: No existe un turno con ID " + id + "."));
+    public Turno cancelarTurno(long id) {
+        Turno turno = buscarPorId(id);
+
+        if (turno == null) {
+            System.out.println("Error: no existe un turno con ese ID.");
+            return null;
+        }
 
         if (turno.getEstado() == EstadoTurno.CANCELADO) {
-            throw new IllegalStateException("ERROR: El turno #" + id + " ya está cancelado.");
+            System.out.println("Error: el turno ya está cancelado.");
+            return null;
         }
+
         if (turno.getEstado() == EstadoTurno.COMPLETADO) {
-            throw new IllegalStateException("ERROR: No se puede cancelar un turno completado.");
+            System.out.println("Error: no se puede cancelar un turno completado.");
+            return null;
         }
 
         turno.setEstado(EstadoTurno.CANCELADO);
         repositorio.actualizar(turno);
+
+        return turno;
     }
 
     /**
      * Confirma un turno PENDIENTE.
      */
-    public void confirmarTurno(long id) {
-        Turno turno = repositorio.buscarPorId(id)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "ERROR: No existe un turno con ID " + id + "."));
+    public Turno confirmarTurno(long id) {
+        Turno turno = buscarPorId(id);
+
+        if (turno == null) {
+            System.out.println("Error: no existe un turno con ese ID.");
+            return null;
+        }
 
         if (turno.getEstado() != EstadoTurno.PENDIENTE) {
-            throw new IllegalStateException(
-                    "ERROR: Solo se pueden confirmar turnos en estado PENDIENTE.");
+            System.out.println("Error: solo se pueden confirmar turnos pendientes.");
+            return null;
         }
 
         turno.setEstado(EstadoTurno.CONFIRMADO);
         repositorio.actualizar(turno);
+
+        return turno;
     }
 
     /**
      * Marca un turno como completado.
      */
-    public void completarTurno(long id) {
-        Turno turno = repositorio.buscarPorId(id)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "ERROR: No existe un turno con ID " + id + "."));
+    public Turno completarTurno(long id) {
+        Turno turno = buscarPorId(id);
+
+        if (turno == null) {
+            System.out.println("Error: no existe un turno con ese ID.");
+            return null;
+        }
 
         if (turno.getEstado() == EstadoTurno.CANCELADO) {
-            throw new IllegalStateException("ERROR: No se puede completar un turno cancelado.");
+            System.out.println("Error: no se puede completar un turno cancelado.");
+            return null;
         }
 
         turno.setEstado(EstadoTurno.COMPLETADO);
         repositorio.actualizar(turno);
+
+        return turno;
     }
 
     /**
      * Elimina un turno por ID (solo si está cancelado).
      */
     public void eliminarTurno(long id) {
-        Turno turno = repositorio.buscarPorId(id)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "ERROR: No existe un turno con ID " + id + "."));
+        Turno turno = buscarPorId(id);
+
+        if (turno == null) {
+            System.out.println("Error: no existe un turno con ese ID.");
+            return;
+        }
 
         if (turno.getEstado() != EstadoTurno.CANCELADO) {
-            throw new IllegalStateException(
-                    "ERROR: Solo se pueden eliminar turnos cancelados.");
+            System.out.println("Error: solo se pueden eliminar turnos cancelados.");
+            return;
         }
 
         repositorio.eliminar(id);
@@ -133,21 +155,34 @@ public class ServicioTurno {
 
     // --- Validaciones ---
 
-    private void validarFecha(LocalDate fecha) {
-        if (fecha == null)
-            throw new IllegalArgumentException("ERROR: La fecha no puede ser nula.");
-        if (fecha.isBefore(LocalDate.now()))
-            throw new IllegalArgumentException("ERROR: No se pueden registrar turnos en fechas pasadas.");
+    private boolean validarFecha(LocalDate fecha) {
+        if (fecha == null) {
+            System.out.println("Error: la fecha no puede ser nula.");
+            return false;
+        }
+
+        if (fecha.isBefore(LocalDate.now())) {
+            System.out.println("Error: no se pueden registrar turnos en fechas pasadas.");
+            return false;
+        }
+
+        return true;
     }
 
-    private void validarHora(LocalTime hora) {
-        if (hora == null)
-            throw new IllegalArgumentException("ERROR: La hora no puede ser nula.");
+    private boolean validarHora(LocalTime hora) {
+        if (hora == null) {
+            System.out.println("Error: la hora no puede ser nula.");
+            return false;
+        }
+
         LocalTime apertura = LocalTime.of(8, 0);
         LocalTime cierre = LocalTime.of(20, 0);
+
         if (hora.isBefore(apertura) || hora.isAfter(cierre)) {
-            throw new IllegalArgumentException(
-                    "ERROR: Los turnos solo se pueden registrar entre las 08:00 y las 20:00.");
+            System.out.println("Error: los turnos solo se pueden registrar entre las 08:00 y las 20:00.");
+            return false;
         }
+
+        return true;
     }
 }

@@ -2,18 +2,20 @@ package entity;
 
 public class Ortodoncista extends Odontologo {
 
-    private String tipoAparato;
+    private TipoOrtodoncia tipoOrtodoncia;
 
-    public Ortodoncista(long id, String nombre, String apellido, int matricula, String tipoAparato) {
+    public Ortodoncista(long id, String nombre, String apellido, int matricula, TipoOrtodoncia tipoOrtodoncia) {
         super(id, nombre, apellido, matricula);
-        this.tipoAparato = tipoAparato;
+        this.tipoOrtodoncia = tipoOrtodoncia;
     }
 
-    public String getTipoAparato() { return tipoAparato; }
-    public void setTipoAparato(String tipoAparato) { this.tipoAparato = tipoAparato; }
+    public TipoOrtodoncia getTipoOrtodoncia() {
+        return tipoOrtodoncia; }
+    public void setTipoOrtodoncia(TipoOrtodoncia tipoOrtodoncia) {
+        this.tipoOrtodoncia = tipoOrtodoncia; }
 
     @Override
     public String toString() {
-        return "Especialidad: Ortodoncista (" + tipoAparato + ") | " + super.toString();
+        return "Especialidad: Ortodoncista (" + tipoOrtodoncia + ") | " + super.toString();
     }
 }

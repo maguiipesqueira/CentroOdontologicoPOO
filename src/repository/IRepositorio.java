@@ -1,7 +1,6 @@
 package repository;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * Interfaz genérica IRepositorio<T> con operaciones CRUD.
@@ -19,9 +18,9 @@ public interface IRepositorio<T> {
 
     /**
      * Busca una entidad por su ID.
-     * @return Optional con la entidad si existe, vacío si no.
+     * devuelve la entidad si existe, o null si no existe.
      */
-    Optional<T> buscarPorId(Long id);
+    T buscarPorId(Long id);
 
     /**
      * Devuelve la lista completa de entidades.

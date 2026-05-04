@@ -1,13 +1,9 @@
 package controller;
 
-import entity.Cirujano;
-import entity.General;
-import entity.Odontologo;
-import entity.Ortodoncista;
+import entity.*;
 import service.ServicioOdontologo;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.Scanner;
 
 /**
@@ -74,38 +70,38 @@ public class ControladorOdontologo {
         // Polimorfismo: se instancia el subtipo correspondiente según la especialidad
         switch (especialidad) {
             case 2 -> {
-                System.out.print("  Tipo de cirugía: ");
-                String tipoCirugia = scanner.nextLine().trim();
+                TipoCirugia tipoCirugia = leerTipoCirugia();
                 odontologo = new Cirujano(id, nombre, apellido, matricula, tipoCirugia);
             }
             case 3 -> {
-                System.out.print("  Tipo de aparato: ");
-                String tipoAparato = scanner.nextLine().trim();
-                odontologo = new Ortodoncista(id, nombre, apellido, matricula, tipoAparato);
+                TipoOrtodoncia tipoOrtodoncia = leerTipoOrtodoncia();
+                odontologo = new Ortodoncista(id, nombre, apellido, matricula, tipoOrtodoncia);
             }
             default -> {
-                System.out.print("  Tipo de consulta: ");
-                String tipoConsulta = scanner.nextLine().trim();
+                TipoConsulta tipoConsulta = leerTipoConsulta();
                 odontologo = new General(id, nombre, apellido, matricula, tipoConsulta);
             }
         }
 
-        try {
-            servicio.registrarOdontologo(odontologo);
+        Odontologo resultado = servicio.registrarOdontologo(odontologo);
+
+        if (resultado != null) {
             // Polimorfismo: toString() se resuelve en tiempo de ejecución según el tipo real
-            System.out.println("  ✔ Odontólogo registrado exitosamente: " + odontologo);
-        } catch (IllegalArgumentException e) {
+            System.out.println("  ✔ Odontólogo registrado exitosamente: " + resultado);
+        } else {
             contadorId--; // revertir ID si falló
-            System.out.println("  " + e.getMessage());
+            System.out.println("  No se pudo registrar el odontólogo.");
         }
     }
 
     private void buscarPorId() {
         System.out.print("  Ingrese el ID del odontólogo: ");
         long id = leerLong();
-        Optional<Odontologo> odon = servicio.buscarPorId(id);
-        if (odon.isPresent()) {
-            System.out.println("  Odontólogo encontrado: " + odon.get());
+
+        Odontologo odon = servicio.buscarPorId(id);
+
+        if (odon != null) {
+            System.out.println("  Odontólogo encontrado: " + odon);
         } else {
             System.out.println("  No se encontró un odontólogo con ID " + id + ".");
         }
@@ -114,9 +110,11 @@ public class ControladorOdontologo {
     private void buscarPorMatricula() {
         System.out.print("  Ingrese la matrícula: ");
         int matricula = leerEntero();
-        Optional<Odontologo> odon = servicio.buscarPorMatricula(matricula);
-        if (odon.isPresent()) {
-            System.out.println("  Odontólogo encontrado: " + odon.get());
+
+        Odontologo odon = servicio.buscarPorMatricula(matricula);
+
+        if (odon != null) {
+            System.out.println("  Odontólogo encontrado: " + odon);
         } else {
             System.out.println("  No se encontró un odontólogo con matrícula " + matricula + ".");
         }
@@ -140,23 +138,21 @@ public class ControladorOdontologo {
         String nombre = scanner.nextLine().trim();
         System.out.print("  Nuevo apellido: ");
         String apellido = scanner.nextLine().trim();
-        try {
-            servicio.actualizarOdontologo(id, nombre, apellido);
+
+        Odontologo actualizado = servicio.actualizarOdontologo(id, nombre, apellido);
+
+        if (actualizado != null) {
             System.out.println("  ✔ Odontólogo actualizado correctamente.");
-        } catch (IllegalArgumentException e) {
-            System.out.println("  " + e.getMessage());
+        } else {
+            System.out.println("  No se pudo actualizar el odontólogo.");
         }
     }
 
     private void eliminarOdontologo() {
         System.out.print("  ID del odontólogo a eliminar: ");
         long id = leerLong();
-        try {
-            servicio.eliminarOdontologo(id);
-            System.out.println("  ✔ Odontólogo eliminado correctamente.");
-        } catch (IllegalArgumentException e) {
-            System.out.println("  " + e.getMessage());
-        }
+
+        servicio.eliminarOdontologo(id);
     }
 
     // --- Utilidades ---
@@ -180,4 +176,79 @@ public class ControladorOdontologo {
             }
         }
     }
+
+
+    private TipoCirugia leerTipoCirugia() {
+        while (true) {
+            System.out.println("  Tipos de cirugía:");
+            System.out.println("  1. Extracción de muela");
+            System.out.println("  2. Implante");
+            System.out.println("  3. Cirugía de encía");
+            System.out.println("  4. Cirugía maxilofacial");
+            System.out.print("  Opción: ");
+
+            int opcion = leerEntero();
+
+            switch (opcion) {
+                case 1:
+                    return TipoCirugia.EXTRACCION_MUELA;
+                case 2:
+                    return TipoCirugia.IMPLANTE;
+                case 3:
+                    return TipoCirugia.CIRUGIA_ENCIA;
+                case 4:
+                    return TipoCirugia.CIRUGIA_MAXILOFACIAL;
+                default:
+                    System.out.println("  Opción inválida.");
+            }
+        }
+
+    }
+
+    private TipoOrtodoncia leerTipoOrtodoncia() {
+        while (true) {
+            System.out.println("  Tipos de ortodoncia:");
+            System.out.println("  1. Brackets metálicos");
+            System.out.println("  2. Brackets cerámicos");
+            System.out.println("  3. Invisalign");
+            System.out.println("  4. Lingual");
+            System.out.print("  Opción: ");
+
+            int opcion = leerEntero();
+
+            switch (opcion) {
+                case 1: return TipoOrtodoncia.BRACKETS_METALICOS;
+                case 2: return TipoOrtodoncia.BRACKETS_CERAMICOS;
+                default: System.out.println("  Opción inválida.");
+            }
+        }
+    }
+
+
+
+    private TipoConsulta leerTipoConsulta() {
+        while (true) {
+            System.out.println("  Tipos de consulta:");
+            System.out.println("  1. Limpieza");
+            System.out.println("  2. Control");
+            System.out.println("  3. Urgencia");
+            System.out.println("  4. Blanqueamiento");
+            System.out.print("  Opción: ");
+
+            int opcion = leerEntero();
+
+            switch (opcion) {
+                case 1: return TipoConsulta.LIMPIEZA;
+                case 2: return TipoConsulta.CONTROL;
+                case 3: return TipoConsulta.URGENCIA;
+                case 4: return TipoConsulta.BLANQUEAMIENTO;
+                default: System.out.println("  Opción inválida.");
+            }
+        }
+    }
+
+
+
 }
+
+

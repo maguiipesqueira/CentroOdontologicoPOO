@@ -22,8 +22,8 @@ public class RepositorioTurno implements IRepositorio<Turno> {
     }
 
     @Override
-    public Optional<Turno> buscarPorId(Long id) {
-        return Optional.ofNullable(almacenamiento.get(id));
+    public Turno buscarPorId(Long id) {
+        return almacenamiento.get(id);
     }
 
     @Override
@@ -45,39 +45,65 @@ public class RepositorioTurno implements IRepositorio<Turno> {
 
     /**
      * Verifica si ya existe un turno para el mismo odontólogo, fecha y hora.
-     * Patrón GRASP Expert: el repositorio conoce la colección completa de turnos.
      */
     public boolean existeTurnoSolapado(long odontologoId, LocalDate fecha, LocalTime hora) {
-        return almacenamiento.values().stream()
-                .filter(t -> t.getEstado() != EstadoTurno.CANCELADO)
-                .anyMatch(t -> t.getOdontologo().getId() == odontologoId
-                        && t.getFecha().equals(fecha)
-                        && t.getHora().equals(hora));
+        for (Turno t : almacenamiento.values()) {
+            if (t.getEstado() != EstadoTurno.CANCELADO
+                    && t.getOdontologo().getId() == odontologoId
+                    && t.getFecha().equals(fecha)
+                    && t.getHora().equals(hora)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
      * Lista los turnos de un paciente específico.
      */
     public List<Turno> buscarPorPaciente(long pacienteId) {
-        return almacenamiento.values().stream()
-                .filter(t -> t.getPaciente().getId() == pacienteId)
-                .collect(Collectors.toList());
+        List<Turno> resultado = new ArrayList<>();
+
+        for (Turno t : almacenamiento.values()) {
+            if (t.getPaciente().getId() == pacienteId) {
+                resultado.add(t);
+            }
+        }
+
+        return resultado;
     }
 
     /**
      * Lista los turnos de un odontólogo específico.
      */
     public List<Turno> buscarPorOdontologo(long odontologoId) {
-        return almacenamiento.values().stream()
-                .filter(t -> t.getOdontologo().getId() == odontologoId)
-                .collect(Collectors.toList());
+        List<Turno> resultado = new ArrayList<>();
+
+        for (Turno t : almacenamiento.values()) {
+            if (t.getOdontologo().getId() == odontologoId) {
+                resultado.add(t);
+            }
+        }
+
+        return resultado;
     }
 
     /**
      * Devuelve el próximo ID disponible.
      */
     public long siguienteId() {
-        return almacenamiento.isEmpty() ? 1L :
-                almacenamiento.keySet().stream().mapToLong(Long::longValue).max().getAsLong() + 1;
+        if (almacenamiento.isEmpty()) {
+            return 1L;
+        }
+
+        long max = 0L;
+
+        for (Long id : almacenamiento.keySet()) {
+            if (id > max) {
+                max = id;
+            }
+        }
+
+        return max + 1;
     }
 }
