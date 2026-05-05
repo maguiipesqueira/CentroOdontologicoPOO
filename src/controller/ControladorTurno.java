@@ -13,10 +13,6 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Scanner;
 
-/**
- * Controlador de Turnos.
- * Patrón GRASP Controller: coordina entre múltiples servicios sin contener lógica de negocio.
- */
 public class ControladorTurno {
 
     private final ServicioTurno servicioTurno;
@@ -24,6 +20,7 @@ public class ControladorTurno {
     private final ServicioOdontologo servicioOdontologo;
     private final Scanner scanner;
 
+    // guarda los servicios que hacen falta para turnos
     public ControladorTurno(ServicioTurno servicioTurno,
                              ServicioPaciente servicioPaciente,
                              ServicioOdontologo servicioOdontologo,
@@ -34,6 +31,7 @@ public class ControladorTurno {
         this.scanner = scanner;
     }
 
+    // menú de turnos hasta que pongan 0
     public void menuTurnos() {
         int opcion;
         do {
@@ -68,6 +66,7 @@ public class ControladorTurno {
         } while (opcion != 0);
     }
 
+    // pide paciente odontólogo fecha y hora y registra el turno
     private void registrarTurno() {
         System.out.println("\n-- Registrar nuevo turno --");
 
@@ -108,6 +107,7 @@ public class ControladorTurno {
         }
     }
 
+    // busca turno por id y lo muestra
     private void buscarPorId() {
         System.out.print("  Ingrese el ID del turno: ");
         long id = leerLong();
@@ -121,6 +121,7 @@ public class ControladorTurno {
         }
     }
 
+    // lista todos los turnos
     private void listarTodos() {
         List<Turno> lista = servicioTurno.listarTodos();
         if (lista.isEmpty()) {
@@ -131,6 +132,7 @@ public class ControladorTurno {
         }
     }
 
+    // lista turnos de un paciente
     private void listarPorPaciente() {
         System.out.print("  ID del paciente: ");
         long id = leerLong();
@@ -142,6 +144,7 @@ public class ControladorTurno {
         }
     }
 
+    // lista turnos de un odontólogo
     private void listarPorOdontologo() {
         System.out.print("  ID del odontólogo: ");
         long id = leerLong();
@@ -153,6 +156,7 @@ public class ControladorTurno {
         }
     }
 
+    // confirma un turno pendiente
     private void confirmarTurno() {
         System.out.print("  ID del turno a confirmar: ");
         long id = leerLong();
@@ -166,6 +170,7 @@ public class ControladorTurno {
         }
     }
 
+    // cancela un turno
     private void cancelarTurno() {
         System.out.print("  ID del turno a cancelar: ");
         long id = leerLong();
@@ -179,6 +184,7 @@ public class ControladorTurno {
         }
     }
 
+    // marca el turno como hecho
     private void completarTurno() {
         System.out.print("  ID del turno a completar: ");
         long id = leerLong();
@@ -192,6 +198,7 @@ public class ControladorTurno {
         }
     }
 
+    // borra turno (solo si el servicio deja, tiene que estar cancelado)
     private void eliminarTurno() {
         System.out.print("  ID del turno a eliminar: ");
         long id = leerLong();
@@ -199,8 +206,7 @@ public class ControladorTurno {
         servicioTurno.eliminarTurno(id);
     }
 
-    // --- Utilidades ---
-
+    // lee int
     private int leerEntero() {
         while (true) {
             try {
@@ -211,6 +217,7 @@ public class ControladorTurno {
         }
     }
 
+    // lee long
     private long leerLong() {
         while (true) {
             try {
@@ -221,6 +228,7 @@ public class ControladorTurno {
         }
     }
 
+    // lee fecha o devuelve null si el formato está mal
     private LocalDate leerFecha() {
         try {
             return LocalDate.parse(scanner.nextLine().trim());
@@ -230,6 +238,7 @@ public class ControladorTurno {
         }
     }
 
+    // lee hora o null si está mal
     private LocalTime leerHora() {
         try {
             return LocalTime.parse(scanner.nextLine().trim());

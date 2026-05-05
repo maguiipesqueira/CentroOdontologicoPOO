@@ -6,22 +6,19 @@ import service.ServicioOdontologo;
 import java.util.List;
 import java.util.Scanner;
 
-/**
- * Controlador de Odontólogos.
- * Patrón GRASP Controller: recibe las peticiones de la vista y delega al servicio.
- * Demuestra polimorfismo: crea subtipos de Odontologo según la especialidad elegida.
- */
 public class ControladorOdontologo {
 
     private final ServicioOdontologo servicio;
     private final Scanner scanner;
     private long contadorId = 1L;
 
+    // guarda el servicio y el scanner para usar después
     public ControladorOdontologo(ServicioOdontologo servicio, Scanner scanner) {
         this.servicio = servicio;
         this.scanner = scanner;
     }
 
+    // muestra el menú de odontólogos hasta que pongan 0
     public void menuOdontologos() {
         int opcion;
         do {
@@ -51,6 +48,7 @@ public class ControladorOdontologo {
         } while (opcion != 0);
     }
 
+    // pide datos y crea general / cirujano / ortodoncista según lo que elijan
     private void registrarOdontologo() {
         System.out.println("\n-- Registrar nuevo odontólogo --");
         System.out.print("  Nombre: ");
@@ -67,7 +65,6 @@ public class ControladorOdontologo {
         Odontologo odontologo;
         long id = contadorId++;
 
-        // Polimorfismo: se instancia el subtipo correspondiente según la especialidad
         switch (especialidad) {
             case 2 -> {
                 TipoCirugia tipoCirugia = leerTipoCirugia();
@@ -86,14 +83,14 @@ public class ControladorOdontologo {
         Odontologo resultado = servicio.registrarOdontologo(odontologo);
 
         if (resultado != null) {
-            // Polimorfismo: toString() se resuelve en tiempo de ejecución según el tipo real
             System.out.println("  ✔ Odontólogo registrado exitosamente: " + resultado);
         } else {
-            contadorId--; // revertir ID si falló
+            contadorId--;
             System.out.println("  No se pudo registrar el odontólogo.");
         }
     }
 
+    // busca por id y lo imprime
     private void buscarPorId() {
         System.out.print("  Ingrese el ID del odontólogo: ");
         long id = leerLong();
@@ -107,6 +104,7 @@ public class ControladorOdontologo {
         }
     }
 
+    // busca por matrícula y lo imprime
     private void buscarPorMatricula() {
         System.out.print("  Ingrese la matrícula: ");
         int matricula = leerEntero();
@@ -120,17 +118,18 @@ public class ControladorOdontologo {
         }
     }
 
+    // lista todos los odontólogos que haya
     private void listarTodos() {
         List<Odontologo> lista = servicio.listarTodos();
         if (lista.isEmpty()) {
             System.out.println("  No hay odontólogos registrados.");
         } else {
             System.out.println("\n  --- Lista de Odontólogos ---");
-            // Polimorfismo: toString() varía según Cirujano, Ortodoncista o General
             lista.forEach(o -> System.out.println("  " + o));
         }
     }
 
+    // cambia nombre y apellido del que tenga ese id
     private void actualizarOdontologo() {
         System.out.print("  ID del odontólogo a actualizar: ");
         long id = leerLong();
@@ -148,6 +147,7 @@ public class ControladorOdontologo {
         }
     }
 
+    // borra el odontólogo con ese id
     private void eliminarOdontologo() {
         System.out.print("  ID del odontólogo a eliminar: ");
         long id = leerLong();
@@ -155,8 +155,7 @@ public class ControladorOdontologo {
         servicio.eliminarOdontologo(id);
     }
 
-    // --- Utilidades ---
-
+    // lee un número entero de la consola, si mandan letras vuelve a pedir
     private int leerEntero() {
         while (true) {
             try {
@@ -167,6 +166,7 @@ public class ControladorOdontologo {
         }
     }
 
+    // igual que leerEntero pero para long
     private long leerLong() {
         while (true) {
             try {
@@ -177,7 +177,7 @@ public class ControladorOdontologo {
         }
     }
 
-
+    // menú para elegir el tipo de cirugía, devuelve el enum
     private TipoCirugia leerTipoCirugia() {
         while (true) {
             System.out.println("  Tipos de cirugía:");
@@ -205,6 +205,7 @@ public class ControladorOdontologo {
 
     }
 
+    // menú para ortodoncia (el enum solo tiene 2 opciones válidas)
     private TipoOrtodoncia leerTipoOrtodoncia() {
         while (true) {
             System.out.println("  Tipos de ortodoncia:");
@@ -224,8 +225,7 @@ public class ControladorOdontologo {
         }
     }
 
-
-
+    // menú para tipo de consulta del general
     private TipoConsulta leerTipoConsulta() {
         while (true) {
             System.out.println("  Tipos de consulta:");
@@ -246,9 +246,4 @@ public class ControladorOdontologo {
             }
         }
     }
-
-
-
 }
-
-

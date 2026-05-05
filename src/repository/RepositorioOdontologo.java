@@ -4,29 +4,29 @@ import entity.Odontologo;
 
 import java.util.*;
 
-/**
- * Repositorio en memoria para Odontologo.
- * Usa HashMap<Long, Odontologo> como almacenamiento.
- */
 public class RepositorioOdontologo implements IRepositorio<Odontologo> {
 
     private final Map<Long, Odontologo> almacenamiento = new HashMap<>();
 
+    // guarda por id (cualquier subclase)
     @Override
     public void guardar(Odontologo odontologo) {
         almacenamiento.put(odontologo.getId(), odontologo);
     }
 
+    // trae o null
     @Override
     public Odontologo buscarPorId(Long id) {
         return almacenamiento.get(id);
     }
 
+    // todos en lista
     @Override
     public List<Odontologo> listarTodos() {
         return new ArrayList<>(almacenamiento.values());
     }
 
+    // actualiza si existía
     @Override
     public void actualizar(Odontologo odontologo) {
         if (almacenamiento.containsKey(odontologo.getId())) {
@@ -34,15 +34,13 @@ public class RepositorioOdontologo implements IRepositorio<Odontologo> {
         }
     }
 
+    // borra
     @Override
     public void eliminar(Long id) {
         almacenamiento.remove(id);
     }
 
-    /**
-     * Busca un odontólogo por matrícula.
-     * Devuelve el odontólogo si existe, o null si no existe.
-     */
+    // busca matrícula recorriendo porque la clave es el id
     public Odontologo buscarPorMatricula(int matricula) {
         for (Odontologo o : almacenamiento.values()) {
             if (o.getMatricula() == matricula) {
@@ -52,9 +50,7 @@ public class RepositorioOdontologo implements IRepositorio<Odontologo> {
         return null;
     }
 
-    /**
-     * Verifica si ya existe un odontólogo con esa matrícula.
-     */
+    // true si esa matrícula ya está
     public boolean existeMatricula(int matricula) {
         return buscarPorMatricula(matricula) != null;
     }

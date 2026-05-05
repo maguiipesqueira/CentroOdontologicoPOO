@@ -8,21 +8,18 @@ import service.ServicioPaciente;
 import java.util.List;
 import java.util.Scanner;
 
-/**
- * Controlador de Pacientes.
- * Patrón GRASP Controller: recibe las peticiones de la vista y delega al servicio.
- * No contiene lógica de negocio ni accede directamente al repositorio.
- */
 public class ControladorPaciente {
 
     private final ServicioPaciente servicio;
     private final Scanner scanner;
 
+    // guarda el servicio y el scanner
     public ControladorPaciente(ServicioPaciente servicio, Scanner scanner) {
         this.servicio = servicio;
         this.scanner = scanner;
     }
 
+    // menú de pacientes hasta que pongan 0
     public void menuPacientes() {
         int opcion;
         do {
@@ -51,6 +48,7 @@ public class ControladorPaciente {
         } while (opcion != 0);
     }
 
+    // pide todo y manda a registrar al servicio
     private void registrarPaciente() {
         System.out.println("\n-- Registrar nuevo paciente --");
         System.out.print("  Nombre: ");
@@ -85,6 +83,7 @@ public class ControladorPaciente {
         }
     }
 
+    // busca por id y lo muestra
     private void buscarPorId() {
         System.out.print("  Ingrese el ID del paciente: ");
         long id = leerLong();
@@ -98,6 +97,7 @@ public class ControladorPaciente {
         }
     }
 
+    // busca por dni y lo muestra
     private void buscarPorDni() {
         System.out.print("  Ingrese el DNI del paciente: ");
         int dni = leerEntero();
@@ -111,6 +111,7 @@ public class ControladorPaciente {
         }
     }
 
+    // imprime la lista de pacientes
     private void listarTodos() {
         List<Paciente> lista = servicio.listarTodos();
         if (lista.isEmpty()) {
@@ -121,6 +122,7 @@ public class ControladorPaciente {
         }
     }
 
+    // cambia nombre apellido y mail (domicilio no lo toca acá, va null)
     private void actualizarPaciente() {
         System.out.print("  ID del paciente a actualizar: ");
         long id = leerLong();
@@ -140,6 +142,7 @@ public class ControladorPaciente {
         }
     }
 
+    // borra el paciente con ese id
     private void eliminarPaciente() {
         System.out.print("  ID del paciente a eliminar: ");
         long id = leerLong();
@@ -147,8 +150,7 @@ public class ControladorPaciente {
         servicio.eliminarPaciente(id);
     }
 
-    // --- Utilidades de lectura ---
-
+    // lee int de la consola, si falla repregunta
     private int leerEntero() {
         while (true) {
             try {
@@ -160,6 +162,7 @@ public class ControladorPaciente {
         }
     }
 
+    // lee long de la consola
     private long leerLong() {
         while (true) {
             try {
@@ -170,6 +173,7 @@ public class ControladorPaciente {
         }
     }
 
+    // lee casa / departamento / ph y lo pasa a enum
     private TipoHogar leerTipoHogar() {
         while (true) {
             System.out.print("  Tipo: ");

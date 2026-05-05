@@ -7,25 +7,17 @@ import repository.RepositorioPaciente;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * Servicio para la gestión de Pacientes.
- * Aplica SRP: solo contiene lógica de negocio relacionada con Paciente.
- * Aplica patrón GRASP Controller: orquesta las operaciones delegando al repositorio.
- * Aplica patrón GRASP Creator: crea objetos Paciente cuando tiene los datos necesarios.
- */
 public class ServicioPaciente {
 
     private final RepositorioPaciente repositorio;
     private long contadorId = 1L;
 
+    // guarda el repositorio para usarlo después
     public ServicioPaciente(RepositorioPaciente repositorio) {
         this.repositorio = repositorio;
     }
 
-    /**
-     * Registra un nuevo paciente con validaciones de negocio.
-     * @throws IllegalArgumentException si los datos son inválidos o el DNI ya existe.
-     */
+    // da de alta un paciente si los datos están bien y el dni no existe
     public Paciente registrarPaciente(String nombre, String apellido, int dni, String email,
                                       Domicilio domicilio) {
 
@@ -45,21 +37,22 @@ public class ServicioPaciente {
         return nuevo;
     }
 
+    // busca por id en el repo
     public Paciente buscarPorId(long id) {
         return repositorio.buscarPorId(id);
     }
 
+    // busca por dni en el repo
     public Paciente buscarPorDni(int dni) {
         return repositorio.buscarPorDni(dni);
     }
 
+    // trae todos los pacientes
     public List<Paciente> listarTodos() {
         return repositorio.listarTodos();
     }
 
-    /**
-     * Actualiza los datos de un paciente existente.
-     */
+    // cambia datos del paciente y si mandás domicilio distinto de null también lo cambia
     public Paciente actualizarPaciente(long id, String nombre, String apellido,
                                        String email, Domicilio domicilio) {
 
@@ -85,9 +78,7 @@ public class ServicioPaciente {
         return paciente;
     }
 
-    /**
-     * Elimina un paciente por ID.
-     */
+    // borra el paciente si existe
     public void eliminarPaciente(long id) {
         Paciente paciente = buscarPorId(id);
 
@@ -99,8 +90,7 @@ public class ServicioPaciente {
         repositorio.eliminar(id);
     }
 
-    // --- Validaciones privadas (SRP: la lógica de validación vive en el service) ---
-
+    // mira que nombre y apellido no vengan vacíos
     private boolean validarNombreApellido(String nombre, String apellido) {
         if (nombre == null || nombre.isBlank()) {
             System.out.println("Error: el nombre no puede estar vacío.");
@@ -115,6 +105,7 @@ public class ServicioPaciente {
         return true;
     }
 
+    // el dni tiene que ser mayor a 0
     private boolean validarDni(int dni) {
         if (dni <= 0) {
             System.out.println("Error: el DNI debe ser un número positivo.");
@@ -124,6 +115,7 @@ public class ServicioPaciente {
         return true;
     }
 
+    // chequeo básico de mail que tenga arroba
     private boolean validarEmail(String email) {
         if (email == null || !email.contains("@")) {
             System.out.println("Error: el email no es válido.");

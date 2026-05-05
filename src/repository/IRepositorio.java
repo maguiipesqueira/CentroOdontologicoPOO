@@ -2,38 +2,20 @@ package repository;
 
 import java.util.List;
 
-/**
- * Interfaz genérica IRepositorio<T> con operaciones CRUD.
- * Aplica principio OCP: extensible sin modificar la interfaz.
- * Aplica patrón GRASP Expert: cada repositorio conoce su propia colección.
- *
- * @param <T> Tipo de entidad gestionada
- */
 public interface IRepositorio<T> {
 
-    /**
-     * Guarda una nueva entidad o actualiza una existente.
-     */
+    // guarda o pisa en el mapa
     void guardar(T entidad);
 
-    /**
-     * Busca una entidad por su ID.
-     * devuelve la entidad si existe, o null si no existe.
-     */
+    // busca por id, si no hay devuelve null
     T buscarPorId(Long id);
 
-    /**
-     * Devuelve la lista completa de entidades.
-     */
+    // devuelve todo en una lista
     List<T> listarTodos();
 
-    /**
-     * Actualiza una entidad existente.
-     */
+    // actualiza si ya existía el id
     void actualizar(T entidad);
 
-    /**
-     * Elimina la entidad con el ID dado.
-     */
+    // saca del mapa por id
     void eliminar(Long id);
 }

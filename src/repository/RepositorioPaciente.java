@@ -4,30 +4,29 @@ import entity.Paciente;
 
 import java.util.*;
 
-/**
- * Repositorio en memoria para Paciente.
- * Usa HashMap<Long, Paciente> como almacenamiento.
- * Responsabilidad única (SRP): solo persiste y recupera Pacientes.
- */
 public class RepositorioPaciente implements IRepositorio<Paciente> {
 
     private final Map<Long, Paciente> almacenamiento = new HashMap<>();
 
+    // guarda el paciente con su id como clave
     @Override
     public void guardar(Paciente paciente) {
         almacenamiento.put(paciente.getId(), paciente);
     }
 
+    // trae el paciente o null
     @Override
     public Paciente buscarPorId(Long id) {
         return almacenamiento.get(id);
     }
 
+    // copia de todos en una lista
     @Override
     public List<Paciente> listarTodos() {
         return new ArrayList<>(almacenamiento.values());
     }
 
+    // pisa solo si el id ya estaba
     @Override
     public void actualizar(Paciente paciente) {
         if (almacenamiento.containsKey(paciente.getId())) {
@@ -35,15 +34,13 @@ public class RepositorioPaciente implements IRepositorio<Paciente> {
         }
     }
 
+    // borra por id
     @Override
     public void eliminar(Long id) {
         almacenamiento.remove(id);
     }
 
-    /**
-     * Busca un paciente por DNI.
-     * Devuelve el paciente si existe, o null si no existe.
-     */
+    // busca el dni a mano porque el mapa es por id
     public Paciente buscarPorDni(int dni) {
         for (Paciente p : almacenamiento.values()) {
             if (p.getDni() == dni) {
@@ -53,9 +50,7 @@ public class RepositorioPaciente implements IRepositorio<Paciente> {
         return null;
     }
 
-    /**
-     * Verifica si ya existe un paciente con ese DNI.
-     */
+    // true si ya hay alguien con ese dni
     public boolean existeDni(int dni) {
         return buscarPorDni(dni) != null;
     }

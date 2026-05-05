@@ -6,31 +6,30 @@ import entity.Turno;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
-/**
- * Repositorio en memoria para Turno.
- * Usa HashMap<Long, Turno> como almacenamiento.
- */
 public class RepositorioTurno implements IRepositorio<Turno> {
 
     private final Map<Long, Turno> almacenamiento = new HashMap<>();
 
+    // guarda el turno
     @Override
     public void guardar(Turno turno) {
         almacenamiento.put(turno.getId(), turno);
     }
 
+    // busca o null
     @Override
     public Turno buscarPorId(Long id) {
         return almacenamiento.get(id);
     }
 
+    // lista con todos
     @Override
     public List<Turno> listarTodos() {
         return new ArrayList<>(almacenamiento.values());
     }
 
+    // pisa si había id
     @Override
     public void actualizar(Turno turno) {
         if (almacenamiento.containsKey(turno.getId())) {
@@ -38,14 +37,13 @@ public class RepositorioTurno implements IRepositorio<Turno> {
         }
     }
 
+    // borra
     @Override
     public void eliminar(Long id) {
         almacenamiento.remove(id);
     }
 
-    /**
-     * Verifica si ya existe un turno para el mismo odontólogo, fecha y hora.
-     */
+    // true si ese odontólogo ya tiene turno ahí (los cancelados no cuentan)
     public boolean existeTurnoSolapado(long odontologoId, LocalDate fecha, LocalTime hora) {
         for (Turno t : almacenamiento.values()) {
             if (t.getEstado() != EstadoTurno.CANCELADO
@@ -58,9 +56,7 @@ public class RepositorioTurno implements IRepositorio<Turno> {
         return false;
     }
 
-    /**
-     * Lista los turnos de un paciente específico.
-     */
+    // filtra por paciente
     public List<Turno> buscarPorPaciente(long pacienteId) {
         List<Turno> resultado = new ArrayList<>();
 
@@ -73,9 +69,7 @@ public class RepositorioTurno implements IRepositorio<Turno> {
         return resultado;
     }
 
-    /**
-     * Lista los turnos de un odontólogo específico.
-     */
+    // filtra por odontólogo
     public List<Turno> buscarPorOdontologo(long odontologoId) {
         List<Turno> resultado = new ArrayList<>();
 
@@ -88,9 +82,7 @@ public class RepositorioTurno implements IRepositorio<Turno> {
         return resultado;
     }
 
-    /**
-     * Devuelve el próximo ID disponible.
-     */
+    // el próximo id es el máximo + 1
     public long siguienteId() {
         if (almacenamiento.isEmpty()) {
             return 1L;

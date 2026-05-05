@@ -5,26 +5,17 @@ import repository.RepositorioOdontologo;
 
 import java.util.List;
 
-/**
- * Servicio para la gestión de Odontólogos.
- * Aplica SRP: solo contiene lógica de negocio relacionada con Odontologo.
- * Aplica patrón GRASP Controller: orquesta las operaciones delegando al repositorio.
- */
 public class ServicioOdontologo {
 
     private final RepositorioOdontologo repositorio;
 
+    // guarda el repo
     public ServicioOdontologo(RepositorioOdontologo repositorio) {
 
         this.repositorio = repositorio;
     }
 
-    /**
-     * Registra un odontólogo.
-     * Valida datos básicos y evita duplicados por matrícula.
-     * Se recibe la entidad ya construida (puede ser Cirujano, Ortodoncista o General).
-     * Polimorfismo: el método acepta cualquier subtipo de Odontologo.
-     */
+    // valida y guarda el odontólogo (sirve para cualquier subclase)
     public Odontologo registrarOdontologo(Odontologo odontologo) {
 
         if (!validarObjeto(odontologo)) return null;
@@ -38,22 +29,22 @@ public class ServicioOdontologo {
         return odontologo;
     }
 
-    // Buscar por ID
+    // busca por id
     public Odontologo buscarPorId(long id) {
         return repositorio.buscarPorId(id);
     }
 
-    // Buscar por matrícula
+    // busca por matrícula
     public Odontologo buscarPorMatricula(int matricula) {
         return repositorio.buscarPorMatricula(matricula);
     }
 
-    // Listar todos
+    // lista todos
     public List<Odontologo> listarTodos() {
         return repositorio.listarTodos();
     }
 
-    // Actualizar odontólogo
+    // cambia nombre y apellido
     public Odontologo actualizarOdontologo(long id, String nombre, String apellido) {
 
         Odontologo odontologo = buscarPorId(id);
@@ -73,7 +64,7 @@ public class ServicioOdontologo {
         return odontologo;
     }
 
-    // Eliminar odontólogo
+    // borra si está
     public void eliminarOdontologo(long id) {
 
         Odontologo odontologo = buscarPorId(id);
@@ -86,10 +77,7 @@ public class ServicioOdontologo {
         repositorio.eliminar(id);
     }
 
-    // =========================
-    // VALIDACIONES
-    // =========================
-
+    // no puede ser null el objeto
     private boolean validarObjeto(Odontologo odontologo) {
         if (odontologo == null) {
             System.out.println("Error: el odontólogo no puede ser nulo.");
@@ -98,6 +86,7 @@ public class ServicioOdontologo {
         return true;
     }
 
+    // nombre y apellido con texto
     private boolean validarNombreApellido(String nombre, String apellido) {
 
         if (nombre == null || nombre.isBlank()) {
@@ -113,6 +102,7 @@ public class ServicioOdontologo {
         return true;
     }
 
+    // matrícula positiva
     private boolean validarMatricula(int matricula) {
 
         if (matricula <= 0) {
@@ -123,6 +113,7 @@ public class ServicioOdontologo {
         return true;
     }
 
+    // que no esté repetida la matrícula
     private boolean validarDuplicado(int matricula) {
 
         if (repositorio.existeMatricula(matricula)) {

@@ -10,24 +10,16 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
-/**
- * Servicio para la gestión de Turnos.
- * Aplica SRP: solo contiene lógica de negocio relacionada con Turno.
- * Aplica patrón GRASP Controller: orquesta entre paciente, odontólogo y turno.
- * Aplica patrón GRASP Creator: crea objetos Turno cuando tiene todos los datos.
- */
 public class ServicioTurno {
 
     private final RepositorioTurno repositorio;
 
+    // guarda el repo de turnos
     public ServicioTurno(RepositorioTurno repositorio) {
         this.repositorio = repositorio;
     }
 
-    /**
-     * Registra un nuevo turno con validaciones de negocio.
-     * Valida que no haya solapamiento de turno para el mismo odontólogo, fecha y hora.
-     */
+    // crea el turno si la fecha y hora están ok y no pisa otro turno del mismo odontólogo
     public Turno registrarTurno(Paciente paciente, Odontologo odontologo,
                                 LocalDate fecha, LocalTime hora) {
 
@@ -47,25 +39,27 @@ public class ServicioTurno {
         return turno;
     }
 
+    // busca por id
     public Turno buscarPorId(long id) {
         return repositorio.buscarPorId(id);
     }
 
+    // todos los turnos
     public List<Turno> listarTodos() {
         return repositorio.listarTodos();
     }
 
+    // turnos de un paciente
     public List<Turno> listarPorPaciente(long pacienteId) {
         return repositorio.buscarPorPaciente(pacienteId);
     }
 
+    // turnos de un odontólogo
     public List<Turno> listarPorOdontologo(long odontologoId) {
         return repositorio.buscarPorOdontologo(odontologoId);
     }
 
-    /**
-     * Cancela un turno por ID. Solo se puede cancelar si está PENDIENTE o CONFIRMADO.
-     */
+    // pasa a cancelado si se puede
     public Turno cancelarTurno(long id) {
         Turno turno = buscarPorId(id);
 
@@ -90,9 +84,7 @@ public class ServicioTurno {
         return turno;
     }
 
-    /**
-     * Confirma un turno PENDIENTE.
-     */
+    // solo deja si estaba pendiente
     public Turno confirmarTurno(long id) {
         Turno turno = buscarPorId(id);
 
@@ -112,9 +104,7 @@ public class ServicioTurno {
         return turno;
     }
 
-    /**
-     * Marca un turno como completado.
-     */
+    // marca como completado
     public Turno completarTurno(long id) {
         Turno turno = buscarPorId(id);
 
@@ -134,9 +124,7 @@ public class ServicioTurno {
         return turno;
     }
 
-    /**
-     * Elimina un turno por ID (solo si está cancelado).
-     */
+    // borra de verdad solo si ya estaba cancelado
     public void eliminarTurno(long id) {
         Turno turno = buscarPorId(id);
 
@@ -153,8 +141,7 @@ public class ServicioTurno {
         repositorio.eliminar(id);
     }
 
-    // --- Validaciones ---
-
+    // fecha no null y no del pasado
     private boolean validarFecha(LocalDate fecha) {
         if (fecha == null) {
             System.out.println("Error: la fecha no puede ser nula.");
@@ -169,6 +156,7 @@ public class ServicioTurno {
         return true;
     }
 
+    // hora entre 8 y 20
     private boolean validarHora(LocalTime hora) {
         if (hora == null) {
             System.out.println("Error: la hora no puede ser nula.");
