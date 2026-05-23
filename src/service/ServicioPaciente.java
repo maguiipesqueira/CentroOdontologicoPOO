@@ -42,9 +42,13 @@ public class ServicioPaciente {
         return nuevo;
     }
 
-    // busca por id en el repo
-    public Paciente buscarPorId(long id) {
-        return repositorio.buscarPorId(id);
+    // Busca por ID si el mapa devuelve null, salta la excepción
+    public Paciente buscarPorId(long id) throws PacienteNoEncontradoException {
+        Paciente paciente = repositorio.buscarPorId(id);
+        if (paciente == null) {
+            throw new PacienteNoEncontradoException(id);
+        }
+        return paciente;
     }
 
     // busca por dni en el repo
