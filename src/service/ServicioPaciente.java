@@ -2,13 +2,12 @@ package service;
 
 import entity.Domicilio;
 import entity.Paciente;
+import exception.DatoInvalidoException;
+import exception.PacienteNoEncontradoException;
 import repository.RepositorioPaciente;
 
 import java.time.LocalDate;
 import java.util.List;
-
-import exception.DatoInvalidoException;
-import exception.PacienteNoEncontradoException;
 import java.util.stream.Collectors;
 
 public class ServicioPaciente {
@@ -16,23 +15,22 @@ public class ServicioPaciente {
     private final RepositorioPaciente repositorio;
     private long contadorId = 1L;
 
-    // guarda el repositorio para usarlo después
+    // constructor guarda el repositorio
     public ServicioPaciente(RepositorioPaciente repositorio) {
         this.repositorio = repositorio;
     }
 
-    // da de alta un paciente tirando error si los datos fallan o el DNI ya existe
+    // registra un paciente tirando error si los datos fallan o el DNI ya existe
     public Paciente registrarPaciente(String nombre, String apellido, int dni, String email,
                                       Domicilio domicilio) throws DatoInvalidoException {
 
-        // Llamamos a los controle si alguno falla, el método explota solo hacia arriba
         validarNombreApellido(nombre, apellido);
         validarDni(dni);
         validarEmail(email);
 
-        // Si el DNI ya está registrado en el mapa tira eeoe
+        // rompe si el DNI ya existe en el mapa
         if (repositorio.existeDni(dni)) {
-            throw new DatoInvalidoException("DNI", "Ya existe un paciente con ese DNI.");
+            throw new DatoInvalidoException("DNI", "El documento ingresado ya se encuentra registrado.");
         }
 
         Paciente nuevo = new Paciente(contadorId++, nombre, apellido, dni, email,
@@ -42,7 +40,7 @@ public class ServicioPaciente {
         return nuevo;
     }
 
-    // Busca por ID si el mapa devuelve null, salta la excepción
+    // busca por id y tira excepcion si da null
     public Paciente buscarPorId(long id) throws PacienteNoEncontradoException {
         Paciente paciente = repositorio.buscarPorId(id);
         if (paciente == null) {
@@ -51,29 +49,36 @@ public class ServicioPaciente {
         return paciente;
     }
 
-    // busca por dni en el repo
-    public Paciente buscarPorDni(int dni) {
-        return repositorio.buscarPorDni(dni);
+    // busca por dni validando que sea positivo
+    public Paciente buscarPorDni(int dni) throws PacienteNoEncontradoException, DatoInvalidoException {
+        validarDni(dni);
+
+        Paciente paciente = repositorio.buscarPorDni(dni);
+        if (paciente == null) {
+            throw new PacienteNoEncontradoException(dni);
+        }
+        return paciente;
     }
 
-    // trae todos los pacientes
+    // devuelve todos los pacientes sin orden
     public List<Paciente> listarTodos() {
         return repositorio.listarTodos();
     }
 
-    // Modifica los datos del paciente si existe sino error
+    // REQUERIMIENTO STREAMS: devuelve la lista ordenada alfabéticamente por apellido
+    public List<Paciente> listarPacientesOrdenadosPorApellido() {
+        return repositorio.listarTodos().stream()
+                .sorted((p1, p2) -> p1.getApellido().compareToIgnoreCase(p2.getApellido()))
+                .collect(Collectors.toList());
+    }
+
+    // actualiza los datos si encuentra el id o tira error
     public Paciente actualizarPaciente(long id, String nombre, String apellido,
                                        String email, Domicilio domicilio)
             throws PacienteNoEncontradoException, DatoInvalidoException {
 
         Paciente paciente = buscarPorId(id);
 
-        // Si el mapa nos devolvió null (el paciente no existe) sale error
-        if (paciente == null) {
-            throw new PacienteNoEncontradoException(id);
-        }
-
-        // si fallan interrumpe el método solos
         validarNombreApellido(nombre, apellido);
         validarEmail(email);
 
@@ -88,41 +93,34 @@ public class ServicioPaciente {
         repositorio.actualizar(paciente);
         return paciente;
     }
-    // borra el paciente si existe
-    public void eliminarPaciente(long id) {
-        Paciente paciente = buscarPorId(id);
 
-        if (paciente == null) {
-            System.out.println("Error: no existe un paciente con ese ID.");
-            return;
-        }
-
+    // elimina por id comprobando que exista antes
+    public void eliminarPaciente(long id) throws PacienteNoEncontradoException {
+        buscarPorId(id);
         repositorio.eliminar(id);
     }
 
-    // control de datos: (throws)
-
-    // Valida texto si el nombre o el apellido están vacíos o en null -> error
+    // error si el nombre o el apellido estan vacios o nulos
     private void validarNombreApellido(String nombre, String apellido) throws DatoInvalidoException {
         if (nombre == null || nombre.isBlank()) {
-            throw new DatoInvalidoException("Nombre", "No puede estar vacío.");
+            throw new DatoInvalidoException("Nombre", "El valor del campo es requerido.");
         }
         if (apellido == null || apellido.isBlank()) {
-            throw new DatoInvalidoException("Apellido", "No puede estar vacío.");
+            throw new DatoInvalidoException("Apellido", "El valor del campo es requerido.");
         }
     }
 
-    // Valida número si el DNI es cero o negativo -> error
+    // error si el dni es cero o negativo
     private void validarDni(int dni) throws DatoInvalidoException {
         if (dni <= 0) {
-            throw new DatoInvalidoException("DNI", "Debe ser mayor a cero.");
-        }
-    }
-    // Valida correo si está vacío o no tiene el arroba -> error
-    private void validarEmail(String email) throws DatoInvalidoException {
-        if (email == null || email.isBlank() || !email.contains("@")) {
-            throw new DatoInvalidoException("Email", "Formato inválido (falta @).");
+            throw new DatoInvalidoException("DNI", "Debe ser un número entero positivo.");
         }
     }
 
+    // error si el email no contiene el arroba
+    private void validarEmail(String email) throws DatoInvalidoException {
+        if (email == null || email.isBlank() || !email.contains("@")) {
+            throw new DatoInvalidoException("Email", "El formato ingresado no corresponde a una dirección válida.");
+        }
+    }
 }

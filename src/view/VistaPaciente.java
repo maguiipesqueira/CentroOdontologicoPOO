@@ -48,6 +48,7 @@ public class VistaPaciente {
         } while (opcion != 0);
     }
 
+    // registra capturando si los datos no cumplen con los formatos requeridos
     private void registrarPaciente() {
         System.out.print("Nombre: ");
         String nombre = scanner.nextLine().trim();
@@ -78,38 +79,45 @@ public class VistaPaciente {
 
         Domicilio domicilio = new Domicilio(calle, numero, localidad, provincia, tipoHogar);
 
-        Paciente paciente = controlador.registrarPaciente(nombre, apellido, dni, email, domicilio);
+        // captura errores de formato o dni duplicado
+        try {
+            Paciente paciente = controlador.registrarPaciente(nombre, apellido, dni, email, domicilio);
 
-        if (paciente != null) {
-            System.out.println("Paciente registrado: " + paciente);
-        } else {
-            System.out.println("No se pudo registrar el paciente.");
+            if (paciente != null) {
+                System.out.println("Paciente registrado: " + paciente);
+            } else {
+                System.out.println("No se pudo registrar el paciente.");
+            }
+        } catch (exception.DatoInvalidoException e) {
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
+    // busca capturando si el id ingresado no existe en el sistema
     private void buscarPorId() {
         System.out.print("ID: ");
         long id = leerLong();
 
-        Paciente paciente = controlador.buscarPorId(id);
-
-        if (paciente != null) {
+        // captura error de id inexistente
+        try {
+            Paciente paciente = controlador.buscarPorId(id);
             System.out.println("Paciente encontrado: " + paciente);
-        } else {
-            System.out.println("No existe paciente con ese ID.");
+        } catch (exception.PacienteNoEncontradoException e) {
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
+    // busca capturando si el dni no existe o es un numero negativo
     private void buscarPorDni() {
         System.out.print("DNI: ");
         int dni = leerEntero();
 
-        Paciente paciente = controlador.buscarPorDni(dni);
-
-        if (paciente != null) {
+        // captura error de dni inexistente o invalido
+        try {
+            Paciente paciente = controlador.buscarPorDni(dni);
             System.out.println("Paciente encontrado: " + paciente);
-        } else {
-            System.out.println("No existe paciente con ese DNI.");
+        } catch (exception.PacienteNoEncontradoException | exception.DatoInvalidoException e) {
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
@@ -125,6 +133,7 @@ public class VistaPaciente {
         }
     }
 
+    // actualiza capturando si el id no existe o si los datos nuevos vienen mal
     private void actualizarPaciente() {
         System.out.print("ID: ");
         long id = leerLong();
@@ -138,20 +147,32 @@ public class VistaPaciente {
         System.out.print("Nuevo email: ");
         String email = scanner.nextLine().trim();
 
-        Paciente paciente = controlador.actualizarPaciente(id, nombre, apellido, email, null);
+        // captura errores de id inexistente o datos incorrectos
+        try {
+            Paciente paciente = controlador.actualizarPaciente(id, nombre, apellido, email, null);
 
-        if (paciente != null) {
-            System.out.println("Paciente actualizado: " + paciente);
-        } else {
-            System.out.println("No se pudo actualizar el paciente.");
+            if (paciente != null) {
+                System.out.println("Paciente actualizado: " + paciente);
+            } else {
+                System.out.println("No se pudo actualizar el paciente.");
+            }
+        } catch (exception.PacienteNoEncontradoException | exception.DatoInvalidoException e) {
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
+    // elimina capturando si se ingresa un id que no existe
     private void eliminarPaciente() {
         System.out.print("ID: ");
         long id = leerLong();
 
-        controlador.eliminarPaciente(id);
+        // captura error si el paciente a borrar no se encuentra
+        try {
+            controlador.eliminarPaciente(id);
+            System.out.println("Paciente eliminado correctamente.");
+        } catch (exception.PacienteNoEncontradoException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private int leerEntero() {
@@ -187,4 +208,3 @@ public class VistaPaciente {
         }
     }
 }
-    

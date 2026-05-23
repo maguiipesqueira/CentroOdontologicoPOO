@@ -27,15 +27,19 @@ public class Main {
         ServicioOdontologo servOdontologo = new ServicioOdontologo(repoOdontologo);
         ServicioTurno servTurno = new ServicioTurno(repoTurno);
 
-        Domicilio domicilioFati = new Domicilio("Necochea", 581, "Lobos", "Buenos Aires", TipoHogar.CASA);
-        Paciente p1 = servPaciente.registrarPaciente("Fatima", "Persi", 46113226, "fatimap@gmail.com", domicilioFati);
+        // captura si fallan los datos de prueba iniciales
+        try {
+            Domicilio domicilioFati = new Domicilio("Necochea", 581, "Lobos", "Buenos Aires", TipoHogar.CASA);
+            Paciente p1 = servPaciente.registrarPaciente("Fatima", "Persi", 46113226, "fatimap@gmail.com", domicilioFati);
 
-        Domicilio domicilioTomi = new Domicilio("Gaboto", 849, "La Tablada, La Matanza", "Buenos Aires", TipoHogar.CASA);
-        Paciente p2 = servPaciente.registrarPaciente("Tomas", "Barea", 46443494, "tomybareadiaz@gmail.com", domicilioTomi);
+            Domicilio domicilioTomi = new Domicilio("Gaboto", 849, "La Tablada, La Matanza", "Buenos Aires", TipoHogar.CASA);
+            Paciente p2 = servPaciente.registrarPaciente("Tomas", "Barea", 46443494, "tomybareadiaz@gmail.com", domicilioTomi);
 
-
-        Odontologo o1 = new General(1L, "Magali", "Pesqueira", 1131, TipoConsulta.LIMPIEZA);
-        servOdontologo.registrarOdontologo(o1);
+            Odontologo o1 = new General(1L, "Magali", "Pesqueira", 1131, TipoConsulta.LIMPIEZA);
+            servOdontologo.registrarOdontologo(o1);
+        } catch (exception.DatoInvalidoException e) {
+            System.out.println("Error en carga inicial: " + e.getMessage());
+        }
 
         ControladorPaciente ctrlPaciente = new ControladorPaciente(servPaciente);
         ControladorOdontologo ctrlOdontologo = new ControladorOdontologo(servOdontologo);
@@ -52,6 +56,7 @@ public class Main {
                 scanner
         );
 
+        // inicia el menú de la aplicación
         vistaPrincipal.iniciar();
 
         scanner.close();

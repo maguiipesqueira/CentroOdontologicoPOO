@@ -55,6 +55,7 @@ public class VistaTurno {
         } while (opcion != 0);
     }
 
+    // registra capturando si el paciente o el odontólogo no existen
     private void registrarTurno() {
         System.out.print("ID paciente: ");
         long pacienteId = leerLong();
@@ -72,12 +73,17 @@ public class VistaTurno {
 
         if (hora == null) return;
 
-        Turno turno = controlador.registrarTurno(pacienteId, odontologoId, fecha, hora);
+        // try-catch para atrapar los errores de ID no encontrado
+        try {
+            Turno turno = controlador.registrarTurno(pacienteId, odontologoId, fecha, hora);
 
-        if (turno != null) {
-            System.out.println("Turno registrado: " + turno);
-        } else {
-            System.out.println("No se pudo registrar el turno.");
+            if (turno != null) {
+                System.out.println("Turno registrado: " + turno);
+            } else {
+                System.out.println("No se pudo registrar el turno.");
+            }
+        } catch (exception.PacienteNoEncontradoException | exception.OdontologoNoEncontradoException e) {
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
@@ -207,4 +213,3 @@ public class VistaTurno {
         }
     }
 }
-    
