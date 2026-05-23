@@ -7,6 +7,10 @@ import repository.RepositorioPaciente;
 import java.time.LocalDate;
 import java.util.List;
 
+import exception.DatoInvalidoException;
+import exception.PacienteNoEncontradoException;
+import java.util.stream.Collectors;
+
 public class ServicioPaciente {
 
     private final RepositorioPaciente repositorio;
@@ -17,17 +21,18 @@ public class ServicioPaciente {
         this.repositorio = repositorio;
     }
 
-    // da de alta un paciente si los datos están bien y el dni no existe
+    // da de alta un paciente tirando error si los datos fallan o el DNI ya existe
     public Paciente registrarPaciente(String nombre, String apellido, int dni, String email,
-                                      Domicilio domicilio) {
+                                      Domicilio domicilio) throws DatoInvalidoException {
 
-        if (!validarNombreApellido(nombre, apellido)) return null;
-        if (!validarDni(dni)) return null;
-        if (!validarEmail(email)) return null;
+        // Llamamos a los controle si alguno falla, el método explota solo hacia arriba
+        validarNombreApellido(nombre, apellido);
+        validarDni(dni);
+        validarEmail(email);
 
+        // Si el DNI ya está registrado en el mapa tira eeoe
         if (repositorio.existeDni(dni)) {
-            System.out.println("Error: ya existe un paciente registrado con ese DNI.");
-            return null;
+            throw new DatoInvalidoException("DNI", "Ya existe un paciente con ese DNI.");
         }
 
         Paciente nuevo = new Paciente(contadorId++, nombre, apellido, dni, email,
@@ -52,19 +57,21 @@ public class ServicioPaciente {
         return repositorio.listarTodos();
     }
 
-    // cambia datos del paciente y si mandás domicilio distinto de null también lo cambia
+    // Modifica los datos del paciente si existe sino error
     public Paciente actualizarPaciente(long id, String nombre, String apellido,
-                                       String email, Domicilio domicilio) {
+                                       String email, Domicilio domicilio)
+            throws PacienteNoEncontradoException, DatoInvalidoException {
 
         Paciente paciente = buscarPorId(id);
 
+        // Si el mapa nos devolvió null (el paciente no existe) sale error
         if (paciente == null) {
-            System.out.println("Error: no existe un paciente con ese ID.");
-            return null;
+            throw new PacienteNoEncontradoException(id);
         }
 
-        if (!validarNombreApellido(nombre, apellido)) return null;
-        if (!validarEmail(email)) return null;
+        // si fallan interrumpe el método solos
+        validarNombreApellido(nombre, apellido);
+        validarEmail(email);
 
         paciente.setNombre(nombre);
         paciente.setApellido(apellido);
@@ -77,7 +84,6 @@ public class ServicioPaciente {
         repositorio.actualizar(paciente);
         return paciente;
     }
-
     // borra el paciente si existe
     public void eliminarPaciente(long id) {
         Paciente paciente = buscarPorId(id);
@@ -90,38 +96,29 @@ public class ServicioPaciente {
         repositorio.eliminar(id);
     }
 
-    // mira que nombre y apellido no vengan vacíos
-    private boolean validarNombreApellido(String nombre, String apellido) {
+    // control de datos: (throws)
+
+    // Valida texto si el nombre o el apellido están vacíos o en null -> error
+    private void validarNombreApellido(String nombre, String apellido) throws DatoInvalidoException {
         if (nombre == null || nombre.isBlank()) {
-            System.out.println("Error: el nombre no puede estar vacío.");
-            return false;
+            throw new DatoInvalidoException("Nombre", "No puede estar vacío.");
         }
-
         if (apellido == null || apellido.isBlank()) {
-            System.out.println("Error: el apellido no puede estar vacío.");
-            return false;
+            throw new DatoInvalidoException("Apellido", "No puede estar vacío.");
         }
-
-        return true;
     }
 
-    // el dni tiene que ser mayor a 0
-    private boolean validarDni(int dni) {
+    // Valida número si el DNI es cero o negativo -> error
+    private void validarDni(int dni) throws DatoInvalidoException {
         if (dni <= 0) {
-            System.out.println("Error: el DNI debe ser un número positivo.");
-            return false;
+            throw new DatoInvalidoException("DNI", "Debe ser mayor a cero.");
         }
-
-        return true;
+    }
+    // Valida correo si está vacío o no tiene el arroba -> error
+    private void validarEmail(String email) throws DatoInvalidoException {
+        if (email == null || email.isBlank() || !email.contains("@")) {
+            throw new DatoInvalidoException("Email", "Formato inválido (falta @).");
+        }
     }
 
-    // chequeo básico de mail que tenga arroba
-    private boolean validarEmail(String email) {
-        if (email == null || !email.contains("@")) {
-            System.out.println("Error: el email no es válido.");
-            return false;
-        }
-
-        return true;
-    }
 }
