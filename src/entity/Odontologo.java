@@ -7,7 +7,12 @@ public class Odontologo {
     private String apellido;
     private int matricula;
 
-    // constructor con datos
+    // constructor con datos y el de vista odon
+    public Odontologo(String nombre, String apellido, int matricula) {
+        this.nombre = nombre;
+        this.apellido = apellido;
+        this.matricula = matricula;
+    }
     public Odontologo(long id, String nombre, String apellido, int matricula) {
         this.id = id;
         this.nombre = nombre;

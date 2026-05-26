@@ -1,7 +1,9 @@
 package ui;
 
 import controller.ControladorOdontologo;
-import entity.*;
+import entity.Odontologo;
+import exception.DatoInvalidoException;
+import exception.OdontologoNoEncontradoException;
 
 import java.util.List;
 import java.util.Scanner;
@@ -10,7 +12,6 @@ public class VistaOdontologo {
 
     private final ControladorOdontologo controlador;
     private final Scanner scanner;
-    private long contadorId = 1L;
 
     public VistaOdontologo(ControladorOdontologo controlador, Scanner scanner) {
         this.controlador = controlador;
@@ -47,160 +48,118 @@ public class VistaOdontologo {
         } while (opcion != 0);
     }
 
-    private void registrarOdontologo() {
+    public void registrarOdontologo() {
+        System.out.println("--- Registrar Odontólogo ---");
         System.out.print("Nombre: ");
-        String nombre = scanner.nextLine().trim();
-
+        String nombre = scanner.nextLine();
         System.out.print("Apellido: ");
-        String apellido = scanner.nextLine().trim();
-
+        String apellido = scanner.nextLine();
         System.out.print("Matrícula: ");
         int matricula = leerEntero();
 
-        System.out.println("Especialidad: 1-General / 2-Cirujano / 3-Ortodoncista");
-        int especialidad = leerEntero();
+        Odontologo odontologo = new Odontologo(nombre, apellido, matricula);
 
-        long id = contadorId++;
-        Odontologo odontologo;
-
-        switch (especialidad) {
-            case 2 -> odontologo = new Cirujano(id, nombre, apellido, matricula, leerTipoCirugia());
-            case 3 -> odontologo = new Ortodoncista(id, nombre, apellido, matricula, leerTipoOrtodoncia());
-            default -> odontologo = new General(id, nombre, apellido, matricula, leerTipoConsulta());
-        }
-
-        Odontologo registrado = controlador.registrarOdontologo(odontologo);
-
-        if (registrado != null) {
-            System.out.println("Odontólogo registrado: " + registrado);
-        } else {
-            contadorId--;
-            System.out.println("No se pudo registrar el odontólogo.");
+        // Ahora rodeamos con try-catch la llamada al controlador para capturar la excepción
+        try {
+            controlador.registrarOdontologo(odontologo);
+            System.out.println("Odontólogo registrado correctamente.");
+        } catch (DatoInvalidoException e) {
+            System.out.println("Error al registrar: " + e.getMessage());
         }
     }
 
-    private void buscarPorId() {
-        System.out.print("ID: ");
+    public void buscarPorId() {
+        System.out.print("Ingrese ID a buscar: ");
         long id = leerLong();
 
-        Odontologo odontologo = controlador.buscarPorId(id);
-
-        if (odontologo != null) {
-            System.out.println("Odontólogo encontrado: " + odontologo);
-        } else {
-            System.out.println("No existe odontólogo con ese ID.");
+        // Try-catch para capturar el error de "no encontrado" si el servicio falla
+        try {
+            Odontologo odontologo = controlador.buscarPorId(id);
+            System.out.println("Encontrado: " + odontologo);
+        } catch (OdontologoNoEncontradoException e) {
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
-    private void buscarPorMatricula() {
-        System.out.print("Matrícula: ");
+    public void buscarPorMatricula() {
+        System.out.print("Ingrese Matrícula: ");
         int matricula = leerEntero();
 
-        Odontologo odontologo = controlador.buscarPorMatricula(matricula);
-
-        if (odontologo != null) {
-            System.out.println("Odontólogo encontrado: " + odontologo);
-        } else {
-            System.out.println("No existe odontólogo con esa matrícula.");
+        // Try-catch para atrapar ambos posibles errores de negocio
+        try {
+            Odontologo odontologo = controlador.buscarPorMatricula(matricula);
+            System.out.println("Encontrado: " + odontologo);
+        } catch (OdontologoNoEncontradoException | DatoInvalidoException e) {
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
+
+    // muestra todos los odontólogos registrados
     private void listarTodos() {
-        List<Odontologo> lista = controlador.listarTodos();
 
-        if (lista.isEmpty()) {
+        List<Odontologo> odontologos = controlador.listarTodos();
+
+        if (odontologos.isEmpty()) {
             System.out.println("No hay odontólogos registrados.");
-        } else {
-            for (Odontologo o : lista) {
-                System.out.println(o);
-            }
+            return;
+        }
+
+        System.out.println("\n--- LISTA DE ODONTÓLOGOS ---");
+
+        for (Odontologo odontologo : odontologos) {
+            System.out.println(odontologo);
         }
     }
 
-    private void actualizarOdontologo() {
-        System.out.print("ID: ");
+
+
+    public void actualizarOdontologo() {
+        System.out.print("ID del odontólogo a actualizar: ");
         long id = leerLong();
+        System.out.print("Nuevo Nombre: ");
+        String nombre = scanner.nextLine();
+        System.out.print("Nuevo Apellido: ");
+        String apellido = scanner.nextLine();
 
-        System.out.print("Nuevo nombre: ");
-        String nombre = scanner.nextLine().trim();
-
-        System.out.print("Nuevo apellido: ");
-        String apellido = scanner.nextLine().trim();
-
-        Odontologo odontologo = controlador.actualizarOdontologo(id, nombre, apellido);
-
-        if (odontologo != null) {
-            System.out.println("Odontólogo actualizado: " + odontologo);
-        } else {
-            System.out.println("No se pudo actualizar el odontólogo.");
+        // Try-catch para errores de validación o si no se encuentra el objeto
+        try {
+            controlador.actualizarOdontologo(id, nombre, apellido);
+            System.out.println("Actualización exitosa.");
+        } catch (OdontologoNoEncontradoException | DatoInvalidoException e) {
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
-    private void eliminarOdontologo() {
-        System.out.print("ID: ");
+    public void eliminarOdontologo() {
+        System.out.print("ID del odontólogo a eliminar: ");
         long id = leerLong();
 
-        controlador.eliminarOdontologo(id);
+        // Try-catch para manejar el caso donde el ID no existe en el sistema
+        try {
+            controlador.eliminarOdontologo(id);
+            System.out.println("Eliminado correctamente.");
+        } catch (OdontologoNoEncontradoException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    // --- MÉTODOS AUXILIARES DE LECTURA ---
+    private long leerLong() {
+        try {
+            return Long.parseLong(scanner.nextLine());
+        } catch (NumberFormatException e) {
+            System.out.println("Error: Debe ingresar un ID numérico válido.");
+            return 0;
+        }
     }
 
     private int leerEntero() {
-        while (true) {
-            try {
-                return Integer.parseInt(scanner.nextLine().trim());
-            } catch (NumberFormatException e) {
-                System.out.print("Ingrese un número válido: ");
-            }
+        try {
+            return Integer.parseInt(scanner.nextLine());
+        } catch (NumberFormatException e) {
+            System.out.println("Error: Debe ingresar un valor numérico válido.");
+            return 0;
         }
-    }
-
-    private long leerLong() {
-        while (true) {
-            try {
-                return Long.parseLong(scanner.nextLine().trim());
-            } catch (NumberFormatException e) {
-                System.out.print("Ingrese un número válido: ");
-            }
-        }
-    }
-
-    private TipoCirugia leerTipoCirugia() {
-        System.out.println("1. Extracción de muela");
-        System.out.println("2. Implante");
-        System.out.println("3. Cirugía de encía");
-        System.out.println("4. Cirugía maxilofacial");
-
-        return switch (leerEntero()) {
-            case 2 -> TipoCirugia.IMPLANTE;
-            case 3 -> TipoCirugia.CIRUGIA_ENCIA;
-            case 4 -> TipoCirugia.CIRUGIA_MAXILOFACIAL;
-            default -> TipoCirugia.EXTRACCION_MUELA;
-        };
-    }
-
-    private TipoOrtodoncia leerTipoOrtodoncia() {
-        System.out.println("1. Brackets metálicos");
-        System.out.println("2. Brackets cerámicos");
-        System.out.println("3. Invisalign");
-        System.out.println("4. Lingual");
-
-        return switch (leerEntero()) {
-            case 2 -> TipoOrtodoncia.BRACKETS_CERAMICOS;
-            default -> TipoOrtodoncia.BRACKETS_METALICOS;
-        };
-    }
-
-    private TipoConsulta leerTipoConsulta() {
-        System.out.println("1. Limpieza");
-        System.out.println("2. Control");
-        System.out.println("3. Urgencia");
-        System.out.println("4. Blanqueamiento");
-
-        return switch (leerEntero()) {
-            case 2 -> TipoConsulta.CONTROL;
-            case 3 -> TipoConsulta.URGENCIA;
-            case 4 -> TipoConsulta.BLANQUEAMIENTO;
-            default -> TipoConsulta.LIMPIEZA;
-        };
     }
 }
-    

@@ -2,6 +2,8 @@
 package controller;
 
 import entity.Odontologo;
+import exception.DatoInvalidoException;
+import exception.OdontologoNoEncontradoException;
 import service.ServicioOdontologo;
 
 import java.util.List;
@@ -14,15 +16,18 @@ public class ControladorOdontologo {
         this.servicio = servicio;
     }
 
-    public Odontologo registrarOdontologo(Odontologo odontologo) {
+    // Ahora declara throws para propagar la excepción del servicio
+    public Odontologo registrarOdontologo(Odontologo odontologo) throws DatoInvalidoException {
         return servicio.registrarOdontologo(odontologo);
     }
 
-    public Odontologo buscarPorId(long id) {
+    // Ahora declara throws para propagar la excepción de no encontrado
+    public Odontologo buscarPorId(long id) throws OdontologoNoEncontradoException {
         return servicio.buscarPorId(id);
     }
 
-    public Odontologo buscarPorMatricula(int matricula) {
+    // Ahora declara throws para propagar ambos tipos de excepciones
+    public Odontologo buscarPorMatricula(int matricula) throws OdontologoNoEncontradoException, DatoInvalidoException {
         return servicio.buscarPorMatricula(matricula);
     }
 
@@ -30,11 +35,14 @@ public class ControladorOdontologo {
         return servicio.listarTodos();
     }
 
-    public Odontologo actualizarOdontologo(long id, String nombre, String apellido) {
+    // Ahora declara throws para ambos casos
+    public Odontologo actualizarOdontologo(long id, String nombre, String apellido)
+            throws OdontologoNoEncontradoException, DatoInvalidoException {
         return servicio.actualizarOdontologo(id, nombre, apellido);
     }
 
-    public void eliminarOdontologo(long id) {
+    // Ahora declara throws para propagar el error de no encontrado
+    public void eliminarOdontologo(long id) throws OdontologoNoEncontradoException {
         servicio.eliminarOdontologo(id);
     }
 }
