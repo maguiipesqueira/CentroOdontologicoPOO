@@ -1,4 +1,4 @@
-package view;
+package ui;
 
 import controller.ControladorTurno;
 import entity.Turno;
@@ -8,6 +8,8 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Scanner;
+
+import exception.ClinicaException;
 
 public class VistaTurno {
 
@@ -33,6 +35,7 @@ public class VistaTurno {
             System.out.println("7. Cancelar turno");
             System.out.println("8. Completar turno");
             System.out.println("9. Eliminar turno");
+            System.out.println("10. Listar por rango de fechas");
             System.out.println("0. Volver");
             System.out.print("Opción: ");
 
@@ -48,6 +51,7 @@ public class VistaTurno {
                 case 7 -> cancelarTurno();
                 case 8 -> completarTurno();
                 case 9 -> eliminarTurno();
+                case 10 -> listarPorRangoFechas();
                 case 0 -> System.out.println("Volviendo...");
                 default -> System.out.println("Opción inválida.");
             }
@@ -73,17 +77,11 @@ public class VistaTurno {
 
         if (hora == null) return;
 
-        // try-catch para atrapar los errores de ID no encontrado
         try {
             Turno turno = controlador.registrarTurno(pacienteId, odontologoId, fecha, hora);
-
-            if (turno != null) {
-                System.out.println("Turno registrado: " + turno);
-            } else {
-                System.out.println("No se pudo registrar el turno.");
-            }
-        } catch (exception.PacienteNoEncontradoException | exception.OdontologoNoEncontradoException e) {
-            System.out.println("Error: " + e.getMessage());
+            System.out.println("Turno registrado: " + turno);
+        } catch (ClinicaException e) {
+            System.out.println(e);
         }
     }
 
@@ -91,12 +89,11 @@ public class VistaTurno {
         System.out.print("ID turno: ");
         long id = leerLong();
 
-        Turno turno = controlador.buscarPorId(id);
-
-        if (turno != null) {
+        try {
+            Turno turno = controlador.buscarPorId(id);
             System.out.println("Turno encontrado: " + turno);
-        } else {
-            System.out.println("No existe turno con ese ID.");
+        } catch (ClinicaException e) {
+            System.out.println(e);
         }
     }
 
@@ -123,12 +120,11 @@ public class VistaTurno {
         System.out.print("ID turno: ");
         long id = leerLong();
 
-        Turno turno = controlador.confirmarTurno(id);
-
-        if (turno != null) {
+        try {
+            controlador.confirmarTurno(id);
             System.out.println("Turno confirmado.");
-        } else {
-            System.out.println("No se pudo confirmar.");
+        } catch (ClinicaException e) {
+            System.out.println(e);
         }
     }
 
@@ -136,12 +132,11 @@ public class VistaTurno {
         System.out.print("ID turno: ");
         long id = leerLong();
 
-        Turno turno = controlador.cancelarTurno(id);
-
-        if (turno != null) {
+        try {
+            controlador.cancelarTurno(id);
             System.out.println("Turno cancelado.");
-        } else {
-            System.out.println("No se pudo cancelar.");
+        } catch (ClinicaException e) {
+            System.out.println(e);
         }
     }
 
@@ -149,12 +144,11 @@ public class VistaTurno {
         System.out.print("ID turno: ");
         long id = leerLong();
 
-        Turno turno = controlador.completarTurno(id);
-
-        if (turno != null) {
+        try {
+            controlador.completarTurno(id);
             System.out.println("Turno completado.");
-        } else {
-            System.out.println("No se pudo completar.");
+        } catch (ClinicaException e) {
+            System.out.println(e);
         }
     }
 
@@ -162,8 +156,14 @@ public class VistaTurno {
         System.out.print("ID turno: ");
         long id = leerLong();
 
-        controlador.eliminarTurno(id);
+        try {
+            controlador.eliminarTurno(id);
+            System.out.println("Turno eliminado correctamente.");
+        } catch (ClinicaException e) {
+            System.out.println(e);
+        }
     }
+
 
     private void mostrarLista(List<Turno> turnos) {
         if (turnos.isEmpty()) {
@@ -172,6 +172,25 @@ public class VistaTurno {
             for (Turno t : turnos) {
                 System.out.println(t);
             }
+        }
+    }
+
+
+    private void listarPorRangoFechas() {
+        System.out.print("Fecha inicio (YYYY-MM-DD): ");
+        LocalDate inicio = leerFecha();
+
+        if (inicio == null) return;
+
+        System.out.print("Fecha fin (YYYY-MM-DD): ");
+        LocalDate fin = leerFecha();
+
+        if (fin == null) return;
+
+        try {
+            mostrarLista(controlador.listarPorRangoFechas(inicio, fin));
+        } catch (ClinicaException e) {
+            System.out.println(e);
         }
     }
 

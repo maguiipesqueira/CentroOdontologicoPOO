@@ -3,6 +3,7 @@ package controller;
 import entity.Odontologo;
 import entity.Paciente;
 import entity.Turno;
+import exception.ClinicaException;
 import service.ServicioOdontologo;
 import service.ServicioPaciente;
 import service.ServicioTurno;
@@ -29,7 +30,9 @@ public class ControladorTurno {
     }
 
     // registra dejando pasar las excepciones si el paciente o el odontologo no existen
-    public Turno registrarTurno(long pacienteId, long odontologoId, LocalDate fecha, LocalTime hora) throws PacienteNoEncontradoException, OdontologoNoEncontradoException {
+    public Turno registrarTurno(long pacienteId, long odontologoId, LocalDate fecha, LocalTime hora)
+            throws ClinicaException {
+
         Paciente paciente = servicioPaciente.buscarPorId(pacienteId);
         Odontologo odontologo = servicioOdontologo.buscarPorId(odontologoId);
 
@@ -37,7 +40,7 @@ public class ControladorTurno {
     }
 
     // busca un turno por id
-    public Turno buscarPorId(long id) {
+    public Turno buscarPorId(long id) throws ClinicaException {
         return servicioTurno.buscarPorId(id);
     }
 
@@ -56,23 +59,29 @@ public class ControladorTurno {
         return servicioTurno.listarPorOdontologo(odontologoId);
     }
 
+    //lista los turnos por rango de fechas
+    public List<Turno> listarPorRangoFechas(LocalDate inicio, LocalDate fin) throws ClinicaException {
+        return servicioTurno.listarPorRangoFechas(inicio, fin);
+    }
+
+
     // confirma un turno por id
-    public Turno confirmarTurno(long id) {
+    public Turno confirmarTurno(long id) throws ClinicaException {
         return servicioTurno.confirmarTurno(id);
     }
 
     // cancela un turno por id
-    public Turno cancelarTurno(long id) {
+    public Turno cancelarTurno(long id)  throws ClinicaException{
         return servicioTurno.cancelarTurno(id);
     }
 
     // completa un turno por id
-    public Turno completarTurno(long id) {
+    public Turno completarTurno(long id) throws ClinicaException{
         return servicioTurno.completarTurno(id);
     }
 
     // elimina un turno por id
-    public void eliminarTurno(long id) {
+    public void eliminarTurno(long id) throws ClinicaException{
         servicioTurno.eliminarTurno(id);
     }
 }

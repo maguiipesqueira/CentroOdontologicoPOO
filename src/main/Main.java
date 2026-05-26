@@ -1,4 +1,4 @@
-package view;
+package main;
 
 import entity.*;
 import controller.ControladorOdontologo;
@@ -10,6 +10,10 @@ import repository.RepositorioTurno;
 import service.ServicioOdontologo;
 import service.ServicioPaciente;
 import service.ServicioTurno;
+import ui.VistaOdontologo;
+import ui.VistaPaciente;
+import ui.VistaPrincipal;
+import ui.VistaTurno;
 
 import java.util.Scanner;
 

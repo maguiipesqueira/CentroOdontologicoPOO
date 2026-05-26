@@ -2,7 +2,7 @@ package exception;
 
 public class ClinicaException extends Exception {
 
-    // madre de todos los errores del proyecto, les agrega un código numérico
+    // padre de todos los errores del proyecto, les agrega un código numérico
 
     private final int codigoError;
 
