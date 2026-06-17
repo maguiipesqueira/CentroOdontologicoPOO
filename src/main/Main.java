@@ -14,7 +14,10 @@ import ui.VistaOdontologo;
 import ui.VistaPaciente;
 import ui.VistaPrincipal;
 import ui.VistaTurno;
+import uiSwing.VentanaPrincipal;
 
+
+import javax.swing.*;
 import java.util.Scanner;
 
 public class Main {
@@ -61,7 +64,11 @@ public class Main {
         );
 
         // inicia el menú de la aplicación
-        vistaPrincipal.iniciar();
+        SwingUtilities.invokeLater(() -> {
+            VentanaPrincipal ventana = new VentanaPrincipal(ctrlTurno);
+            ventana.iniciar();
+        });
+
 
         scanner.close();
     }
