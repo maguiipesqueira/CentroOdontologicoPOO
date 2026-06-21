@@ -124,7 +124,7 @@ public class Main {
 
         // inicia el menú de la aplicación
         SwingUtilities.invokeLater(() -> {
-            VentanaPrincipal ventana = new VentanaPrincipal(ctrlTurno);
+            VentanaPrincipal ventana = new VentanaPrincipal(ctrlTurno, ctrlPaciente);
             ventana.iniciar();
         });
 
