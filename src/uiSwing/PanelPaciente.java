@@ -52,6 +52,42 @@ public class PanelPaciente extends JPanel {
         tabla = new JTable(modeloTabla);
         tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
+        // panel de busqueda por dni
+        JPanel panelBusqueda = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        panelBusqueda.setBackground(new Color(248, 247, 244));
+
+        JTextField campBusquedaDni = new JTextField(10);
+        JButton btnBuscar = new JButton("Buscar por DNI");
+        JButton btnMostrarTodos = new JButton("Mostrar todos");
+
+        panelBusqueda.add(new JLabel("DNI:"));
+        panelBusqueda.add(campBusquedaDni);
+        panelBusqueda.add(btnBuscar);
+        panelBusqueda.add(btnMostrarTodos);
+
+        // busca el paciente por dni y muestra solo ese en la tabla
+        btnBuscar.addActionListener(e -> {
+            try {
+                int dni = Integer.parseInt(campBusquedaDni.getText());
+                Paciente encontrado = controlador.buscarPorDni(dni);
+                modeloTabla.setRowCount(0);
+                modeloTabla.addRow(new Object[]{
+                        encontrado.getId(), encontrado.getNombre(),
+                        encontrado.getApellido(), encontrado.getDni(), encontrado.getEmail()
+                });
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(null, "Ingresá un DNI válido");
+            } catch (exception.PacienteNoEncontradoException ex) {
+                JOptionPane.showMessageDialog(null, "No se encontró ningún paciente con ese DNI");
+            } catch (exception.DatoInvalidoException ex) {
+                JOptionPane.showMessageDialog(null, ex.getMessage());
+            }
+        });
+
+        // vuelve a mostrar todos los pacientes
+        btnMostrarTodos.addActionListener(e -> refrescarTabla());
+
+        panel.add(panelBusqueda, BorderLayout.NORTH);
         panel.add(new JScrollPane(tabla), BorderLayout.CENTER);
 
         // cuando el usuario hace click en una fila de la tabla, este listener se activa
@@ -124,6 +160,67 @@ public class PanelPaciente extends JPanel {
         panel.add(btnLimpiar);
 
         btnLimpiar.addActionListener(e -> limpiarFormulario());
+
+        // si idSeleccionado es -1 es un paciente nuevo, sino es una edicion
+        btnGuardar.addActionListener(e -> {
+            try {
+                Domicilio domicilio = new Domicilio(
+                        campCalle.getText(),
+                        Integer.parseInt(campNumero.getText()),
+                        campLocalidad.getText(),
+                        campProvincia.getText(),
+                        (TipoHogar) combTipoHogar.getSelectedItem()
+                );
+
+                if (idSeleccionado == -1) {
+                    // alta: paciente nuevo
+                    controlador.registrarPaciente(
+                            campNombre.getText(),
+                            campApellido.getText(),
+                            Integer.parseInt(campDni.getText()),
+                            campEmail.getText(),
+                            domicilio
+                    );
+                    JOptionPane.showMessageDialog(null, "Paciente guardado correctamente");
+                } else {
+                    // modificacion: paciente existente
+                    controlador.actualizarPaciente(
+                            idSeleccionado,
+                            campNombre.getText(),
+                            campApellido.getText(),
+                            campEmail.getText(),
+                            domicilio
+                    );
+                    JOptionPane.showMessageDialog(null, "Paciente actualizado correctamente");
+                }
+
+                limpiarFormulario();
+                refrescarTabla();
+
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(null, "DNI y número de calle deben ser números");
+            } catch (exception.DatoInvalidoException ex) {
+                JOptionPane.showMessageDialog(null, ex.getMessage());
+            } catch (exception.PacienteNoEncontradoException ex) {
+                JOptionPane.showMessageDialog(null, ex.getMessage());
+            }
+        });
+
+// elimina el paciente seleccionado
+        btnEliminar.addActionListener(e -> {
+            if (idSeleccionado == -1) {
+                JOptionPane.showMessageDialog(null, "Seleccioná un paciente de la tabla primero");
+                return;
+            }
+            try {
+                controlador.eliminarPaciente(idSeleccionado);
+                JOptionPane.showMessageDialog(null, "Paciente eliminado");
+                limpiarFormulario();
+                refrescarTabla();
+            } catch (exception.PacienteNoEncontradoException ex) {
+                JOptionPane.showMessageDialog(null, ex.getMessage());
+            }
+        });
 
         return panel;
     }
