@@ -53,6 +53,40 @@ public class PanelPaciente extends JPanel {
         tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
         panel.add(new JScrollPane(tabla), BorderLayout.CENTER);
+
+        // cuando el usuario hace click en una fila de la tabla, este listener se activa
+        tabla.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                // obtenemos el número de fila que se clickeó (-1 si no hay ninguna)
+                int fila = tabla.getSelectedRow();
+                if (fila != -1) {  // si hay una fila seleccionada
+
+                    // guardamos el id del paciente de esa fila (columna 0)
+                    idSeleccionado = (long) modeloTabla.getValueAt(fila, 0);
+                    // cargamos los datos de la tabla en los campos del formulario
+                    campNombre.setText((String) modeloTabla.getValueAt(fila, 1));
+                    campApellido.setText((String) modeloTabla.getValueAt(fila, 2));
+                    campDni.setText(String.valueOf(modeloTabla.getValueAt(fila, 3)));
+                    campEmail.setText((String) modeloTabla.getValueAt(fila, 4));
+
+                    try {
+                        // buscamos el paciente completo para obtener el domicilio
+                        Paciente p = controlador.buscarPorId(idSeleccionado);
+                        if (p.tieneDomicilio()) {
+                            // cargamos los datos del domicilio en el formulario
+                            campCalle.setText(p.getDomicilio().getCalle());
+                            campNumero.setText(String.valueOf(p.getDomicilio().getNumero()));
+                            campLocalidad.setText(p.getDomicilio().getLocalidad());
+                            campProvincia.setText(p.getDomicilio().getProvincia());
+                            combTipoHogar.setSelectedItem(p.getDomicilio().getHogar());
+                        }
+                    } catch (exception.PacienteNoEncontradoException ex) {
+                        // si no encuentra el paciente muestra un mensaje de error
+                        JOptionPane.showMessageDialog(null, "Error al cargar paciente");
+                    }
+                }
+            }
+        });
         return panel;
     }
 
