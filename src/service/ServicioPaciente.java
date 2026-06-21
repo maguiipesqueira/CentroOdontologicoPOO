@@ -123,4 +123,8 @@ public class ServicioPaciente {
             throw new DatoInvalidoException("Email", "El formato ingresado no corresponde a una dirección válida.");
         }
     }
+    // expone el repositorio para la persistencia
+    public RepositorioPaciente getRepositorio() {
+        return repositorio;
+    }
 }

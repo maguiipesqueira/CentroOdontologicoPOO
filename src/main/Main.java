@@ -15,6 +15,7 @@ import ui.VistaPaciente;
 import ui.VistaPrincipal;
 import ui.VistaTurno;
 import uiSwing.VentanaPrincipal;
+import uiSwing.PersistenciaPaciente;
 
 
 import javax.swing.*;
@@ -33,6 +34,8 @@ public class Main {
         ServicioPaciente servPaciente = new ServicioPaciente(repoPaciente);
         ServicioOdontologo servOdontologo = new ServicioOdontologo(repoOdontologo);
         ServicioTurno servTurno = new ServicioTurno(repoTurno);
+
+        PersistenciaPaciente.cargar(servPaciente);
 
         // captura si fallan los datos de prueba iniciales
         try {
@@ -125,6 +128,11 @@ public class Main {
         // inicia el menú de la aplicación
         SwingUtilities.invokeLater(() -> {
             VentanaPrincipal ventana = new VentanaPrincipal(ctrlTurno, ctrlPaciente);
+            ventana.addWindowListener(new java.awt.event.WindowAdapter() {
+                public void windowClosing(java.awt.event.WindowEvent e) {
+                    PersistenciaPaciente.guardar(ctrlPaciente.listarTodos());
+                }
+            });
             ventana.iniciar();
         });
 

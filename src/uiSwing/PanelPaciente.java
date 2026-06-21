@@ -52,7 +52,6 @@ public class PanelPaciente extends JPanel {
         tabla = new JTable(modeloTabla);
         tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
 
-        // panel de busqueda por dni
         JPanel panelBusqueda = new JPanel(new FlowLayout(FlowLayout.LEFT));
         panelBusqueda.setBackground(new Color(248, 247, 244));
 
@@ -65,7 +64,6 @@ public class PanelPaciente extends JPanel {
         panelBusqueda.add(btnBuscar);
         panelBusqueda.add(btnMostrarTodos);
 
-        // busca el paciente por dni y muestra solo ese en la tabla
         btnBuscar.addActionListener(e -> {
             try {
                 int dni = Integer.parseInt(campBusquedaDni.getText());
@@ -84,32 +82,24 @@ public class PanelPaciente extends JPanel {
             }
         });
 
-        // vuelve a mostrar todos los pacientes
         btnMostrarTodos.addActionListener(e -> refrescarTabla());
 
         panel.add(panelBusqueda, BorderLayout.NORTH);
         panel.add(new JScrollPane(tabla), BorderLayout.CENTER);
 
-        // cuando el usuario hace click en una fila de la tabla, este listener se activa
         tabla.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                // obtenemos el número de fila que se clickeó (-1 si no hay ninguna)
                 int fila = tabla.getSelectedRow();
-                if (fila != -1) {  // si hay una fila seleccionada
-
-                    // guardamos el id del paciente de esa fila (columna 0)
+                if (fila != -1) {
                     idSeleccionado = (long) modeloTabla.getValueAt(fila, 0);
-                    // cargamos los datos de la tabla en los campos del formulario
                     campNombre.setText((String) modeloTabla.getValueAt(fila, 1));
                     campApellido.setText((String) modeloTabla.getValueAt(fila, 2));
                     campDni.setText(String.valueOf(modeloTabla.getValueAt(fila, 3)));
                     campEmail.setText((String) modeloTabla.getValueAt(fila, 4));
 
                     try {
-                        // buscamos el paciente completo para obtener el domicilio
                         Paciente p = controlador.buscarPorId(idSeleccionado);
                         if (p.tieneDomicilio()) {
-                            // cargamos los datos del domicilio en el formulario
                             campCalle.setText(p.getDomicilio().getCalle());
                             campNumero.setText(String.valueOf(p.getDomicilio().getNumero()));
                             campLocalidad.setText(p.getDomicilio().getLocalidad());
@@ -117,14 +107,14 @@ public class PanelPaciente extends JPanel {
                             combTipoHogar.setSelectedItem(p.getDomicilio().getHogar());
                         }
                     } catch (exception.PacienteNoEncontradoException ex) {
-                        // si no encuentra el paciente muestra un mensaje de error
                         JOptionPane.showMessageDialog(null, "Error al cargar paciente");
                     }
                 }
             }
         });
+
         return panel;
-    }
+    } // <-- ACA CIERRA crearPanelTabla(), todo bien hasta aca
 
     private JPanel crearPanelFormulario() {
         JPanel panel = new JPanel(new GridLayout(0, 4, 5, 5));
@@ -161,8 +151,8 @@ public class PanelPaciente extends JPanel {
 
         btnLimpiar.addActionListener(e -> limpiarFormulario());
 
-        // si idSeleccionado es -1 es un paciente nuevo, sino es una edicion
         btnGuardar.addActionListener(e -> {
+            if (!validarCampos()) return;
             try {
                 Domicilio domicilio = new Domicilio(
                         campCalle.getText(),
@@ -173,7 +163,6 @@ public class PanelPaciente extends JPanel {
                 );
 
                 if (idSeleccionado == -1) {
-                    // alta: paciente nuevo
                     controlador.registrarPaciente(
                             campNombre.getText(),
                             campApellido.getText(),
@@ -183,7 +172,6 @@ public class PanelPaciente extends JPanel {
                     );
                     JOptionPane.showMessageDialog(null, "Paciente guardado correctamente");
                 } else {
-                    // modificacion: paciente existente
                     controlador.actualizarPaciente(
                             idSeleccionado,
                             campNombre.getText(),
@@ -206,7 +194,6 @@ public class PanelPaciente extends JPanel {
             }
         });
 
-// elimina el paciente seleccionado
         btnEliminar.addActionListener(e -> {
             if (idSeleccionado == -1) {
                 JOptionPane.showMessageDialog(null, "Seleccioná un paciente de la tabla primero");
@@ -223,6 +210,62 @@ public class PanelPaciente extends JPanel {
         });
 
         return panel;
+    } // <-- ACA CIERRA crearPanelFormulario(), todo bien hasta aca
+
+    // ESTE METODO ESTABA MAL PUESTO ADENTRO DE crearPanelFormulario()
+    // AHORA ESTA AFUERA, AL MISMO NIVEL QUE LOS OTROS METODOS
+    private boolean validarCampos() {
+        boolean valido = true;
+
+        javax.swing.border.Border bordeNormal = new JTextField().getBorder();
+        javax.swing.border.Border bordeRojo = BorderFactory.createLineBorder(Color.RED, 2);
+
+        if (campNombre.getText().isBlank()) {
+            campNombre.setBorder(bordeRojo);
+            valido = false;
+        } else {
+            campNombre.setBorder(bordeNormal);
+        }
+
+        if (campApellido.getText().isBlank()) {
+            campApellido.setBorder(bordeRojo);
+            valido = false;
+        } else {
+            campApellido.setBorder(bordeNormal);
+        }
+
+        try {
+            int dni = Integer.parseInt(campDni.getText());
+            if (dni <= 0) throw new NumberFormatException();
+            campDni.setBorder(bordeNormal);
+        } catch (NumberFormatException e) {
+            campDni.setBorder(bordeRojo);
+            valido = false;
+        }
+
+        if (campEmail.getText().isBlank() || !campEmail.getText().contains("@")) {
+            campEmail.setBorder(bordeRojo);
+            valido = false;
+        } else {
+            campEmail.setBorder(bordeNormal);
+        }
+
+        if (campCalle.getText().isBlank()) {
+            campCalle.setBorder(bordeRojo);
+            valido = false;
+        } else {
+            campCalle.setBorder(bordeNormal);
+        }
+
+        try {
+            Integer.parseInt(campNumero.getText());
+            campNumero.setBorder(bordeNormal);
+        } catch (NumberFormatException e) {
+            campNumero.setBorder(bordeRojo);
+            valido = false;
+        }
+
+        return valido;
     }
 
     public void refrescarTabla() {
