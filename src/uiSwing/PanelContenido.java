@@ -2,6 +2,7 @@ package uiSwing;
 import controller.ControladorTurno;
 import javax.swing.*;
 import java.awt.*;
+import controller.ControladorPaciente;
 
 public class PanelContenido extends JPanel {
 
