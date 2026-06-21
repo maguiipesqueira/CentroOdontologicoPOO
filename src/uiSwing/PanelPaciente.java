@@ -1,22 +1,22 @@
 package uiSwing;
 
 import controller.ControladorPaciente;
+import entity.Domicilio;
 import entity.Paciente;
+import entity.TipoHogar;
 
 import javax.swing.*;
-        import javax.swing.table.DefaultTableModel;
+import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-        import java.util.List;
+import java.util.List;
 
 public class PanelPaciente extends JPanel {
 
     private ControladorPaciente controlador;
 
-    // tabla
     private JTable tabla;
     private DefaultTableModel modeloTabla;
 
-    // campos del formulario
     private JTextField campNombre;
     private JTextField campApellido;
     private JTextField campDni;
@@ -25,9 +25,8 @@ public class PanelPaciente extends JPanel {
     private JTextField campNumero;
     private JTextField campLocalidad;
     private JTextField campProvincia;
-    private JComboBox<String> combTipoHogar;
+    private JComboBox<TipoHogar> combTipoHogar;
 
-    // id del paciente seleccionado (para editar)
     private long idSeleccionado = -1;
 
     public PanelPaciente(ControladorPaciente controlador) {
@@ -70,21 +69,21 @@ public class PanelPaciente extends JPanel {
         campNumero    = new JTextField();
         campLocalidad = new JTextField();
         campProvincia = new JTextField();
-        combTipoHogar = new JComboBox<>(new String[]{"CASA", "DEPARTAMENTO", "PH"});
+        combTipoHogar = new JComboBox<>(TipoHogar.values());
 
-        panel.add(new JLabel("Nombre:")); panel.add(campNombre);
-        panel.add(new JLabel("Apellido:")); panel.add(campApellido);
-        panel.add(new JLabel("DNI:")); panel.add(campDni);
-        panel.add(new JLabel("Email:")); panel.add(campEmail);
-        panel.add(new JLabel("Calle:")); panel.add(campCalle);
-        panel.add(new JLabel("Número:")); panel.add(campNumero);
+        panel.add(new JLabel("Nombre:"));    panel.add(campNombre);
+        panel.add(new JLabel("Apellido:"));  panel.add(campApellido);
+        panel.add(new JLabel("DNI:"));       panel.add(campDni);
+        panel.add(new JLabel("Email:"));     panel.add(campEmail);
+        panel.add(new JLabel("Calle:"));     panel.add(campCalle);
+        panel.add(new JLabel("Número:"));    panel.add(campNumero);
         panel.add(new JLabel("Localidad:")); panel.add(campLocalidad);
         panel.add(new JLabel("Provincia:")); panel.add(campProvincia);
         panel.add(new JLabel("Tipo Hogar:")); panel.add(combTipoHogar);
 
-        JButton btnGuardar = new JButton("Guardar");
+        JButton btnGuardar  = new JButton("Guardar");
         JButton btnEliminar = new JButton("Eliminar");
-        JButton btnLimpiar = new JButton("Limpiar");
+        JButton btnLimpiar  = new JButton("Limpiar");
 
         panel.add(btnGuardar);
         panel.add(btnEliminar);
