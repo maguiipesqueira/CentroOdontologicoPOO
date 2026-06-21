@@ -1,0 +1,4 @@
+1,Fatima,Persi,46113226,fatimap@gmail.com,2026-06-21,Necochea,581,Lobos,Buenos Aires,CASA
+2,Tomas,Barea,46443494,tomybareadiaz@gmail.com,2026-06-21,Gaboto,849,La Tablada, La Matanza,Buenos Aires,CASA
+3,Maria,Garcia,38221456,mariagarcia@gmail.com,2026-06-21,San Martin,1200,Moron,Buenos Aires,DEPARTAMENTO
+4,Lucas,Fernandez,41789632,lucasfernandez@gmail.com,2026-06-21,Belgrano,430,San Justo,Buenos Aires,CASA

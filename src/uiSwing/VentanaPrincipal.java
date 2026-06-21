@@ -34,6 +34,7 @@ public class VentanaPrincipal extends JFrame {
                         JOptionPane.YES_NO_OPTION
                 );
                 if (respuesta == JOptionPane.YES_OPTION) {
+                    PersistenciaPaciente.guardar(controladorPaciente.listarTodos());
                     System.exit(0);
                 }
             }

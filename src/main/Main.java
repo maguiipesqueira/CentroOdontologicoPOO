@@ -128,11 +128,6 @@ public class Main {
         // inicia el menú de la aplicación
         SwingUtilities.invokeLater(() -> {
             VentanaPrincipal ventana = new VentanaPrincipal(ctrlTurno, ctrlPaciente);
-            ventana.addWindowListener(new java.awt.event.WindowAdapter() {
-                public void windowClosing(java.awt.event.WindowEvent e) {
-                    PersistenciaPaciente.guardar(ctrlPaciente.listarTodos());
-                }
-            });
             ventana.iniciar();
         });
 
