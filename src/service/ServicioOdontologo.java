@@ -87,4 +87,7 @@ public class ServicioOdontologo {
             throw new DatoInvalidoException("Matrícula", "Debe ser un número mayor a cero.");
         }
     }
+    public RepositorioOdontologo getRepositorio() {
+        return repositorio;
+    }
 }

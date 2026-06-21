@@ -206,4 +206,7 @@ public class ServicioTurno {
             throw new DatoInvalidoException("Hora", "Los turnos solo se pueden registrar entre las 08:00 y las 20:00.");
         }
     }
+    public RepositorioTurno getRepositorio() {
+        return repositorio;
+    }
 }
