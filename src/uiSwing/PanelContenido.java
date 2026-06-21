@@ -16,8 +16,10 @@ public class PanelContenido extends JPanel {
 
     private PanelTurnos panelTurnos;
     private PanelAgenda panelAgenda;
+    private PanelPaciente panelPaciente;
 
-    public PanelContenido(ControladorTurno controladorTurno) {
+
+    public PanelContenido(ControladorTurno controladorTurno, ControladorPaciente controladorPaciente) {
         cardLayout = new CardLayout();
         setLayout(cardLayout);
         setBackground(new Color(248, 247, 244));
@@ -40,7 +42,8 @@ public class PanelContenido extends JPanel {
 
         panelAgendaContenedor.add(estadisticas, BorderLayout.NORTH);
         add(panelAgendaContenedor, AGENDA);
-        add(crearPlaceholder("Pacientes - Fati"),         PACIENTES);
+        panelPaciente = new PanelPaciente(controladorPaciente);
+        add(panelPaciente, PACIENTES);
         add(crearPlaceholder("Odontologos - Magui"),      ODONTOLOGOS);
 
         panelTurnos = new PanelTurnos(controladorTurno);
