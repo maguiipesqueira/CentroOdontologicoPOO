@@ -13,6 +13,7 @@ public class Sidebar extends JPanel {
     private JLabel btnAgenda;
     private JLabel btnPacientes;
     private JLabel btnOdontologos;
+    private JLabel btnTurnos;
 
     public Sidebar() {
         setBackground(FONDO);
@@ -24,12 +25,15 @@ public class Sidebar extends JPanel {
         btnAgenda      = crearBoton("AG");
         btnPacientes   = crearBoton("PAC");
         btnOdontologos = crearBoton("OD");
+        btnTurnos      = crearBoton("TUR");
 
         add(btnAgenda);
         add(Box.createVerticalStrut(8));
         add(btnPacientes);
         add(Box.createVerticalStrut(8));
         add(btnOdontologos);
+        add(Box.createVerticalStrut(8));
+        add(btnTurnos);
 
         marcarActivo(btnAgenda);
     }
@@ -48,7 +52,7 @@ public class Sidebar extends JPanel {
     }
 
     public void marcarActivo(JLabel label) {
-        for (JLabel l : new JLabel[]{btnAgenda, btnPacientes, btnOdontologos}) {
+        for (JLabel l : new JLabel[]{btnAgenda, btnPacientes, btnOdontologos, btnTurnos}) {
             l.setBackground(FONDO);
             l.setForeground(INACTIVO);
         }
@@ -59,4 +63,5 @@ public class Sidebar extends JPanel {
     public JLabel getBtnAgenda()      { return btnAgenda; }
     public JLabel getBtnPacientes()   { return btnPacientes; }
     public JLabel getBtnOdontologos() { return btnOdontologos; }
+    public JLabel getBtnTurnos()      { return btnTurnos; }
 }

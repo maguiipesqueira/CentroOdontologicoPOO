@@ -1,5 +1,8 @@
 package uiSwing;
 import controller.ControladorTurno;
+import entity.TipoCirugia;
+import entity.TipoConsulta;
+import entity.TipoOrtodoncia;
 import exception.ClinicaException;
 import javax.swing.*;
 import java.awt.*;
@@ -11,6 +14,7 @@ public class BotonNuevoTurno extends JDialog{
 
     private JTextField txtPacienteId;
     private JTextField txtOdontologoId;
+    private JComboBox<Object> comboMotivo;
     private JTextField txtFecha;
     private JTextField txtHora;
     private ControladorTurno controlador;
@@ -19,13 +23,13 @@ public class BotonNuevoTurno extends JDialog{
         super(padre, "Nuevo Turno", true);
         this.controlador = controlador;
 
-        setSize(350, 280);
+        setSize(350, 320);
         setLocationRelativeTo(padre);
         setLayout(new BorderLayout());
         setResizable(false);
 
         // panel del formulario
-        JPanel form = new JPanel(new GridLayout(5, 2, 8, 8));
+        JPanel form = new JPanel(new GridLayout(6, 2, 8, 8));
         form.setBackground(Color.WHITE);
         form.setBorder(BorderFactory.createEmptyBorder(20, 20, 10, 20));
 
@@ -36,6 +40,25 @@ public class BotonNuevoTurno extends JDialog{
         form.add(crearLabel("ID Odontologo:"));
         txtOdontologoId = crearCampo("Ej: 1");
         form.add(txtOdontologoId);
+
+        // como aca no se conoce la especialidad hasta guardar, se ofrecen todos los tipos juntos
+        form.add(crearLabel("Tipo de consulta:"));
+        comboMotivo = new JComboBox<>();
+        comboMotivo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+
+        // primera opcion siempre visible, asi el combo no arranca mostrando un tipo concreto
+        comboMotivo.addItem("Tipo");
+
+        for (TipoConsulta tipo : TipoConsulta.values()) {
+            comboMotivo.addItem(tipo);
+        }
+        for (TipoCirugia tipo : TipoCirugia.values()) {
+            comboMotivo.addItem(tipo);
+        }
+        for (TipoOrtodoncia tipo : TipoOrtodoncia.values()) {
+            comboMotivo.addItem(tipo);
+        }
+        form.add(comboMotivo);
 
         form.add(crearLabel("Fecha:"));
         txtFecha = crearCampo("Ej: 2026-06-20");
@@ -75,13 +98,22 @@ public class BotonNuevoTurno extends JDialog{
     }
 
     private void guardarTurno() {
+        Object motivo = comboMotivo.getSelectedItem();
+
+        // si el usuario dejo la opcion por defecto "Tipo", todavia no eligio un motivo real
+        if (motivo == null || motivo.equals("Tipo")) {
+            JOptionPane.showMessageDialog(this, "Debe seleccionar un tipo de consulta.",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         try {
             long pacienteId    = Long.parseLong(txtPacienteId.getText().trim());
             long odontologoId  = Long.parseLong(txtOdontologoId.getText().trim());
             LocalDate fecha    = LocalDate.parse(txtFecha.getText().trim());
             LocalTime hora     = LocalTime.parse(txtHora.getText().trim());
 
-            controlador.registrarTurno(pacienteId, odontologoId, fecha, hora);
+            controlador.registrarTurno(pacienteId, odontologoId, fecha, hora, motivo);
 
             JOptionPane.showMessageDialog(this, "Turno registrado correctamente!");
             dispose();

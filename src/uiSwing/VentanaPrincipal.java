@@ -38,7 +38,7 @@ public class VentanaPrincipal extends JFrame {
 
         sidebar   = new Sidebar();
         topBar    = new TopBar();
-        contenido = new PanelContenido();
+        contenido = new PanelContenido(controladorTurno);
 
         add(sidebar,   BorderLayout.WEST);
         add(topBar,    BorderLayout.NORTH);
@@ -50,6 +50,7 @@ public class VentanaPrincipal extends JFrame {
                 contenido.mostrar(PanelContenido.AGENDA);
                 topBar.setTitulo("Agenda semanal");
                 sidebar.marcarActivo(sidebar.getBtnAgenda());
+                contenido.getPanelAgenda().refrescar();
             }
         });
 
@@ -66,6 +67,15 @@ public class VentanaPrincipal extends JFrame {
                 contenido.mostrar(PanelContenido.ODONTOLOGOS);
                 topBar.setTitulo("Odontologos");
                 sidebar.marcarActivo(sidebar.getBtnOdontologos());
+            }
+        });
+
+        sidebar.getBtnTurnos().addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                contenido.mostrar(PanelContenido.TURNOS);
+                topBar.setTitulo("Turnos");
+                sidebar.marcarActivo(sidebar.getBtnTurnos());
+                contenido.getPanelTurnos().refrescarTabla();
             }
         });
 

@@ -39,6 +39,16 @@ public class ControladorTurno {
         return servicioTurno.registrarTurno(paciente, odontologo, fecha, hora);
     }
 
+    // misma logica, pero permite indicar el motivo de consulta elegido en el combo del formulario
+    public Turno registrarTurno(long pacienteId, long odontologoId, LocalDate fecha, LocalTime hora, Object motivoConsulta)
+            throws ClinicaException {
+
+        Paciente paciente = servicioPaciente.buscarPorId(pacienteId);
+        Odontologo odontologo = servicioOdontologo.buscarPorId(odontologoId);
+
+        return servicioTurno.registrarTurno(paciente, odontologo, fecha, hora, motivoConsulta);
+    }
+
     // busca un turno por id
     public Turno buscarPorId(long id) throws ClinicaException {
         return servicioTurno.buscarPorId(id);
@@ -83,5 +93,15 @@ public class ControladorTurno {
     // elimina un turno por id
     public void eliminarTurno(long id) throws ClinicaException{
         servicioTurno.eliminarTurno(id);
+    }
+
+    // lista los pacientes registrados, lo usa el panel de turnos para cargar el combo
+    public List<Paciente> listarPacientes() {
+        return servicioPaciente.listarTodos();
+    }
+
+    // lista los odontologos registrados, lo usa el panel de turnos para cargar el combo
+    public List<Odontologo> listarOdontologos() {
+        return servicioOdontologo.listarTodos();
     }
 }

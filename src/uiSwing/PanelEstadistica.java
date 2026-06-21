@@ -4,15 +4,19 @@ import java.awt.*;
 
 public class PanelEstadistica extends JPanel {
     private JLabel numTurnos;
+    private JLabel numPendientes;
     private JLabel numConfirmados;
+    private JLabel numCompletados;
     private JLabel numCancelados;
 
     public PanelEstadistica() {
         setBackground(new Color(248, 247, 244));
         setLayout(new FlowLayout(FlowLayout.LEFT, 10, 10));
 
-        numTurnos      = crearTarjeta("Turnos hoy",   "0", new Color(224, 242, 254));
-        numConfirmados = crearTarjeta("Confirmados",   "0", new Color(209, 250, 229));
+        numTurnos      = crearTarjeta("Turnos (semana)",   "0", new Color(226, 232, 240));
+        numPendientes  = crearTarjeta("Pendientes",    "0", new Color(254, 243, 199));
+        numConfirmados = crearTarjeta("Confirmados",   "0", new Color(224, 242, 254));
+        numCompletados = crearTarjeta("Completados",   "0", new Color(209, 250, 229));
         numCancelados  = crearTarjeta("Cancelados",    "0", new Color(255, 228, 230));
     }
 
@@ -55,6 +59,8 @@ public class PanelEstadistica extends JPanel {
 
     // estos métodos los va a usar el panel de agenda para actualizar los números
     public void setTurnos(int n)       { numTurnos.setText(String.valueOf(n)); }
+    public void setPendientes(int n)   { numPendientes.setText(String.valueOf(n)); }
     public void setConfirmados(int n)  { numConfirmados.setText(String.valueOf(n)); }
+    public void setCompletados(int n)  { numCompletados.setText(String.valueOf(n)); }
     public void setCancelados(int n)   { numCancelados.setText(String.valueOf(n)); }
 }

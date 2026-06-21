@@ -1,4 +1,5 @@
 package uiSwing;
+import controller.ControladorTurno;
 import javax.swing.*;
 import java.awt.*;
 
@@ -10,34 +11,39 @@ public class PanelContenido extends JPanel {
     public static final String AGENDA       = "AGENDA";
     public static final String PACIENTES    = "PACIENTES";
     public static final String ODONTOLOGOS  = "ODONTOLOGOS";
+    public static final String TURNOS       = "TURNOS";
 
-    public PanelContenido() {
+    private PanelTurnos panelTurnos;
+    private PanelAgenda panelAgenda;
+
+    public PanelContenido(ControladorTurno controladorTurno) {
         cardLayout = new CardLayout();
         setLayout(cardLayout);
         setBackground(new Color(248, 247, 244));
 
         // por ahora agregamos paneles vacíos de placeholder
         // Fati y Tomi van a reemplazar estos con los suyos
-        JPanel panelAgenda = new JPanel(new BorderLayout());
-        panelAgenda.setBackground(new Color(248, 247, 244));
+        JPanel panelAgendaContenedor = new JPanel(new BorderLayout());
+        panelAgendaContenedor.setBackground(new Color(248, 247, 244));
 
         PanelEstadistica estadisticas = new PanelEstadistica();
-        estadisticas.setTurnos(8);
-        estadisticas.setConfirmados(5);
-        estadisticas.setCancelados(1);
+        // los valores ya no se cargan a mano: PanelAgenda los calcula solo, en base a los turnos reales
 
-        PanelAgenda agenda = new PanelAgenda();
+        panelAgenda = new PanelAgenda(controladorTurno, estadisticas);
         PanelLateral lateral = new PanelLateral();
-        panelAgenda.add(lateral, BorderLayout.EAST);
+        panelAgendaContenedor.add(lateral, BorderLayout.EAST);
 
-        panelAgenda.add(estadisticas, BorderLayout.NORTH);
-        panelAgenda.add(agenda, BorderLayout.CENTER); // esto también
-        add(panelAgenda, AGENDA);
+        panelAgendaContenedor.add(estadisticas, BorderLayout.NORTH);
+        panelAgendaContenedor.add(panelAgenda, BorderLayout.CENTER); // esto también
+        add(panelAgendaContenedor, AGENDA);
 
-        panelAgenda.add(estadisticas, BorderLayout.NORTH);
-        add(panelAgenda, AGENDA);
+        panelAgendaContenedor.add(estadisticas, BorderLayout.NORTH);
+        add(panelAgendaContenedor, AGENDA);
         add(crearPlaceholder("Pacientes - Fati"),         PACIENTES);
         add(crearPlaceholder("Odontologos - Magui"),      ODONTOLOGOS);
+
+        panelTurnos = new PanelTurnos(controladorTurno);
+        add(panelTurnos, TURNOS);
     }
 
     // crea un panel gris con un texto en el centro (temporal)
@@ -56,5 +62,15 @@ public class PanelContenido extends JPanel {
     // este método lo llama VentanaPrincipal para cambiar de panel
     public void mostrar(String nombre) {
         cardLayout.show(this, nombre);
+    }
+
+    // expone el panel de turnos por si hace falta refrescarlo al navegar
+    public PanelTurnos getPanelTurnos() {
+        return panelTurnos;
+    }
+
+    // expone el panel de agenda por si hace falta refrescarlo al navegar
+    public PanelAgenda getPanelAgenda() {
+        return panelAgenda;
     }
 }

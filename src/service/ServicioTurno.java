@@ -27,7 +27,15 @@ public class ServicioTurno {
     // crea el turno si la fecha y hora están ok y no pisa otro turno del mismo odontólogo
     public Turno registrarTurno(Paciente paciente, Odontologo odontologo,
                                 LocalDate fecha, LocalTime hora)
-                    throws DatoInvalidoException, TurnoYaReservadoException {
+            throws DatoInvalidoException, TurnoYaReservadoException {
+
+        return registrarTurno(paciente, odontologo, fecha, hora, null);
+    }
+
+    // misma logica que registrarTurno, pero permite indicar el motivo de consulta elegido
+    public Turno registrarTurno(Paciente paciente, Odontologo odontologo,
+                                LocalDate fecha, LocalTime hora, Object motivoConsulta)
+            throws DatoInvalidoException, TurnoYaReservadoException {
 
 
         validarPaciente(paciente);
@@ -47,7 +55,7 @@ public class ServicioTurno {
 
         long id = repositorio.siguienteId();
 
-        Turno turno = new Turno(id, paciente, odontologo, fecha, hora);
+        Turno turno = new Turno(id, paciente, odontologo, fecha, hora, motivoConsulta);
         repositorio.guardar(turno);
 
         return turno;

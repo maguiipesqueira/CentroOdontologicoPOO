@@ -11,6 +11,7 @@ public class Turno {
     private LocalDate fecha;
     private LocalTime hora;
     private EstadoTurno estado;
+    private Object motivoConsulta; // guarda TipoConsulta, TipoCirugia o TipoOrtodoncia segun la especialidad del odontologo
 
     // crea el turno y lo deja pendiente
     public Turno(long id, Paciente paciente, Odontologo odontologo, LocalDate fecha, LocalTime hora) {
@@ -20,6 +21,12 @@ public class Turno {
         this.fecha = fecha;
         this.hora = hora;
         this.estado = EstadoTurno.PENDIENTE;
+    }
+
+    // crea el turno indicando ademas el motivo de consulta elegido en el formulario
+    public Turno(long id, Paciente paciente, Odontologo odontologo, LocalDate fecha, LocalTime hora, Object motivoConsulta) {
+        this(id, paciente, odontologo, fecha, hora);
+        this.motivoConsulta = motivoConsulta;
     }
 
     // constructor vacío
@@ -37,6 +44,8 @@ public class Turno {
     public LocalTime getHora() { return hora; }
     // devuelve estado
     public EstadoTurno getEstado() { return estado; }
+    // devuelve el motivo de consulta (puede ser null si no se cargo)
+    public Object getMotivoConsulta() { return motivoConsulta; }
 
     // cambia id
     public void setId(long id) { this.id = id; }
@@ -50,14 +59,21 @@ public class Turno {
     public void setHora(LocalTime hora) { this.hora = hora; }
     // cambia estado
     public void setEstado(EstadoTurno estado) { this.estado = estado; }
+    // cambia el motivo de consulta
+    public void setMotivoConsulta(Object motivoConsulta) { this.motivoConsulta = motivoConsulta; }
+
+    // texto legible del motivo, o "Consulta" si no se cargo ninguno
+    public String getMotivoConsultaTexto() {
+        return motivoConsulta != null ? motivoConsulta.toString() : "Consulta";
+    }
 
     // texto con los datos del turno
     @Override
     public String toString() {
         return "TURNO #" + id +
-               " | Paciente: " + paciente.getNombreCompleto() +
-               " | Odontólogo: " + odontologo.getNombreCompleto() +
-               " | Fecha: " + fecha + " Hora: " + hora +
-               " | Estado: " + estado;
+                " | Paciente: " + paciente.getNombreCompleto() +
+                " | Odontólogo: " + odontologo.getNombreCompleto() +
+                " | Fecha: " + fecha + " Hora: " + hora +
+                " | Estado: " + estado;
     }
 }
