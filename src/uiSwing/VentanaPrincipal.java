@@ -5,6 +5,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import controller.ControladorPaciente;
 
 public class VentanaPrincipal extends JFrame {
 
@@ -12,9 +13,11 @@ public class VentanaPrincipal extends JFrame {
     private TopBar topBar;
     private PanelContenido contenido;
     private ControladorTurno controladorTurno;
+    private ControladorPaciente controladorPaciente;
 
-    public VentanaPrincipal(ControladorTurno controladorTurno) {
+    public VentanaPrincipal(ControladorTurno controladorTurno,  ControladorPaciente controladorPaciente) {
         this.controladorTurno = controladorTurno;
+        this.controladorPaciente = controladorPaciente;
 
         setTitle("Centro Odontológico - Sistema de Gestión");
         setSize(1100, 620);
@@ -38,7 +41,7 @@ public class VentanaPrincipal extends JFrame {
 
         sidebar   = new Sidebar();
         topBar    = new TopBar();
-        contenido = new PanelContenido(controladorTurno);
+        contenido = new PanelContenido(controladorTurno, controladorPaciente);
 
         add(sidebar,   BorderLayout.WEST);
         add(topBar,    BorderLayout.NORTH);
