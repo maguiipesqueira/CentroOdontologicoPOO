@@ -15,7 +15,6 @@ public class ServicioOdontologo {
         this.repositorio = repositorio;
     }
 
-    // Ahora lanza DatoInvalidoException si algo falla
     public Odontologo registrarOdontologo(Odontologo odontologo) throws DatoInvalidoException {
         if (odontologo == null) {
             throw new DatoInvalidoException("Odontologo", "El odontólogo no puede ser nulo.");
@@ -28,11 +27,19 @@ public class ServicioOdontologo {
             throw new DatoInvalidoException("Matrícula", "Ya existe un odontólogo con esa matrícula.");
         }
 
+        // NUEVO: Calculamos el ID automáticamente buscando el mayor en la lista
+        long maxId = 0;
+        for (Odontologo o : repositorio.listarTodos()) {
+            if (o.getId() > maxId) {
+                maxId = o.getId();
+            }
+        }
+        odontologo.setId(maxId + 1);
+
         repositorio.guardar(odontologo);
         return odontologo;
     }
 
-    // Lanza OdontologoNoEncontradoException si no existe
     public Odontologo buscarPorId(long id) throws OdontologoNoEncontradoException {
         Odontologo odontologo = repositorio.buscarPorId(id);
         if (odontologo == null) {
@@ -41,7 +48,6 @@ public class ServicioOdontologo {
         return odontologo;
     }
 
-    // Lanza excepciones si no encuentra o el dato es malo
     public Odontologo buscarPorMatricula(int matricula) throws OdontologoNoEncontradoException, DatoInvalidoException {
         validarMatricula(matricula);
 
@@ -56,11 +62,10 @@ public class ServicioOdontologo {
         return repositorio.listarTodos();
     }
 
-    // Lanza excepciones de negocio
     public Odontologo actualizarOdontologo(long id, String nombre, String apellido)
             throws OdontologoNoEncontradoException, DatoInvalidoException {
 
-        Odontologo odontologo = buscarPorId(id); // Si no existe, tira el error de no encontrado
+        Odontologo odontologo = buscarPorId(id);
         validarNombreApellido(nombre, apellido);
 
         odontologo.setNombre(nombre);
@@ -71,11 +76,10 @@ public class ServicioOdontologo {
     }
 
     public void eliminarOdontologo(long id) throws OdontologoNoEncontradoException {
-        buscarPorId(id); // Si no existe, tira el error
+        buscarPorId(id);
         repositorio.eliminar(id);
     }
 
-    // Métodos privados de validación ahora lanzan DatoInvalidoException
     private void validarNombreApellido(String nombre, String apellido) throws DatoInvalidoException {
         if (nombre == null || nombre.isBlank() || apellido == null || apellido.isBlank()) {
             throw new DatoInvalidoException("Campos", "Nombre y apellido son requeridos.");
@@ -87,6 +91,7 @@ public class ServicioOdontologo {
             throw new DatoInvalidoException("Matrícula", "Debe ser un número mayor a cero.");
         }
     }
+
     public RepositorioOdontologo getRepositorio() {
         return repositorio;
     }

@@ -21,35 +21,42 @@ public class PanelEstadistica extends JPanel {
     }
 
     private JLabel crearTarjeta(String titulo, String numero, Color colorFondo) {
-        // panel de la tarjeta
-        JPanel tarjeta = new JPanel();
-        tarjeta.setLayout(new BoxLayout(tarjeta, BoxLayout.Y_AXIS));
-        tarjeta.setBackground(Color.WHITE);
-        tarjeta.setBorder(BorderFactory.createLineBorder(new Color(226, 232, 240), 1));
-        tarjeta.setPreferredSize(new Dimension(160, 80));
-        tarjeta.add(Box.createVerticalStrut(10));
+        // SOBREESCRIBIMOS el panel para poder dibujarle bordes redondeados
+        JPanel tarjeta = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                // Suaviza los bordes para que no se vean pixelados
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getBackground());
+                // Dibuja un rectángulo con las esquinas redondeadas (radio de 25)
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 25, 25);
+                g2.dispose();
+            }
+        };
 
-        // cuadradito de color arriba
-        JLabel iconoColor = new JLabel("  ");
-        iconoColor.setOpaque(true);
-        iconoColor.setBackground(colorFondo);
-        iconoColor.setPreferredSize(new Dimension(28, 28));
-        iconoColor.setMaximumSize(new Dimension(28, 28));
-        iconoColor.setAlignmentX(Component.CENTER_ALIGNMENT);
-        tarjeta.add(iconoColor);
-        tarjeta.add(Box.createVerticalStrut(6));
+        tarjeta.setLayout(new BoxLayout(tarjeta, BoxLayout.Y_AXIS));
+        tarjeta.setBackground(colorFondo); // Ahora el fondo completo toma el color
+        tarjeta.setOpaque(false); // Necesario para que las esquinas redondeadas sean transparentes
+        tarjeta.setPreferredSize(new Dimension(160, 80));
+        tarjeta.setBorder(BorderFactory.createEmptyBorder(15, 0, 15, 0)); // Margen interno para centrar los textos
+
+        // Quitamos el cuadradito de color de arriba porque ahora todo el fondo es de color
 
         // número grande
         JLabel lblNumero = new JLabel(numero, SwingConstants.CENTER);
-        lblNumero.setFont(new Font("Segoe UI", Font.BOLD, 22));
+        lblNumero.setFont(new Font("Segoe UI", Font.BOLD, 26)); // Un poquito más grande
         lblNumero.setForeground(new Color(15, 23, 42));
         lblNumero.setAlignmentX(Component.CENTER_ALIGNMENT);
         tarjeta.add(lblNumero);
 
+        tarjeta.add(Box.createVerticalStrut(2)); // Pequeña separación
+
         // texto abajo
         JLabel lblTitulo = new JLabel(titulo, SwingConstants.CENTER);
-        lblTitulo.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        lblTitulo.setForeground(new Color(148, 163, 184));
+        lblTitulo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblTitulo.setForeground(new Color(71, 85, 105)); // Un gris un poco más oscuro para que lea bien
         lblTitulo.setAlignmentX(Component.CENTER_ALIGNMENT);
         tarjeta.add(lblTitulo);
 

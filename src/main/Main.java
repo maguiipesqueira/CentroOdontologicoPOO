@@ -17,6 +17,7 @@ import ui.VistaTurno;
 import uiSwing.VentanaPrincipal;
 import uiSwing.PersistenciaPaciente;
 import uiSwing.PersistenciaTurno;
+import uiSwing.PersistenciaOdontologo;
 
 import javax.swing.*;
 import java.util.Scanner;
@@ -40,8 +41,9 @@ public class Main {
         ControladorTurno ctrlTurno = new ControladorTurno(servTurno, servPaciente, servOdontologo);
 
         // si ya existe el archivo carga desde ahi, sino carga los datos de prueba
-        if (new java.io.File("pacientes.txt").exists()) {
+        if (new java.io.File("pacientes.txt").exists() || new java.io.File("odontologos.txt").exists()) {
             PersistenciaPaciente.cargar(servPaciente);
+            PersistenciaOdontologo.cargar(servOdontologo); // Carga la persistencia en txt
             PersistenciaTurno.cargar(servTurno, servPaciente, servOdontologo);
         } else {
             try {
@@ -111,10 +113,11 @@ public class Main {
         );
 
         SwingUtilities.invokeLater(() -> {
-            VentanaPrincipal ventana = new VentanaPrincipal(ctrlTurno, ctrlPaciente);
+            // Se le envían los tres controladores para que no tire error de null
+            VentanaPrincipal ventana = new VentanaPrincipal(ctrlTurno, ctrlPaciente, ctrlOdontologo);
             ventana.iniciar();
         });
 
-        scanner.close();
+        // scanner.close(); <- No cierro el scanner si van a usar consola luego
     }
 }

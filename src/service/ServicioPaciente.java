@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 public class ServicioPaciente {
 
     private final RepositorioPaciente repositorio;
-    private long contadorId = 1L;
 
     // constructor guarda el repositorio
     public ServicioPaciente(RepositorioPaciente repositorio) {
@@ -33,7 +32,16 @@ public class ServicioPaciente {
             throw new DatoInvalidoException("DNI", "El documento ingresado ya se encuentra registrado.");
         }
 
-        Paciente nuevo = new Paciente(contadorId++, nombre, apellido, dni, email,
+        // NUEVO: Buscamos el ID más alto que exista actualmente para no pisar a nadie
+        long maxId = 0;
+        for (Paciente p : repositorio.listarTodos()) {
+            if (p.getId() > maxId) {
+                maxId = p.getId();
+            }
+        }
+        long nuevoId = maxId + 1;
+
+        Paciente nuevo = new Paciente(nuevoId, nombre, apellido, dni, email,
                 LocalDate.now(), domicilio);
 
         repositorio.guardar(nuevo);
@@ -117,12 +125,13 @@ public class ServicioPaciente {
         }
     }
 
-    // error si el email no contiene el arroba
+    // error si el email no contiene el @
     private void validarEmail(String email) throws DatoInvalidoException {
         if (email == null || email.isBlank() || !email.contains("@")) {
             throw new DatoInvalidoException("Email", "El formato ingresado no corresponde a una dirección válida.");
         }
     }
+
     // expone el repositorio para la persistencia
     public RepositorioPaciente getRepositorio() {
         return repositorio;

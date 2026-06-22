@@ -14,10 +14,12 @@ public class VentanaPrincipal extends JFrame {
     private PanelContenido contenido;
     private ControladorTurno controladorTurno;
     private ControladorPaciente controladorPaciente;
+    private controller.ControladorOdontologo controladorOdontologo;
 
-    public VentanaPrincipal(ControladorTurno controladorTurno,  ControladorPaciente controladorPaciente) {
+    public VentanaPrincipal(ControladorTurno controladorTurno, ControladorPaciente controladorPaciente, controller.ControladorOdontologo controladorOdontologo) {
         this.controladorTurno = controladorTurno;
         this.controladorPaciente = controladorPaciente;
+        this.controladorOdontologo = controladorOdontologo;
 
         setTitle("Centro Odontológico - Sistema de Gestión");
         setSize(1100, 620);
@@ -36,6 +38,7 @@ public class VentanaPrincipal extends JFrame {
                 if (respuesta == JOptionPane.YES_OPTION) {
                     PersistenciaPaciente.guardar(controladorPaciente.listarTodos());
                     PersistenciaTurno.guardar(controladorTurno.listarTodos());
+                    PersistenciaOdontologo.guardar(controladorOdontologo.listarTodos());
                     System.exit(0);
                 }
             }
@@ -43,19 +46,19 @@ public class VentanaPrincipal extends JFrame {
 
         sidebar   = new Sidebar();
         topBar    = new TopBar();
-        contenido = new PanelContenido(controladorTurno, controladorPaciente);
+        contenido = new PanelContenido(controladorTurno, controladorPaciente, controladorOdontologo);
 
         add(sidebar,   BorderLayout.WEST);
         add(topBar,    BorderLayout.NORTH);
         add(contenido, BorderLayout.CENTER);
 
-        // navegación sidebar
         sidebar.getBtnAgenda().addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
                 contenido.mostrar(PanelContenido.AGENDA);
                 topBar.setTitulo("Agenda semanal");
                 sidebar.marcarActivo(sidebar.getBtnAgenda());
                 contenido.getPanelAgenda().refrescar();
+                contenido.getPanelLateral().refrescar(); // Actualizamos lateral al entrar
             }
         });
 
@@ -84,10 +87,15 @@ public class VentanaPrincipal extends JFrame {
             }
         });
 
-        // botón nuevo turno
+        // Al crear un turno nuevo, forzamos a refrescar toda la pantalla
         topBar.getBtnNuevo().addActionListener(e -> {
             BotonNuevoTurno dialog = new BotonNuevoTurno(this, controladorTurno);
             dialog.setVisible(true);
+
+            // Cuando se cierra el modal, repintamos todo para que aparezca el nuevo dato
+            contenido.getPanelAgenda().refrescar();
+            contenido.getPanelTurnos().refrescarTabla();
+            contenido.getPanelLateral().refrescar();
         });
     }
 
