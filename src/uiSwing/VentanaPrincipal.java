@@ -1,5 +1,6 @@
 package uiSwing;
 
+import controller.ControladorFactura;
 import controller.ControladorTurno;
 import javax.swing.*;
 import java.awt.*;
@@ -15,11 +16,13 @@ public class VentanaPrincipal extends JFrame {
     private ControladorTurno controladorTurno;
     private ControladorPaciente controladorPaciente;
     private controller.ControladorOdontologo controladorOdontologo;
+    private ControladorFactura controladorFactura;
 
-    public VentanaPrincipal(ControladorTurno controladorTurno, ControladorPaciente controladorPaciente, controller.ControladorOdontologo controladorOdontologo) {
+    public VentanaPrincipal(ControladorTurno controladorTurno, ControladorPaciente controladorPaciente, controller.ControladorOdontologo controladorOdontologo, ControladorFactura controladorFactura) {
         this.controladorTurno = controladorTurno;
         this.controladorPaciente = controladorPaciente;
         this.controladorOdontologo = controladorOdontologo;
+        this.controladorFactura = controladorFactura;
 
         setTitle("Centro Odontológico - Sistema de Gestión");
         setSize(1100, 620);
@@ -39,6 +42,7 @@ public class VentanaPrincipal extends JFrame {
                     PersistenciaPaciente.guardar(controladorPaciente.listarTodos());
                     PersistenciaTurno.guardar(controladorTurno.listarTodos());
                     PersistenciaOdontologo.guardar(controladorOdontologo.listarTodos());
+                    PersistenciaFactura.guardar(controladorFactura.listarTodos());
                     System.exit(0);
                 }
             }

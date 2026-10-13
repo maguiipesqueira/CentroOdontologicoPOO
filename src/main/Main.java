@@ -1,25 +1,36 @@
 package main;
 
 import entity.*;
+import controller.ControladorFactura;
 import controller.ControladorOdontologo;
 import controller.ControladorPaciente;
 import controller.ControladorTurno;
+import pago.Efectivo;
+import pago.MedioPago;
+import pago.MercadoPago;
+import pago.Tarjeta;
+import repository.RepositorioFactura;
 import repository.RepositorioOdontologo;
 import repository.RepositorioPaciente;
 import repository.RepositorioTurno;
+import service.CalculadorMonto;
+import service.ServicioFactura;
 import service.ServicioOdontologo;
 import service.ServicioPaciente;
 import service.ServicioTurno;
+import service.Tarifario;
 import ui.VistaOdontologo;
 import ui.VistaPaciente;
 import ui.VistaPrincipal;
 import ui.VistaTurno;
 import uiSwing.VentanaPrincipal;
+import uiSwing.PersistenciaFactura;
 import uiSwing.PersistenciaPaciente;
 import uiSwing.PersistenciaTurno;
 import uiSwing.PersistenciaOdontologo;
 
 import javax.swing.*;
+import java.util.List;
 import java.util.Scanner;
 
 public class Main {
@@ -31,20 +42,27 @@ public class Main {
         RepositorioPaciente repoPaciente = new RepositorioPaciente();
         RepositorioOdontologo repoOdontologo = new RepositorioOdontologo();
         RepositorioTurno repoTurno = new RepositorioTurno();
+        RepositorioFactura repoFactura = new RepositorioFactura();
 
         ServicioPaciente servPaciente = new ServicioPaciente(repoPaciente);
         ServicioOdontologo servOdontologo = new ServicioOdontologo(repoOdontologo);
         ServicioTurno servTurno = new ServicioTurno(repoTurno);
 
+        // modulo de facturacion: los medios de pago se arman aca, un medio nuevo es una clase nueva y una entrada en esta lista
+        List<MedioPago> mediosPago = List.of(new MercadoPago(), new Tarjeta(), new Efectivo());
+        ServicioFactura servFactura = new ServicioFactura(repoFactura, servTurno, new Tarifario(), new CalculadorMonto(), mediosPago);
+
         ControladorPaciente ctrlPaciente = new ControladorPaciente(servPaciente);
         ControladorOdontologo ctrlOdontologo = new ControladorOdontologo(servOdontologo);
         ControladorTurno ctrlTurno = new ControladorTurno(servTurno, servPaciente, servOdontologo);
+        ControladorFactura ctrlFactura = new ControladorFactura(servFactura);
 
         // si ya existe el archivo carga desde ahi, sino carga los datos de prueba
         if (new java.io.File("pacientes.txt").exists() || new java.io.File("odontologos.txt").exists()) {
             PersistenciaPaciente.cargar(servPaciente);
             PersistenciaOdontologo.cargar(servOdontologo); // Carga la persistencia en txt
             PersistenciaTurno.cargar(servTurno, servPaciente, servOdontologo);
+            PersistenciaFactura.cargar(servFactura); // despues de turnos, porque cada factura refiere a un turno
         } else {
             try {
                 Domicilio domicilioFati = new Domicilio("Necochea", 581, "Lobos", "Buenos Aires", TipoHogar.CASA);
@@ -113,8 +131,8 @@ public class Main {
         );
 
         SwingUtilities.invokeLater(() -> {
-            // Se le envían los tres controladores para que no tire error de null
-            VentanaPrincipal ventana = new VentanaPrincipal(ctrlTurno, ctrlPaciente, ctrlOdontologo);
+            // Se le envían los controladores para que no tire error de null
+            VentanaPrincipal ventana = new VentanaPrincipal(ctrlTurno, ctrlPaciente, ctrlOdontologo, ctrlFactura);
             ventana.iniciar();
         });
 

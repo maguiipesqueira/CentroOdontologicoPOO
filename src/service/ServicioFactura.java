@@ -122,6 +122,11 @@ public class ServicioFactura {
         return new CierreDelDia(fecha, facturasDelDia.size(), redondear(total), totalPorMedio);
     }
 
+    // expone el repositorio para la persistencia
+    public RepositorioFactura getRepositorio() {
+        return repositorio;
+    }
+
     // redondea a 2 decimales para que las sumas de double no arrastren ruido
     private double redondear(double valor) {
         return Math.round(valor * 100.0) / 100.0;
