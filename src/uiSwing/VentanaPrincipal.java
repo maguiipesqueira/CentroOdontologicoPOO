@@ -50,7 +50,7 @@ public class VentanaPrincipal extends JFrame {
 
         sidebar   = new Sidebar();
         topBar    = new TopBar();
-        contenido = new PanelContenido(controladorTurno, controladorPaciente, controladorOdontologo);
+        contenido = new PanelContenido(controladorTurno, controladorPaciente, controladorOdontologo, controladorFactura);
 
         add(sidebar,   BorderLayout.WEST);
         add(topBar,    BorderLayout.NORTH);
@@ -88,6 +88,14 @@ public class VentanaPrincipal extends JFrame {
                 topBar.setTitulo("Turnos");
                 sidebar.marcarActivo(sidebar.getBtnTurnos());
                 contenido.getPanelTurnos().refrescarTabla();
+            }
+        });
+
+        sidebar.getBtnFacturacion().addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                contenido.mostrar(PanelContenido.FACTURACION);
+                topBar.setTitulo("Facturación");
+                sidebar.marcarActivo(sidebar.getBtnFacturacion());
             }
         });
 

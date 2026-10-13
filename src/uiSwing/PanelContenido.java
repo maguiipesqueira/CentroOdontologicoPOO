@@ -1,5 +1,6 @@
 package uiSwing;
 
+import controller.ControladorFactura;
 import controller.ControladorTurno;
 import javax.swing.*;
 import java.awt.*;
@@ -14,15 +15,17 @@ public class PanelContenido extends JPanel {
     public static final String PACIENTES    = "PACIENTES";
     public static final String ODONTOLOGOS  = "ODONTOLOGOS";
     public static final String TURNOS       = "TURNOS";
+    public static final String FACTURACION  = "FACTURACION";
 
     private PanelTurnos panelTurnos;
     private PanelAgenda panelAgenda;
     private PanelPaciente panelPaciente;
     private PanelOdontologo panelOdontologo;
+    private PanelFacturacion panelFacturacion;
     private PanelLateral panelLateral; // Instanciado a nivel clase
 
 
-    public PanelContenido(ControladorTurno controladorTurno, ControladorPaciente controladorPaciente, ControladorOdontologo controladorOdontologo) {
+    public PanelContenido(ControladorTurno controladorTurno, ControladorPaciente controladorPaciente, ControladorOdontologo controladorOdontologo, ControladorFactura controladorFactura) {
         cardLayout = new CardLayout();
         setLayout(cardLayout);
         setBackground(new Color(248, 247, 244));
@@ -54,11 +57,15 @@ public class PanelContenido extends JPanel {
         add(panelOdontologo, ODONTOLOGOS);
 
         add(panelTurnos, TURNOS);
+
+        panelFacturacion = new PanelFacturacion(controladorFactura);
+        add(panelFacturacion, FACTURACION);
     }
 
     public void mostrar(String nombre) { cardLayout.show(this, nombre); }
     public PanelTurnos getPanelTurnos() { return panelTurnos; }
     public PanelAgenda getPanelAgenda() { return panelAgenda; }
+    public PanelFacturacion getPanelFacturacion() { return panelFacturacion; }
 
     // NUEVO: Permite acceder al lateral para refrescarlo
     public PanelLateral getPanelLateral() { return panelLateral; }
