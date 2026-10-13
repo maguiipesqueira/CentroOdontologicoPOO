@@ -96,6 +96,7 @@ public class VentanaPrincipal extends JFrame {
                 contenido.mostrar(PanelContenido.FACTURACION);
                 topBar.setTitulo("Facturación");
                 sidebar.marcarActivo(sidebar.getBtnFacturacion());
+                contenido.getPanelFacturacion().refrescar(); // actualizamos los turnos por cobrar al entrar
             }
         });
 
