@@ -1,8 +1,10 @@
 package uiSwing;
 
 import controller.ControladorFactura;
+import entity.Factura;
 import entity.Turno;
 import exception.ClinicaException;
+import pago.MedioPago;
 import service.DesgloseMonto;
 
 import javax.swing.*;
@@ -16,12 +18,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-// pantalla de facturacion. Por ahora muestra los turnos por cobrar con su precio, descuento y total;
-// el cobro, las facturas emitidas y el cierre del dia se agregan en las etapas siguientes
+// pantalla de facturacion. Por ahora muestra los turnos por cobrar y permite cobrarlos eligiendo el medio de pago;
+// las facturas emitidas y el cierre del dia se agregan en la etapa siguiente
 public class PanelFacturacion extends JPanel {
 
     private static final Color FONDO = new Color(248, 247, 244);
     private static final String[] COLUMNAS = {"ID", "Turno", "Paciente", "Tratamiento", "Precio", "Descuento", "Total"};
+    private static final String TEXTO_SIN_MEDIO = "Elegir medio de pago...";
 
     // formato de plata argentino: $ 15.000
     private static final DecimalFormat FORMATO_PLATA =
@@ -31,6 +34,8 @@ public class PanelFacturacion extends JPanel {
 
     private JTable tabla;
     private DefaultTableModel modeloTabla;
+    private JComboBox<MedioPago> comboMedioPago;
+    private JLabel lblTotalAPagar;
 
     // mensaje de error de cada fila (null si la fila esta bien), para mostrarlo como tooltip
     private final List<String> erroresPorFila = new ArrayList<>();
@@ -43,6 +48,15 @@ public class PanelFacturacion extends JPanel {
 
         add(crearPanelTitulo(), BorderLayout.NORTH);
         add(crearPanelTablaPorCobrar(), BorderLayout.CENTER);
+        add(crearPanelCobro(), BorderLayout.SOUTH);
+
+        // los listeners se agregan cuando ya estan armados todos los componentes
+        tabla.getSelectionModel().addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                actualizarTotalAPagar();
+            }
+        });
+        comboMedioPago.addActionListener(e -> actualizarTotalAPagar());
 
         refrescar();
     }
@@ -59,7 +73,7 @@ public class PanelFacturacion extends JPanel {
         titulo.setForeground(new Color(15, 23, 42));
         panel.add(titulo);
 
-        JLabel ayuda = new JLabel("El descuento es el de obra social; el de efectivo se aplica al elegir el medio de pago.");
+        JLabel ayuda = new JLabel("El descuento de la tabla es el de obra social; el de efectivo se aplica al elegir el medio de pago.");
         ayuda.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         ayuda.setForeground(new Color(100, 116, 139));
         panel.add(ayuda);
@@ -105,7 +119,7 @@ public class PanelFacturacion extends JPanel {
             tabla.getColumnModel().getColumn(columna).setCellRenderer(derecha);
         }
 
-        // oculta la columna ID visualmente pero la deja accesible (la vamos a usar para cobrar)
+        // oculta la columna ID visualmente pero la deja accesible (la usamos para cobrar)
         tabla.getColumnModel().getColumn(0).setMinWidth(0);
         tabla.getColumnModel().getColumn(0).setMaxWidth(0);
         tabla.getColumnModel().getColumn(0).setWidth(0);
@@ -117,11 +131,56 @@ public class PanelFacturacion extends JPanel {
         return panel;
     }
 
+    // franja inferior: medio de pago, total a pagar con ese medio y boton cobrar
+    private JPanel crearPanelCobro() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(226, 232, 240)));
+
+        panel.add(crearLabel("Medio de pago:"));
+
+        // el combo se llena con los medios que informa el controlador: un medio nuevo aparece solo
+        comboMedioPago = new JComboBox<>();
+        comboMedioPago.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        comboMedioPago.addItem(null); // primera opcion vacia: obliga a elegir un medio (CU6, flujo 5a)
+        for (MedioPago medio : controlador.listarMediosPago()) {
+            comboMedioPago.addItem(medio);
+        }
+        // se muestra getNombre() de la interfaz, asi el medio nuevo no necesita un toString propio
+        comboMedioPago.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> lista, Object valor, int indice,
+                                                          boolean seleccionado, boolean foco) {
+                String texto = (valor instanceof MedioPago) ? ((MedioPago) valor).getNombre() : TEXTO_SIN_MEDIO;
+                return super.getListCellRendererComponent(lista, texto, indice, seleccionado, foco);
+            }
+        });
+        panel.add(comboMedioPago);
+
+        lblTotalAPagar = new JLabel("Total a pagar: -");
+        lblTotalAPagar.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        lblTotalAPagar.setForeground(new Color(15, 23, 42));
+        panel.add(lblTotalAPagar);
+
+        JButton btnCobrar = new JButton("Cobrar");
+        btnCobrar.setBackground(new Color(14, 165, 233));
+        btnCobrar.setForeground(Color.WHITE);
+        btnCobrar.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btnCobrar.setBorderPainted(false);
+        btnCobrar.setFocusPainted(false);
+        btnCobrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btnCobrar.addActionListener(e -> cobrarSeleccionado());
+        panel.add(btnCobrar);
+
+        return panel;
+    }
+
     // ---------- carga y refresco de datos ----------
 
     // recarga la tabla con los turnos que todavia se pueden cobrar
     public void refrescar() {
         cargarFilasPorCobrar(controlador.listarTurnosPorCobrar());
+        actualizarTotalAPagar();
     }
 
     private void cargarFilasPorCobrar(List<Turno> turnos) {
@@ -155,9 +214,69 @@ public class PanelFacturacion extends JPanel {
         }
     }
 
+    // ---------- cobro ----------
+
+    // muestra cuanto pagaria el turno seleccionado con el medio elegido (sin guardar nada)
+    private void actualizarTotalAPagar() {
+        int fila = tabla.getSelectedRow();
+        if (fila == -1) {
+            lblTotalAPagar.setText("Total a pagar: -");
+            return;
+        }
+
+        long turnoId = (long) modeloTabla.getValueAt(fila, 0);
+        MedioPago medio = (MedioPago) comboMedioPago.getSelectedItem();
+
+        try {
+            DesgloseMonto desglose = (medio == null)
+                    ? controlador.calcularVistaPrevia(turnoId)
+                    : controlador.calcularVistaPrevia(turnoId, medio);
+            lblTotalAPagar.setText("Total a pagar: " + plata(desglose.getMontoTotal()));
+        } catch (ClinicaException e) {
+            lblTotalAPagar.setText("Total a pagar: -");
+        }
+    }
+
+    // cobra el turno seleccionado con el medio elegido
+    private void cobrarSeleccionado() {
+        int fila = tabla.getSelectedRow();
+
+        if (fila == -1) {
+            JOptionPane.showMessageDialog(this, "Seleccione un turno por cobrar primero.",
+                    "Sin seleccion", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        long turnoId = (long) modeloTabla.getValueAt(fila, 0);
+        MedioPago medio = (MedioPago) comboMedioPago.getSelectedItem();
+
+        try {
+            // si el medio es null el servicio lanza DatoInvalidoException y no genera la factura
+            Factura factura = controlador.cobrarTurno(turnoId, medio);
+
+            JOptionPane.showMessageDialog(this,
+                    "Turno cobrado. Factura #" + factura.getId() + " - Total: " + plata(factura.getMontoTotal()),
+                    "Cobro registrado", JOptionPane.INFORMATION_MESSAGE);
+
+            // vuelve a pedir el medio en el proximo cobro, para no cobrar con uno elegido de antes
+            comboMedioPago.setSelectedIndex(0);
+            refrescar();
+
+        } catch (ClinicaException e) {
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     // ---------- helpers ----------
 
     private String plata(double monto) {
         return FORMATO_PLATA.format(monto);
+    }
+
+    private JLabel crearLabel(String texto) {
+        JLabel lbl = new JLabel(texto);
+        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lbl.setForeground(new Color(71, 85, 105));
+        return lbl;
     }
 }
