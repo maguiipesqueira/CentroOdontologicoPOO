@@ -11,7 +11,9 @@ import repository.RepositorioFactura;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 // Cobra los turnos: coordina el tarifario, el calculador de montos y los medios de pago, y genera la factura
@@ -86,6 +88,43 @@ public class ServicioFactura {
 
         repositorio.guardar(factura);
         return factura;
+    }
+
+    // todas las facturas emitidas, de la mas vieja a la mas nueva
+    public List<Factura> listarTodos() {
+        return repositorio.listarTodos().stream()
+                .sorted(Comparator.comparingLong(Factura::getId))
+                .collect(Collectors.toList());
+    }
+
+    // cierre del dia: suma lo recibido en esa fecha y lo desglosa por medio de pago (si no hubo facturas, el total es 0)
+    public CierreDelDia cerrarDia(LocalDate fecha) throws DatoInvalidoException {
+        if (fecha == null) {
+            throw new DatoInvalidoException("Fecha", "La fecha del cierre no puede ser nula.");
+        }
+
+        List<Factura> facturasDelDia = repositorio.listarPorFecha(fecha);
+
+        // arranca con todos los medios en cero para que el detalle los muestre aunque no hayan cobrado nada
+        Map<String, Double> totalPorMedio = new LinkedHashMap<>();
+        for (MedioPago medio : mediosPago) {
+            totalPorMedio.put(medio.getNombre(), 0.0);
+        }
+
+        double total = 0.0;
+        for (Factura f : facturasDelDia) {
+            total += f.getMontoTotal();
+            totalPorMedio.merge(f.getMetodoPago(), f.getMontoTotal(), Double::sum);
+        }
+
+        totalPorMedio.replaceAll((medio, monto) -> redondear(monto));
+
+        return new CierreDelDia(fecha, facturasDelDia.size(), redondear(total), totalPorMedio);
+    }
+
+    // redondea a 2 decimales para que las sumas de double no arrastren ruido
+    private double redondear(double valor) {
+        return Math.round(valor * 100.0) / 100.0;
     }
 
     // busca el turno y comprueba que se pueda cobrar (existe, no esta cancelado y no tiene factura)
