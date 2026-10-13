@@ -12,23 +12,15 @@ import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.MouseEvent;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
-// pantalla de facturacion. Por ahora muestra los turnos por cobrar y permite cobrarlos eligiendo el medio de pago;
-// las facturas emitidas y el cierre del dia se agregan en la etapa siguiente
+// pantalla de facturacion con dos pestañas: turnos por cobrar (con el cobro) y facturas emitidas (con el cierre del dia)
 public class PanelFacturacion extends JPanel {
 
     private static final Color FONDO = new Color(248, 247, 244);
     private static final String[] COLUMNAS = {"ID", "Turno", "Paciente", "Tratamiento", "Precio", "Descuento", "Total"};
     private static final String TEXTO_SIN_MEDIO = "Elegir medio de pago...";
-
-    // formato de plata argentino: $ 15.000
-    private static final DecimalFormat FORMATO_PLATA =
-            new DecimalFormat("$ #,##0.##", new DecimalFormatSymbols(Locale.forLanguageTag("es-AR")));
 
     private final ControladorFactura controlador;
 
@@ -36,6 +28,7 @@ public class PanelFacturacion extends JPanel {
     private DefaultTableModel modeloTabla;
     private JComboBox<MedioPago> comboMedioPago;
     private JLabel lblTotalAPagar;
+    private PanelFacturasEmitidas panelFacturasEmitidas;
 
     // mensaje de error de cada fila (null si la fila esta bien), para mostrarlo como tooltip
     private final List<String> erroresPorFila = new ArrayList<>();
@@ -46,9 +39,21 @@ public class PanelFacturacion extends JPanel {
         setLayout(new BorderLayout());
         setBackground(FONDO);
 
-        add(crearPanelTitulo(), BorderLayout.NORTH);
-        add(crearPanelTablaPorCobrar(), BorderLayout.CENTER);
-        add(crearPanelCobro(), BorderLayout.SOUTH);
+        // pestaña 1: turnos por cobrar (titulo, tabla y franja de cobro)
+        JPanel panelPorCobrar = new JPanel(new BorderLayout());
+        panelPorCobrar.setBackground(FONDO);
+        panelPorCobrar.add(crearPanelTitulo(), BorderLayout.NORTH);
+        panelPorCobrar.add(crearPanelTablaPorCobrar(), BorderLayout.CENTER);
+        panelPorCobrar.add(crearPanelCobro(), BorderLayout.SOUTH);
+
+        // pestaña 2: facturas emitidas y cierre del dia
+        panelFacturasEmitidas = new PanelFacturasEmitidas(controlador);
+
+        JTabbedPane pestanias = new JTabbedPane();
+        pestanias.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        pestanias.addTab("Por cobrar", panelPorCobrar);
+        pestanias.addTab("Facturas emitidas", panelFacturasEmitidas);
+        add(pestanias, BorderLayout.CENTER);
 
         // los listeners se agregan cuando ya estan armados todos los componentes
         tabla.getSelectionModel().addListSelectionListener(e -> {
@@ -177,10 +182,11 @@ public class PanelFacturacion extends JPanel {
 
     // ---------- carga y refresco de datos ----------
 
-    // recarga la tabla con los turnos que todavia se pueden cobrar
+    // recarga las dos pestañas: los turnos que todavia se pueden cobrar y las facturas emitidas
     public void refrescar() {
         cargarFilasPorCobrar(controlador.listarTurnosPorCobrar());
         actualizarTotalAPagar();
+        panelFacturasEmitidas.refrescar();
     }
 
     private void cargarFilasPorCobrar(List<Turno> turnos) {
@@ -254,9 +260,8 @@ public class PanelFacturacion extends JPanel {
             // si el medio es null el servicio lanza DatoInvalidoException y no genera la factura
             Factura factura = controlador.cobrarTurno(turnoId, medio);
 
-            JOptionPane.showMessageDialog(this,
-                    "Turno cobrado. Factura #" + factura.getId() + " - Total: " + plata(factura.getMontoTotal()),
-                    "Cobro registrado", JOptionPane.INFORMATION_MESSAGE);
+            // el comprobante muestra el desglose del cobro recien hecho
+            ComprobanteFactura.mostrar(this, factura);
 
             // vuelve a pedir el medio en el proximo cobro, para no cobrar con uno elegido de antes
             comboMedioPago.setSelectedIndex(0);
@@ -270,7 +275,7 @@ public class PanelFacturacion extends JPanel {
     // ---------- helpers ----------
 
     private String plata(double monto) {
-        return FORMATO_PLATA.format(monto);
+        return FormatoPlata.formatear(monto);
     }
 
     private JLabel crearLabel(String texto) {
