@@ -26,6 +26,7 @@ public class PanelPaciente extends JPanel {
     private JTextField campLocalidad;
     private JTextField campProvincia;
     private JComboBox<TipoHogar> combTipoHogar;
+    private JCheckBox chkObraSocial;
 
     private long idSeleccionado = -1;
 
@@ -44,7 +45,7 @@ public class PanelPaciente extends JPanel {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(new Color(248, 247, 244));
 
-        String[] columnas = {"ID", "Nombre", "Apellido", "DNI", "Email"};
+        String[] columnas = {"ID", "Nombre", "Apellido", "DNI", "Email", "Obra social"};
         modeloTabla = new DefaultTableModel(columnas, 0) {
             public boolean isCellEditable(int row, int col) { return false; }
         };
@@ -69,10 +70,7 @@ public class PanelPaciente extends JPanel {
                 int dni = Integer.parseInt(campBusquedaDni.getText());
                 Paciente encontrado = controlador.buscarPorDni(dni);
                 modeloTabla.setRowCount(0);
-                modeloTabla.addRow(new Object[]{
-                        encontrado.getId(), encontrado.getNombre(),
-                        encontrado.getApellido(), encontrado.getDni(), encontrado.getEmail()
-                });
+                modeloTabla.addRow(crearFila(encontrado));
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(null, "Ingresá un DNI válido");
             } catch (exception.PacienteNoEncontradoException ex) {
@@ -99,6 +97,7 @@ public class PanelPaciente extends JPanel {
 
                     try {
                         Paciente p = controlador.buscarPorId(idSeleccionado);
+                        chkObraSocial.setSelected(p.tieneObraSocial());
                         if (p.tieneDomicilio()) {
                             campCalle.setText(p.getDomicilio().getCalle());
                             campNumero.setText(String.valueOf(p.getDomicilio().getNumero()));
@@ -130,6 +129,8 @@ public class PanelPaciente extends JPanel {
         campLocalidad = new JTextField();
         campProvincia = new JTextField();
         combTipoHogar = new JComboBox<>(TipoHogar.values());
+        chkObraSocial = new JCheckBox("Tiene obra social (30% de descuento)");
+        chkObraSocial.setBackground(new Color(248, 247, 244));
 
         panel.add(new JLabel("Nombre:"));    panel.add(campNombre);
         panel.add(new JLabel("Apellido:"));  panel.add(campApellido);
@@ -140,6 +141,7 @@ public class PanelPaciente extends JPanel {
         panel.add(new JLabel("Localidad:")); panel.add(campLocalidad);
         panel.add(new JLabel("Provincia:")); panel.add(campProvincia);
         panel.add(new JLabel("Tipo Hogar:")); panel.add(combTipoHogar);
+        panel.add(new JLabel("Obra social:")); panel.add(chkObraSocial);
 
         JButton btnGuardar  = new JButton("Guardar");
         JButton btnEliminar = new JButton("Eliminar");
@@ -168,7 +170,8 @@ public class PanelPaciente extends JPanel {
                             campApellido.getText(),
                             Integer.parseInt(campDni.getText()),
                             campEmail.getText(),
-                            domicilio
+                            domicilio,
+                            chkObraSocial.isSelected()
                     );
                     JOptionPane.showMessageDialog(null, "Paciente guardado correctamente");
                 } else {
@@ -177,7 +180,8 @@ public class PanelPaciente extends JPanel {
                             campNombre.getText(),
                             campApellido.getText(),
                             campEmail.getText(),
-                            domicilio
+                            domicilio,
+                            chkObraSocial.isSelected()
                     );
                     JOptionPane.showMessageDialog(null, "Paciente actualizado correctamente");
                 }
@@ -272,10 +276,16 @@ public class PanelPaciente extends JPanel {
         modeloTabla.setRowCount(0);
         List<Paciente> lista = controlador.listarTodos();
         for (Paciente p : lista) {
-            modeloTabla.addRow(new Object[]{
-                    p.getId(), p.getNombre(), p.getApellido(), p.getDni(), p.getEmail()
-            });
+            modeloTabla.addRow(crearFila(p));
         }
+    }
+
+    // arma la fila de la tabla para un paciente (la usan refrescarTabla y la busqueda por DNI)
+    private Object[] crearFila(Paciente p) {
+        return new Object[]{
+                p.getId(), p.getNombre(), p.getApellido(), p.getDni(), p.getEmail(),
+                p.tieneObraSocial() ? "Sí" : "No"
+        };
     }
 
     private void limpiarFormulario() {
@@ -289,5 +299,6 @@ public class PanelPaciente extends JPanel {
         campLocalidad.setText("");
         campProvincia.setText("");
         combTipoHogar.setSelectedIndex(0);
+        chkObraSocial.setSelected(false);
     }
 }

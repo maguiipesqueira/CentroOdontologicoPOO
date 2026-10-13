@@ -19,12 +19,6 @@ public class ServicioPaciente {
         this.repositorio = repositorio;
     }
 
-    // TEMPORAL (se borra en la Etapa 2): version vieja sin obra social, la deja en false
-    public Paciente registrarPaciente(String nombre, String apellido, int dni, String email,
-                                      Domicilio domicilio) throws DatoInvalidoException {
-        return registrarPaciente(nombre, apellido, dni, email, domicilio, false);
-    }
-
     // registra un paciente tirando error si los datos fallan o el DNI ya existe
     public Paciente registrarPaciente(String nombre, String apellido, int dni, String email,
                                       Domicilio domicilio, boolean tieneObraSocial) throws DatoInvalidoException {
@@ -84,14 +78,6 @@ public class ServicioPaciente {
         return repositorio.listarTodos().stream()
                 .sorted((p1, p2) -> p1.getApellido().compareToIgnoreCase(p2.getApellido()))
                 .collect(Collectors.toList());
-    }
-
-    // TEMPORAL (se borra en la Etapa 2): version vieja, no toca la obra social que ya tenia el paciente
-    public Paciente actualizarPaciente(long id, String nombre, String apellido,
-                                       String email, Domicilio domicilio)
-            throws PacienteNoEncontradoException, DatoInvalidoException {
-        Paciente paciente = buscarPorId(id);
-        return actualizarPaciente(id, nombre, apellido, email, domicilio, paciente.tieneObraSocial());
     }
 
     // actualiza los datos si encuentra el id o tira error
