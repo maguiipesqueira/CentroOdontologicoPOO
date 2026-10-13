@@ -12,9 +12,10 @@ public class Paciente {
     private String email;
     private LocalDate fechaAlta;
     private Domicilio domicilio;
+    private boolean tieneObraSocial; // define si accede al 30% de descuento en la facturacion
 
-    // constructor con domicilio
-    public Paciente(long id, String nombre, String apellido, int dni, String email, LocalDate fechaAlta, Domicilio domicilio) {
+    // constructor con domicilio y obra social
+    public Paciente(long id, String nombre, String apellido, int dni, String email, LocalDate fechaAlta, Domicilio domicilio, boolean tieneObraSocial) {
         this.id = id;
         this.nombre = nombre;
         this.apellido = apellido;
@@ -22,6 +23,7 @@ public class Paciente {
         this.email = email;
         this.fechaAlta = fechaAlta;
         this.domicilio = domicilio;
+        this.tieneObraSocial = tieneObraSocial;
     }
 
     // constructor sin domicilio
@@ -50,6 +52,8 @@ public class Paciente {
     public LocalDate getFechaAlta() { return fechaAlta; }
     // devuelve el domicilio
     public Domicilio getDomicilio() { return domicilio; }
+    // devuelve si tiene obra social
+    public boolean tieneObraSocial() { return tieneObraSocial; }
 
     // cambia el id
     public void setId(long id) { this.id = id; }
@@ -65,6 +69,8 @@ public class Paciente {
     public void setFechaAlta(LocalDate fechaAlta) { this.fechaAlta = fechaAlta; }
     // cambia el domicilio
     public void setDomicilio(Domicilio domicilio) { this.domicilio = domicilio; }
+    // cambia si tiene obra social
+    public void setTieneObraSocial(boolean tieneObraSocial) { this.tieneObraSocial = tieneObraSocial; }
 
     // junta nombre y apellido en un string
     public String getNombreCompleto() {
@@ -98,6 +104,7 @@ public class Paciente {
     public String toString() {
         String dom = (domicilio != null) ? domicilio.toString() : "Sin domicilio";
         return "Paciente ID: " + id + " | " + getNombreCompleto() +
-               " | DNI: " + dni + " | Email: " + email + " | Domicilio: " + dom;
+                " | DNI: " + dni + " | Email: " + email + " | Domicilio: " + dom +
+                " | Obra social: " + (tieneObraSocial ? "Sí" : "No");
     }
 }

@@ -79,9 +79,11 @@ public class VistaPaciente {
 
         Domicilio domicilio = new Domicilio(calle, numero, localidad, provincia, tipoHogar);
 
+        boolean tieneObraSocial = leerSiNo("¿Tiene obra social? (S/N): ");
+
         // captura errores de formato o dni duplicado
         try {
-            Paciente paciente = controlador.registrarPaciente(nombre, apellido, dni, email, domicilio);
+            Paciente paciente = controlador.registrarPaciente(nombre, apellido, dni, email, domicilio, tieneObraSocial);
 
             if (paciente != null) {
                 System.out.println("Paciente registrado: " + paciente);
@@ -147,9 +149,11 @@ public class VistaPaciente {
         System.out.print("Nuevo email: ");
         String email = scanner.nextLine().trim();
 
+        boolean tieneObraSocial = leerSiNo("¿Tiene obra social? (S/N): ");
+
         // captura errores de id inexistente o datos incorrectos
         try {
-            Paciente paciente = controlador.actualizarPaciente(id, nombre, apellido, email, null);
+            Paciente paciente = controlador.actualizarPaciente(id, nombre, apellido, email, null, tieneObraSocial);
 
             if (paciente != null) {
                 System.out.println("Paciente actualizado: " + paciente);
@@ -192,6 +196,18 @@ public class VistaPaciente {
             } catch (NumberFormatException e) {
                 System.out.print("Ingrese un número válido: ");
             }
+        }
+    }
+
+    // pregunta hasta que se responda S o N
+    private boolean leerSiNo(String mensaje) {
+        while (true) {
+            System.out.print(mensaje);
+            String texto = scanner.nextLine().trim().toUpperCase();
+
+            if (texto.equals("S")) return true;
+            if (texto.equals("N")) return false;
+            System.out.println("Responda S o N.");
         }
     }
 

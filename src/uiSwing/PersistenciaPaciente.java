@@ -24,7 +24,8 @@ public class PersistenciaPaciente {
                         p.getApellido() + "," +
                         p.getDni() + "," +
                         p.getEmail() + "," +
-                        p.getFechaAlta();
+                        p.getFechaAlta() + "," +
+                        p.tieneObraSocial();
 
                 // si tiene domicilio lo agrega al final
                 if (p.tieneDomicilio()) {
@@ -62,17 +63,28 @@ public class PersistenciaPaciente {
                     String email = partes[4];
                     LocalDate fechaAlta = LocalDate.parse(partes[5]);
 
+                    // formato nuevo: ...,fechaAlta,tieneObraSocial[,calle,numero,localidad,provincia,hogar]
+                    // formato viejo (6 u 11 columnas): sin obra social, el domicilio arranca en la columna 6
+                    boolean formatoViejo = partes.length == 6 || partes.length == 11;
+                    boolean tieneObraSocial = false;
+                    int inicioDomicilio = 6;
+
+                    if (!formatoViejo) {
+                        tieneObraSocial = Boolean.parseBoolean(partes[6]);
+                        inicioDomicilio = 7;
+                    }
+
                     Domicilio domicilio = null;
-                    if (partes.length > 6) {
-                        String calle = partes[6];
-                        int numero = Integer.parseInt(partes[7]);
-                        String localidad = partes[8];
-                        String provincia = partes[9];
-                        TipoHogar hogar = TipoHogar.valueOf(partes[10]);
+                    if (partes.length > inicioDomicilio) {
+                        String calle = partes[inicioDomicilio];
+                        int numero = Integer.parseInt(partes[inicioDomicilio + 1]);
+                        String localidad = partes[inicioDomicilio + 2];
+                        String provincia = partes[inicioDomicilio + 3];
+                        TipoHogar hogar = TipoHogar.valueOf(partes[inicioDomicilio + 4]);
                         domicilio = new Domicilio(calle, numero, localidad, provincia, hogar);
                     }
 
-                    Paciente p = new Paciente(id, nombre, apellido, dni, email, fechaAlta, domicilio);
+                    Paciente p = new Paciente(id, nombre, apellido, dni, email, fechaAlta, domicilio, tieneObraSocial);
                     servicio.getRepositorio().guardar(p);
 
                 } catch (Exception e) {

@@ -19,9 +19,15 @@ public class ServicioPaciente {
         this.repositorio = repositorio;
     }
 
-    // registra un paciente tirando error si los datos fallan o el DNI ya existe
+    // TEMPORAL (se borra en la Etapa 2): version vieja sin obra social, la deja en false
     public Paciente registrarPaciente(String nombre, String apellido, int dni, String email,
                                       Domicilio domicilio) throws DatoInvalidoException {
+        return registrarPaciente(nombre, apellido, dni, email, domicilio, false);
+    }
+
+    // registra un paciente tirando error si los datos fallan o el DNI ya existe
+    public Paciente registrarPaciente(String nombre, String apellido, int dni, String email,
+                                      Domicilio domicilio, boolean tieneObraSocial) throws DatoInvalidoException {
 
         validarNombreApellido(nombre, apellido);
         validarDni(dni);
@@ -42,7 +48,7 @@ public class ServicioPaciente {
         long nuevoId = maxId + 1;
 
         Paciente nuevo = new Paciente(nuevoId, nombre, apellido, dni, email,
-                LocalDate.now(), domicilio);
+                LocalDate.now(), domicilio, tieneObraSocial);
 
         repositorio.guardar(nuevo);
         return nuevo;
@@ -80,9 +86,17 @@ public class ServicioPaciente {
                 .collect(Collectors.toList());
     }
 
-    // actualiza los datos si encuentra el id o tira error
+    // TEMPORAL (se borra en la Etapa 2): version vieja, no toca la obra social que ya tenia el paciente
     public Paciente actualizarPaciente(long id, String nombre, String apellido,
                                        String email, Domicilio domicilio)
+            throws PacienteNoEncontradoException, DatoInvalidoException {
+        Paciente paciente = buscarPorId(id);
+        return actualizarPaciente(id, nombre, apellido, email, domicilio, paciente.tieneObraSocial());
+    }
+
+    // actualiza los datos si encuentra el id o tira error
+    public Paciente actualizarPaciente(long id, String nombre, String apellido,
+                                       String email, Domicilio domicilio, boolean tieneObraSocial)
             throws PacienteNoEncontradoException, DatoInvalidoException {
 
         Paciente paciente = buscarPorId(id);
@@ -93,6 +107,7 @@ public class ServicioPaciente {
         paciente.setNombre(nombre);
         paciente.setApellido(apellido);
         paciente.setEmail(email);
+        paciente.setTieneObraSocial(tieneObraSocial);
 
         if (domicilio != null) {
             paciente.setDomicilio(domicilio);

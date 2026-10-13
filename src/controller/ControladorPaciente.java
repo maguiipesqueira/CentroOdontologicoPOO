@@ -16,9 +16,14 @@ public class ControladorPaciente {
         this.servicio = servicio;
     }
 
-    // registra dejando pasar el error de datos
+    // TEMPORAL (se borra en la Etapa 2): version vieja sin obra social
     public Paciente registrarPaciente(String nombre, String apellido, int dni, String email, Domicilio domicilio) throws DatoInvalidoException {
         return servicio.registrarPaciente(nombre, apellido, dni, email, domicilio);
+    }
+
+    // registra dejando pasar el error de datos
+    public Paciente registrarPaciente(String nombre, String apellido, int dni, String email, Domicilio domicilio, boolean tieneObraSocial) throws DatoInvalidoException {
+        return servicio.registrarPaciente(nombre, apellido, dni, email, domicilio, tieneObraSocial);
     }
 
     // busca dejando pasar el error si no existe id
@@ -41,9 +46,14 @@ public class ControladorPaciente {
         return servicio.listarPacientesOrdenadosPorApellido();
     }
 
-    // actualiza dejando pasar los errores de no encontrado o dato malo
+    // TEMPORAL (se borra en la Etapa 2): version vieja, no toca la obra social
     public Paciente actualizarPaciente(long id, String nombre, String apellido, String email, Domicilio domicilio) throws PacienteNoEncontradoException, DatoInvalidoException {
         return servicio.actualizarPaciente(id, nombre, apellido, email, domicilio);
+    }
+
+    // actualiza dejando pasar los errores de no encontrado o dato malo
+    public Paciente actualizarPaciente(long id, String nombre, String apellido, String email, Domicilio domicilio, boolean tieneObraSocial) throws PacienteNoEncontradoException, DatoInvalidoException {
+        return servicio.actualizarPaciente(id, nombre, apellido, email, domicilio, tieneObraSocial);
     }
 
     // elimina dejando pasar el error si el id no existe

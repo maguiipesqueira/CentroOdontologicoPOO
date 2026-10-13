@@ -1,0 +1,3 @@
+1,General,Magali,Pesqueira,1131,LIMPIEZA
+2,Ortodoncista,Nahuel,Torres,2245,BRACKETS_METALICOS
+3,Cirujano,Blas,Pesce,3367,EXTRACCION_MUELA

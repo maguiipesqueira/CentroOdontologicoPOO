@@ -48,16 +48,16 @@ public class Main {
         } else {
             try {
                 Domicilio domicilioFati = new Domicilio("Necochea", 581, "Lobos", "Buenos Aires", TipoHogar.CASA);
-                servPaciente.registrarPaciente("Fatima", "Persi", 46113226, "fatimap@gmail.com", domicilioFati);
+                servPaciente.registrarPaciente("Fatima", "Persi", 46113226, "fatimap@gmail.com", domicilioFati, true);
 
                 Domicilio domicilioTomi = new Domicilio("Gaboto", 849, "La Tablada, La Matanza", "Buenos Aires", TipoHogar.CASA);
-                servPaciente.registrarPaciente("Tomas", "Barea", 46443494, "tomybareadiaz@gmail.com", domicilioTomi);
+                servPaciente.registrarPaciente("Tomas", "Barea", 46443494, "tomybareadiaz@gmail.com", domicilioTomi, false);
 
                 Domicilio domicilioMaria = new Domicilio("San Martin", 1200, "Moron", "Buenos Aires", TipoHogar.DEPARTAMENTO);
-                servPaciente.registrarPaciente("Maria", "Garcia", 38221456, "mariagarcia@gmail.com", domicilioMaria);
+                servPaciente.registrarPaciente("Maria", "Garcia", 38221456, "mariagarcia@gmail.com", domicilioMaria, true);
 
                 Domicilio domicilioLucas = new Domicilio("Belgrano", 430, "San Justo", "Buenos Aires", TipoHogar.CASA);
-                servPaciente.registrarPaciente("Lucas", "Fernandez", 41789632, "lucasfernandez@gmail.com", domicilioLucas);
+                servPaciente.registrarPaciente("Lucas", "Fernandez", 41789632, "lucasfernandez@gmail.com", domicilioLucas, false);
 
                 Odontologo o1 = new General(1L, "Magali", "Pesqueira", 1131, TipoConsulta.LIMPIEZA);
                 servOdontologo.registrarOdontologo(o1);
