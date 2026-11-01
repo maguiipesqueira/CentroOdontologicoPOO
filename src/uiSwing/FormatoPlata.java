@@ -1,22 +1,37 @@
 package uiSwing;
 
+import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 
-// da formato de pesos argentinos a un importe (ej "$ 15.000"), para que todas las pantallas muestren la plata igual
-public class FormatoPlata {
+/** Formateador centralizado de importes en pesos argentinos. */
+public final class FormatoPlata {
 
-    private static final DecimalFormat FORMATO =
-            new DecimalFormat("$ #,##0.##", new DecimalFormatSymbols(Locale.forLanguageTag("es-AR")));
+    private static final ThreadLocal<DecimalFormat> FORMATO = ThreadLocal.withInitial(() ->
+            new DecimalFormat("$ #,##0.##", new DecimalFormatSymbols(Locale.forLanguageTag("es-AR"))));
 
-    // devuelve el importe formateado
+    private FormatoPlata() { }
+
     public static String formatear(double monto) {
-        return FORMATO.format(monto);
+        return formatear(BigDecimal.valueOf(monto));
     }
 
-    // devuelve el importe de un descuento con signo menos (si es cero lo deja sin signo)
+    public static String formatear(BigDecimal monto) {
+        if (monto == null) {
+            throw new IllegalArgumentException("El importe no puede ser null.");
+        }
+        return FORMATO.get().format(monto);
+    }
+
     public static String formatearDescuento(double monto) {
-        return monto > 0 ? "-" + FORMATO.format(monto) : FORMATO.format(monto);
+        return formatearDescuento(BigDecimal.valueOf(monto));
+    }
+
+    public static String formatearDescuento(BigDecimal monto) {
+        if (monto == null) {
+            throw new IllegalArgumentException("El descuento no puede ser null.");
+        }
+        return monto.signum() > 0 ? "-" + formatear(monto) : formatear(monto);
     }
 }

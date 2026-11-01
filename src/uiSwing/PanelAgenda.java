@@ -124,8 +124,8 @@ public class PanelAgenda extends JPanel {
 
     // crea el bloquecito de color dentro de la celda, con apellido del paciente y motivo de consulta
     private JPanel crearBloque(Turno turno) {
-        Color fondo = obtenerColorFondo(turno.getEstado());
-        Color borde = obtenerColorBorde(turno.getEstado());
+        Color fondo = PaletaEstadoTurno.fondo(turno.getEstado());
+        Color borde = PaletaEstadoTurno.borde(turno.getEstado());
 
         JPanel bloque = new JPanel();
         bloque.setLayout(new BoxLayout(bloque, BoxLayout.Y_AXIS));
@@ -146,34 +146,6 @@ public class PanelAgenda extends JPanel {
         bloque.add(lblTipo);
 
         return bloque;
-    }
-
-    // color de fondo del bloque segun el estado del turno (misma paleta que EstadoTurnoCellRenderer)
-    private Color obtenerColorFondo(EstadoTurno estado) {
-        if (estado == EstadoTurno.PENDIENTE) {
-            return new Color(254, 243, 199);
-        } else if (estado == EstadoTurno.CONFIRMADO) {
-            return new Color(224, 242, 254);
-        } else if (estado == EstadoTurno.COMPLETADO) {
-            return new Color(209, 250, 229);
-        } else {
-            // CANCELADO
-            return new Color(255, 228, 230);
-        }
-    }
-
-    // color del borde izquierdo del bloque segun el estado del turno
-    private Color obtenerColorBorde(EstadoTurno estado) {
-        if (estado == EstadoTurno.PENDIENTE) {
-            return new Color(245, 158, 11);
-        } else if (estado == EstadoTurno.CONFIRMADO) {
-            return new Color(14, 165, 233);
-        } else if (estado == EstadoTurno.COMPLETADO) {
-            return new Color(5, 150, 105);
-        } else {
-            // CANCELADO
-            return new Color(190, 18, 60);
-        }
     }
 
     // cuenta los turnos de la semana visible y actualiza las tarjetas de arriba (Turnos hoy / Pendientes / Confirmados / Completados / Cancelados)

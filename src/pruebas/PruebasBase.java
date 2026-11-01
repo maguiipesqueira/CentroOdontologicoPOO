@@ -27,6 +27,9 @@ import service.HorarioAtencion;
 import service.Tarifario;
 import persistence.*;
 import uiSwing.TextoMotivo;
+import uiSwing.FormatoPlata;
+import uiSwing.PaletaEstadoTurno;
+import uiSwing.ComprobanteFactura;
 import ui.LectorConsola;
 import ui.MenuConsola;
 import ui.OpcionMenu;
@@ -84,6 +87,7 @@ public class PruebasBase {
         v.seccion("Persistencia de facturas", PruebasBase::persistenciaFacturas);
         v.seccion("Persistencia integrada y rutas configurables", PruebasBase::persistenciaIntegrada);
         v.seccion("UI consola: lecturas y comandos", PruebasBase::uiConsola);
+        v.seccion("Swing: piezas compartidas", PruebasBase::uiSwingCompartida);
         boolean ok = v.resumen();
         System.exit(ok ? 0 : 1);
     }
@@ -1297,6 +1301,35 @@ public class PruebasBase {
         v.igual("PersistenciaClinica carga odontólogos", 1, ro2.listarTodos().size());
         v.igual("PersistenciaClinica carga turnos después de las personas", 1, rt2.listarTodos().size());
         v.igual("PersistenciaClinica carga facturas al final", 1, rf2.listarTodos().size());
+    }
+
+
+    // ------------------------------------------------------------------ Swing: piezas compartidas (etapa 26)
+
+    private static void uiSwingCompartida() {
+        v.igual("paleta pendiente del renderer", PaletaEstadoTurno.fondo(EstadoTurno.PENDIENTE),
+                new java.awt.Color(254, 243, 199));
+        v.igual("paleta completado de la agenda", PaletaEstadoTurno.borde(EstadoTurno.COMPLETADO),
+                new java.awt.Color(5, 150, 105));
+        v.igual("paleta AUSENTE definida", new java.awt.Color(237, 233, 254),
+                PaletaEstadoTurno.fondo(EstadoTurno.AUSENTE));
+        v.verdadero("AUSENTE tiene borde distinto de CANCELADO",
+                !PaletaEstadoTurno.borde(EstadoTurno.AUSENTE).equals(PaletaEstadoTurno.borde(EstadoTurno.CANCELADO)));
+        v.igual("paleta nula usa estilo neutro", java.awt.Color.WHITE, PaletaEstadoTurno.fondo(null));
+
+        v.igual("formato pesos enteros", "$ 15.000", FormatoPlata.formatear(15000));
+        v.igual("formato BigDecimal conserva decimales locales", "$ 15.000,5",
+                FormatoPlata.formatear(new BigDecimal("15000.50")));
+        v.igual("descuento positivo lleva signo menos", "-$ 1.500", FormatoPlata.formatearDescuento(1500));
+        v.igual("descuento cero no lleva signo", "$ 0", FormatoPlata.formatearDescuento(0));
+
+
+        Factura factura = factura(77, 8, 3, "Ana Pérez", "LIMPIEZA", LocalDate.of(2026, 11, 1),
+                "EFECTIVO", 15000, 0, 1500, 13500);
+        String comprobante = ComprobanteFactura.armarTexto(factura, List.of(new Efectivo()));
+        v.verdadero("armado de comprobante incluye paciente", comprobante.contains("Paciente: Ana Pérez"));
+        v.verdadero("armado de comprobante incluye medio legible", comprobante.contains("Medio de pago: Efectivo"));
+        v.verdadero("armado de comprobante incluye total", comprobante.contains(FormatoPlata.formatear(13500)));
     }
 
     // ------------------------------------------------------------------ utilidades de prueba

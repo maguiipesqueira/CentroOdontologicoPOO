@@ -19,7 +19,7 @@ public class ComprobanteFactura {
     }
 
     // arma el texto del comprobante: datos de la factura y el desglose de importes
-    private static String armarTexto(Factura f, java.util.List<pago.MedioPago> mediosPago) {
+    public static String armarTexto(Factura f, java.util.List<pago.MedioPago> mediosPago) {
         StringBuilder sb = new StringBuilder();
         sb.append("CENTRO ODONTOLOGICO \"SONRISA FELIZ\"\n");
         sb.append("Factura N° ").append(f.getId()).append("\n");
