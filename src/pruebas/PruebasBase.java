@@ -34,8 +34,11 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * ETAPA 14 - Red de seguridad.
@@ -54,6 +57,7 @@ public class PruebasBase {
     public static void main(String[] args) throws Exception {
         Path respaldo = respaldarArchivos();
         try {
+            v.seccion("Entidades: enums y Domicilio (Etapa 15)", PruebasBase::enumsYDomicilio);
             v.seccion("Pacientes (servicio)", PruebasBase::pacientes);
             v.seccion("Odontologos (servicio)", PruebasBase::odontologos);
             v.seccion("Turnos (servicio)", PruebasBase::turnos);
@@ -71,6 +75,73 @@ public class PruebasBase {
         }
         boolean ok = v.resumen();
         System.exit(ok ? 0 : 1);
+    }
+
+    // ------------------------------------------------------------------ enums y Domicilio (etapa 15)
+
+    private static void enumsYDomicilio() {
+        // los tres enums de tratamiento comparten la interfaz MotivoConsulta
+        List<MotivoConsulta> motivos = new ArrayList<>();
+        motivos.addAll(List.of(TipoConsulta.values()));
+        motivos.addAll(List.of(TipoCirugia.values()));
+        motivos.addAll(List.of(TipoOrtodoncia.values()));
+        v.igual("hay 10 motivos de consulta", 10, motivos.size());
+
+        Set<String> legibles = motivos.stream().map(MotivoConsulta::getNombreLegible).collect(Collectors.toSet());
+        v.igual("cada motivo tiene un nombre legible distinto", 10, legibles.size());
+        v.verdadero("ningun nombre legible esta vacio",
+                motivos.stream().noneMatch(m -> m.getNombreLegible() == null || m.getNombreLegible().isBlank()));
+        v.verdadero("el nombre legible se muestra con mayuscula inicial y sin guiones bajos",
+                motivos.stream().allMatch(m -> !m.getNombreLegible().contains("_")
+                        && Character.isUpperCase(m.getNombreLegible().charAt(0))));
+        v.igual("legible: EXTRACCION_MUELA", "Extracción de muela", TipoCirugia.EXTRACCION_MUELA.getNombreLegible());
+        v.igual("legible: BRACKETS_CERAMICOS", "Brackets cerámicos", TipoOrtodoncia.BRACKETS_CERAMICOS.getNombreLegible());
+        v.igual("legible: LIMPIEZA", "Limpieza", TipoConsulta.LIMPIEZA.getNombreLegible());
+
+        // el nombre tecnico no cambia: lo usan los archivos .txt y el Tarifario
+        v.igual("toString de un motivo sigue siendo el nombre tecnico", "EXTRACCION_MUELA", TipoCirugia.EXTRACCION_MUELA.toString());
+        v.igual("name() desde la interfaz", "IMPLANTE", ((MotivoConsulta) TipoCirugia.IMPLANTE).name());
+
+        // tipo de hogar
+        v.igual("legible: CASA", "Casa", TipoHogar.CASA.getNombreLegible());
+        v.igual("legible: DEPARTAMENTO", "Departamento", TipoHogar.DEPARTAMENTO.getNombreLegible());
+        v.igual("legible: PH", "PH", TipoHogar.PH.getNombreLegible());
+        v.igual("TipoHogar mantiene sus 3 valores", 3, TipoHogar.values().length);
+
+        // estados del turno: la urgencia ya no es un estado
+        v.igual("EstadoTurno: valores del ciclo de vida",
+                List.of("PENDIENTE", "CONFIRMADO", "CANCELADO", "COMPLETADO"),
+                List.of(EstadoTurno.values()).stream().map(Enum::name).collect(Collectors.toList()));
+        v.igual("legible: PENDIENTE", "Pendiente", EstadoTurno.PENDIENTE.getNombreLegible());
+        v.igual("legible: COMPLETADO", "Completado", EstadoTurno.COMPLETADO.getNombreLegible());
+        v.igual("la urgencia sigue existiendo como motivo", "URGENCIA", TipoConsulta.URGENCIA.name());
+
+        // domicilio
+        Domicilio d = new Domicilio("Necochea", 581, "Lobos", "Buenos Aires", TipoHogar.CASA);
+        v.igual("direccion completa", "Necochea 581, Lobos, Buenos Aires", d.obtenerDireccionCompleta());
+        v.igual("toString", "Necochea 581 (Lobos, Buenos Aires)", d.toString());
+        v.verdadero("esDeProvincia ignora mayusculas", d.esDeProvincia("buenos aires"));
+        v.verdadero("esDeProvincia distingue provincias", !d.esDeProvincia("Cordoba"));
+        v.verdadero("esDeProvincia con null da false", !d.esDeProvincia(null));
+        v.igual("dos domicilios con los mismos datos son iguales", d,
+                new Domicilio("Necochea", 581, "Lobos", "Buenos Aires", TipoHogar.CASA));
+        v.igual("y tienen el mismo hashCode", d.hashCode(),
+                new Domicilio("Necochea", 581, "Lobos", "Buenos Aires", TipoHogar.CASA).hashCode());
+        v.verdadero("distinto numero: no son iguales",
+                !d.equals(new Domicilio("Necochea", 582, "Lobos", "Buenos Aires", TipoHogar.CASA)));
+        v.verdadero("distinto tipo de hogar: no son iguales",
+                !d.equals(new Domicilio("Necochea", 581, "Lobos", "Buenos Aires", TipoHogar.PH)));
+        v.lanza("calle nula", NullPointerException.class,
+                () -> new Domicilio(null, 1, "L", "P", TipoHogar.CASA));
+        v.lanza("localidad nula", NullPointerException.class,
+                () -> new Domicilio("C", 1, null, "P", TipoHogar.CASA));
+        v.lanza("provincia nula", NullPointerException.class,
+                () -> new Domicilio("C", 1, "L", null, TipoHogar.CASA));
+        v.lanza("tipo de hogar nulo", NullPointerException.class,
+                () -> new Domicilio("C", 1, "L", "P", null));
+        v.verdadero("no hay forma de crear un domicilio vacio ni de modificarlo",
+                Domicilio.class.getConstructors().length == 1
+                        && java.util.Arrays.stream(Domicilio.class.getMethods()).noneMatch(m -> m.getName().startsWith("set")));
     }
 
     // ------------------------------------------------------------------ pacientes

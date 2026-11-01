@@ -156,11 +156,9 @@ public class PanelAgenda extends JPanel {
             return new Color(224, 242, 254);
         } else if (estado == EstadoTurno.COMPLETADO) {
             return new Color(209, 250, 229);
-        } else if (estado == EstadoTurno.CANCELADO) {
-            return new Color(255, 228, 230);
         } else {
-            // URGENTE
-            return new Color(237, 233, 254);
+            // CANCELADO
+            return new Color(255, 228, 230);
         }
     }
 
@@ -172,11 +170,9 @@ public class PanelAgenda extends JPanel {
             return new Color(14, 165, 233);
         } else if (estado == EstadoTurno.COMPLETADO) {
             return new Color(5, 150, 105);
-        } else if (estado == EstadoTurno.CANCELADO) {
-            return new Color(190, 18, 60);
         } else {
-            // URGENTE
-            return new Color(124, 58, 237);
+            // CANCELADO
+            return new Color(190, 18, 60);
         }
     }
 

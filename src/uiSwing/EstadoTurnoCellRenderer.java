@@ -34,9 +34,6 @@ public class EstadoTurnoCellRenderer extends DefaultTableCellRenderer {
         } else if (estado.equals(EstadoTurno.CANCELADO.name())) {
             celda.setBackground(new Color(255, 228, 230));
             celda.setForeground(new Color(136, 19, 55));
-        } else if (estado.equals(EstadoTurno.URGENTE.name())) {
-            celda.setBackground(new Color(237, 233, 254));
-            celda.setForeground(new Color(91, 33, 182));
         } else {
             celda.setBackground(Color.WHITE);
             celda.setForeground(new Color(15, 23, 42));
