@@ -29,8 +29,8 @@ public class ServicioFactura {
     private final CalculadorMonto calculador;
     private final List<MedioPago> mediosPago;
 
-    // recibe sus colaboradores ya armados (los crea el Main). Los medios de pago llegan como lista de la interfaz,
-    // asi este servicio no conoce ninguno en particular
+    // Recibe sus colaboradores ya construidos; los medios de pago llegan por la interfaz
+    // para no depender de implementaciones concretas.
     public ServicioFactura(RepositorioFactura repositorio, ServicioTurno servicioTurno, Tarifario tarifario,
                            CalculadorMonto calculador, List<MedioPago> mediosPago) {
         this.repositorio = repositorio;

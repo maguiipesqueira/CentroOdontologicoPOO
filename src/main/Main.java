@@ -1,161 +1,25 @@
 package main;
 
-import entity.*;
-import controller.ControladorFactura;
-import controller.ControladorOdontologo;
-import controller.ControladorPaciente;
-import controller.ControladorTurno;
-import pago.Efectivo;
-import pago.MedioPago;
-import pago.MercadoPago;
-import pago.Tarjeta;
-import repository.RepositorioFactura;
-import repository.RepositorioOdontologo;
-import repository.RepositorioPaciente;
-import repository.RepositorioTurno;
-import service.CalculadorMonto;
-import service.ServicioFactura;
-import service.ServicioOdontologo;
-import service.ServicioPaciente;
-import service.ServicioTurno;
-import service.Tarifario;
-import ui.VistaOdontologo;
-import ui.VistaPaciente;
-import ui.VistaPrincipal;
-import ui.VistaTurno;
-import uiSwing.VentanaPrincipal;
-import persistence.PersistenciaClinica;
+import javax.swing.SwingUtilities;
 import java.nio.file.Path;
-import java.nio.file.Files;
+import java.util.Arrays;
 
-import javax.swing.*;
-import java.util.List;
-import java.util.Scanner;
+/** Punto de entrada: selecciona el modo de interfaz y delega el armado de dependencias. */
+public final class Main {
 
-public class Main {
+    private Main() {
+    }
 
     public static void main(String[] args) {
-
-        Scanner scanner = new Scanner(System.in);
-
-        RepositorioPaciente repoPaciente = new RepositorioPaciente();
-        RepositorioOdontologo repoOdontologo = new RepositorioOdontologo();
-        RepositorioTurno repoTurno = new RepositorioTurno();
-        RepositorioFactura repoFactura = new RepositorioFactura();
-
-        ServicioPaciente servPaciente = new ServicioPaciente(repoPaciente, repoTurno);
-        ServicioOdontologo servOdontologo = new ServicioOdontologo(repoOdontologo, repoTurno);
-        ServicioTurno servTurno = new ServicioTurno(repoTurno);
-
-        // modulo de facturacion: los medios de pago se arman aca, un medio nuevo es una clase nueva y una entrada en esta lista
-        List<MedioPago> mediosPago = List.of(new MercadoPago(), new Tarjeta(), new Efectivo());
-        ServicioFactura servFactura = new ServicioFactura(repoFactura, servTurno, new Tarifario(), new CalculadorMonto(), mediosPago);
-
-        ControladorPaciente ctrlPaciente = new ControladorPaciente(servPaciente);
-        ControladorOdontologo ctrlOdontologo = new ControladorOdontologo(servOdontologo);
-        ControladorTurno ctrlTurno = new ControladorTurno(servTurno, servPaciente, servOdontologo);
-        ControladorFactura ctrlFactura = new ControladorFactura(servFactura);
-
-        // La carpeta puede configurarse con -Dclinica.data.dir=/ruta/a/datos.
         Path directorioDatos = Path.of(System.getProperty("clinica.data.dir", "."));
-        PersistenciaClinica persistencia = new PersistenciaClinica(directorioDatos, repoPaciente,
-                repoOdontologo, repoTurno, repoFactura, servFactura::codigoMedioPago);
+        ContextoAplicacion contexto = ConfiguradorAplicacion.crear(directorioDatos);
 
-        // Si ya hay archivos, se cargan en orden de dependencias; de lo contrario se crean datos de ejemplo.
-        if (Files.exists(directorioDatos.resolve("pacientes.txt"))
-                || Files.exists(directorioDatos.resolve("odontologos.txt"))
-                || Files.exists(directorioDatos.resolve("turnos.txt"))
-                || Files.exists(directorioDatos.resolve("facturas.txt"))) {
-            try {
-                persistencia.cargar();
-            } catch (java.io.IOException e) {
-                System.err.println("No se pudieron cargar los datos: " + e.getMessage());
-            }
-        } else {
-            try {
-                Domicilio domicilioFati = new Domicilio("Necochea", 581, "Lobos", "Buenos Aires", TipoHogar.CASA);
-                servPaciente.registrarPaciente("Fatima", "Persi", 46113226, "fatimap@gmail.com", domicilioFati, true);
-
-                Domicilio domicilioTomi = new Domicilio("Gaboto", 849, "La Tablada, La Matanza", "Buenos Aires", TipoHogar.CASA);
-                servPaciente.registrarPaciente("Tomas", "Barea", 46443494, "tomybareadiaz@gmail.com", domicilioTomi, false);
-
-                Domicilio domicilioMaria = new Domicilio("San Martin", 1200, "Moron", "Buenos Aires", TipoHogar.DEPARTAMENTO);
-                servPaciente.registrarPaciente("Maria", "Garcia", 38221456, "mariagarcia@gmail.com", domicilioMaria, true);
-
-                Domicilio domicilioLucas = new Domicilio("Belgrano", 430, "San Justo", "Buenos Aires", TipoHogar.CASA);
-                servPaciente.registrarPaciente("Lucas", "Fernandez", 41789632, "lucasfernandez@gmail.com", domicilioLucas, false);
-
-                Odontologo o1 = new General(1L, "Magali", "Pesqueira", 1131, TipoConsulta.LIMPIEZA);
-                servOdontologo.registrarOdontologo(o1);
-
-                Odontologo o2 = new Ortodoncista(2L, "Nahuel", "Torres", 2245, TipoOrtodoncia.BRACKETS_METALICOS);
-                servOdontologo.registrarOdontologo(o2);
-
-                Odontologo o3 = new Cirujano(3L, "Blas", "Pesce", 3367, TipoCirugia.EXTRACCION_MUELA);
-                servOdontologo.registrarOdontologo(o3);
-
-                // turnos de prueba solo la primera vez
-                java.time.LocalDate hoy = java.time.LocalDate.now();
-                java.time.LocalDate lunesEstaSemana = hoy.with(java.time.DayOfWeek.MONDAY);
-                if (hoy.getDayOfWeek() == java.time.DayOfWeek.SATURDAY || hoy.getDayOfWeek() == java.time.DayOfWeek.SUNDAY) {
-                    lunesEstaSemana = lunesEstaSemana.plusWeeks(1);
-                }
-                java.time.LocalDate lunesSemanaSiguiente = lunesEstaSemana.plusWeeks(1);
-                java.time.LocalDate lunesSemanaSubsiguiente = lunesEstaSemana.plusWeeks(2);
-
-                Turno t1 = ctrlTurno.registrarTurno(1L, 1L, lunesEstaSemana, java.time.LocalTime.of(9, 0), TipoConsulta.LIMPIEZA);
-                Turno t2 = ctrlTurno.registrarTurno(2L, 1L, lunesEstaSemana.plusDays(1), java.time.LocalTime.of(11, 0), TipoConsulta.CONTROL);
-                ctrlTurno.confirmarTurno(t2.getId());
-                Turno t3 = ctrlTurno.registrarTurno(1L, 2L, lunesEstaSemana.plusDays(2), java.time.LocalTime.of(10, 0), TipoOrtodoncia.BRACKETS_METALICOS);
-                Turno t4 = ctrlTurno.registrarTurno(3L, 3L, lunesEstaSemana.plusDays(2), java.time.LocalTime.of(13, 0), TipoCirugia.EXTRACCION_MUELA);
-                ctrlTurno.confirmarTurno(t4.getId());
-                ctrlTurno.completarTurno(t4.getId());
-                Turno t5 = ctrlTurno.registrarTurno(4L, 1L, lunesEstaSemana.plusDays(3), java.time.LocalTime.of(8, 0), TipoConsulta.URGENCIA);
-                ctrlTurno.cancelarTurno(t5.getId());
-                Turno t6 = ctrlTurno.registrarTurno(2L, 2L, lunesEstaSemana.plusDays(4), java.time.LocalTime.of(14, 0), TipoOrtodoncia.BRACKETS_CERAMICOS);
-                ctrlTurno.confirmarTurno(t6.getId());
-                ctrlTurno.registrarTurno(3L, 1L, lunesSemanaSiguiente, java.time.LocalTime.of(9, 0), TipoConsulta.BLANQUEAMIENTO);
-                ctrlTurno.registrarTurno(4L, 2L, lunesSemanaSiguiente.plusDays(1), java.time.LocalTime.of(10, 0), TipoOrtodoncia.BRACKETS_METALICOS);
-                ctrlTurno.registrarTurno(1L, 3L, lunesSemanaSiguiente.plusDays(2), java.time.LocalTime.of(11, 0), TipoCirugia.IMPLANTE);
-                ctrlTurno.registrarTurno(2L, 1L, lunesSemanaSiguiente.plusDays(3), java.time.LocalTime.of(12, 0), TipoConsulta.CONTROL);
-                ctrlTurno.registrarTurno(4L, 3L, lunesSemanaSubsiguiente, java.time.LocalTime.of(9, 0), TipoCirugia.CIRUGIA_ENCIA);
-                ctrlTurno.registrarTurno(3L, 2L, lunesSemanaSubsiguiente.plusDays(1), java.time.LocalTime.of(10, 0), TipoOrtodoncia.BRACKETS_CERAMICOS);
-                ctrlTurno.registrarTurno(1L, 1L, lunesSemanaSubsiguiente.plusDays(4), java.time.LocalTime.of(15, 0), TipoConsulta.LIMPIEZA);
-
-            } catch (exception.ClinicaException e) {
-                System.out.println("Error en carga inicial: " + e.getMessage());
-            }
-        }
-
-        ui.LectorConsola lectorConsola = new ui.LectorConsola(scanner);
-        VistaPaciente vistaPaciente = new VistaPaciente(ctrlPaciente, lectorConsola);
-        VistaOdontologo vistaOdontologo = new VistaOdontologo(ctrlOdontologo, lectorConsola);
-        VistaTurno vistaTurno = new VistaTurno(ctrlTurno, lectorConsola);
-        ui.VistaFactura vistaFactura = new ui.VistaFactura(ctrlFactura, lectorConsola);
-        VistaPrincipal vistaPrincipal = new VistaPrincipal(
-                vistaPaciente, vistaOdontologo, vistaTurno, vistaFactura, lectorConsola);
-
-        // La interfaz de consola puede iniciarse explícitamente con --consola.
-        if (java.util.Arrays.asList(args).contains("--consola")) {
-            try {
-                vistaPrincipal.iniciar();
-            } finally {
-                try {
-                    persistencia.guardar(repoPaciente.listarTodos(), repoTurno.listarTodos(),
-                            repoOdontologo.listarTodos(), repoFactura.listarTodos());
-                } catch (java.io.IOException e) {
-                    System.err.println("No se pudieron guardar los datos: " + e.getMessage());
-                }
-            }
+        boolean iniciarConsola = Arrays.asList(args).contains("--consola");
+        if (iniciarConsola) {
+            contexto.iniciarConsola();
             return;
         }
 
-        SwingUtilities.invokeLater(() -> {
-            // Se le envían los controladores para que no tire error de null
-            VentanaPrincipal ventana = new VentanaPrincipal(ctrlTurno, ctrlPaciente, ctrlOdontologo, ctrlFactura, persistencia);
-            ventana.iniciar();
-        });
-
-        // scanner.close(); <- No cierro el scanner si van a usar consola luego
+        SwingUtilities.invokeLater(contexto::iniciarSwing);
     }
 }
