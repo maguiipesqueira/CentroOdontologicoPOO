@@ -1,9 +1,11 @@
 package uiSwing;
 
-import entity.*;
+import entity.Especialidad;
+import entity.Odontologo;
 import service.ServicioOdontologo;
 import java.io.*;
 import java.util.List;
+import java.util.Optional;
 
 public class PersistenciaOdontologo {
     private static final String ARCHIVO = "odontologos.txt";
@@ -12,16 +14,9 @@ public class PersistenciaOdontologo {
     public static void guardar(List<Odontologo> odontologos) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(ARCHIVO))) {
             for (Odontologo o : odontologos) {
-                String tipo = o.getClass().getSimpleName(); // Obtiene si es General, Cirujano, etc.
-                String extra = "";
-
-                // Extrae el valor del enum según la especialidad
-                if (o instanceof General g) extra = g.getTipoConsulta().name();
-                else if (o instanceof Cirujano c) extra = c.getTipoCirugia().name();
-                else if (o instanceof Ortodoncista or) extra = or.getTipoOrtodoncia().name();
-
-                writer.println(o.getId() + "," + tipo + "," + o.getNombre() + "," +
-                        o.getApellido() + "," + o.getMatricula() + "," + extra);
+                // cada odontólogo dice su especialidad y su motivo, no hace falta preguntar por la clase
+                writer.println(o.getId() + "," + o.getEspecialidad().getNombre() + "," + o.getNombre() + "," +
+                        o.getApellido() + "," + o.getMatricula() + "," + o.getSubespecialidad().name());
             }
         } catch (IOException e) {
             System.out.println("Error al guardar: " + e.getMessage());
@@ -43,13 +38,13 @@ public class PersistenciaOdontologo {
                 String apellido = p[3];
                 int mat = Integer.parseInt(p[4]);
 
-                Odontologo o = null;
-                // Instancia la clase correcta según lo guardado
-                if (tipo.equals("General")) o = new General(id, nombre, apellido, mat, TipoConsulta.valueOf(p[5]));
-                else if (tipo.equals("Cirujano")) o = new Cirujano(id, nombre, apellido, mat, TipoCirugia.valueOf(p[5]));
-                else if (tipo.equals("Ortodoncista")) o = new Ortodoncista(id, nombre, apellido, mat, TipoOrtodoncia.valueOf(p[5]));
-
-                if (o != null) servicio.getRepositorio().guardar(o);
+                // una especialidad desconocida se saltea, igual que antes
+                Optional<Especialidad> especialidad = Especialidad.desdeNombre(tipo);
+                if (especialidad.isPresent()) {
+                    Especialidad e = especialidad.get();
+                    Odontologo o = e.crear(id, nombre, apellido, mat, e.subespecialidadPorNombre(p[5]));
+                    servicio.getRepositorio().guardar(o);
+                }
             }
         } catch (Exception e) {
             System.out.println("Error al cargar: " + e.getMessage());

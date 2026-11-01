@@ -1,6 +1,7 @@
 package ui;
 
 import controller.ControladorOdontologo;
+import entity.Especialidad;
 import entity.Odontologo;
 import exception.DatoInvalidoException;
 import exception.OdontologoNoEncontradoException;
@@ -57,7 +58,9 @@ public class VistaOdontologo {
         System.out.print("Matrícula: ");
         int matricula = leerEntero();
 
-        Odontologo odontologo = new Odontologo(nombre, apellido, matricula);
+        Especialidad especialidad = leerEspecialidad();
+
+        Odontologo odontologo = especialidad.crearConSubespecialidadPorDefecto(0L, nombre, apellido, matricula);
 
         // Ahora rodeamos con try-catch la llamada al controlador para capturar la excepción
         try {
@@ -151,6 +154,22 @@ public class VistaOdontologo {
         } catch (NumberFormatException e) {
             System.out.println("Error: Debe ingresar un ID numérico válido.");
             return 0;
+        }
+    }
+
+    // muestra las especialidades numeradas y vuelve a pedir hasta que se elija una valida
+    private Especialidad leerEspecialidad() {
+        Especialidad[] opciones = Especialidad.values();
+        while (true) {
+            for (int i = 0; i < opciones.length; i++) {
+                System.out.println((i + 1) + ". " + opciones[i].getNombre());
+            }
+            System.out.print("Especialidad: ");
+            int opcion = leerEntero();
+            if (opcion >= 1 && opcion <= opciones.length) {
+                return opciones[opcion - 1];
+            }
+            System.out.println("Opción inválida.");
         }
     }
 

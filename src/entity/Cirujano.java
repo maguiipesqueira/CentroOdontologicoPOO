@@ -1,28 +1,21 @@
 package entity;
 
+import java.util.Objects;
+
 public class Cirujano extends Odontologo {
 
-    private TipoCirugia tipoCirugia;
+    private final TipoCirugia tipoCirugia;
 
-    // constructor con tipo de cirugía
     public Cirujano(long id, String nombre, String apellido, int matricula, TipoCirugia tipoCirugia) {
         super(id, nombre, apellido, matricula);
-        this.tipoCirugia = tipoCirugia;
+        this.tipoCirugia = Objects.requireNonNull(tipoCirugia, "El tipo no puede ser nulo");
     }
 
-    // devuelve el tipo de cirugía
-    public TipoCirugia getTipoCirugia() {
-        return tipoCirugia;
-    }
+    public TipoCirugia getTipoCirugia() { return tipoCirugia; }
 
-    // cambia el tipo de cirugía
-    public void setTipoCirugia(TipoCirugia tipoCirugia) {
-        this.tipoCirugia = tipoCirugia;
-    }
-
-    // texto con especialidad
     @Override
-    public String toString() {
-        return "Especialidad: Cirujano (" + tipoCirugia + ") | " + super.toString();
-    }
+    public Especialidad getEspecialidad() { return Especialidad.CIRUJANO; }
+
+    @Override
+    public MotivoConsulta getSubespecialidad() { return tipoCirugia; }
 }

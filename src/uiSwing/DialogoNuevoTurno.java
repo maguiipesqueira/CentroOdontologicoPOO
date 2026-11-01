@@ -1,14 +1,9 @@
 package uiSwing;
 
 import controller.ControladorTurno;
-import entity.Cirujano;
-import entity.General;
+import entity.MotivoConsulta;
 import entity.Odontologo;
-import entity.Ortodoncista;
 import entity.Paciente;
-import entity.TipoCirugia;
-import entity.TipoConsulta;
-import entity.TipoOrtodoncia;
 import exception.ClinicaException;
 
 import javax.swing.*;
@@ -124,7 +119,7 @@ public class DialogoNuevoTurno extends JDialog {
         }
     }
 
-    // segun la subclase del odontologo seleccionado, carga el enum correspondiente en el combo de motivo
+    // carga en el combo de motivo los motivos que atiende el odontologo seleccionado
     private void actualizarComboMotivo() {
         comboMotivo.removeAllItems();
 
@@ -133,20 +128,12 @@ public class DialogoNuevoTurno extends JDialog {
 
         Odontologo odontologo = (Odontologo) comboOdontologo.getSelectedItem();
 
-        if (odontologo instanceof General) {
-            for (TipoConsulta tipo : TipoConsulta.values()) {
-                comboMotivo.addItem(tipo);
-            }
-        } else if (odontologo instanceof Cirujano) {
-            for (TipoCirugia tipo : TipoCirugia.values()) {
-                comboMotivo.addItem(tipo);
-            }
-        } else if (odontologo instanceof Ortodoncista) {
-            for (TipoOrtodoncia tipo : TipoOrtodoncia.values()) {
-                comboMotivo.addItem(tipo);
+        if (odontologo != null) {
+            for (MotivoConsulta motivo : odontologo.getMotivosPosibles()) {
+                comboMotivo.addItem(motivo);
             }
         }
-        // si no hay odontologo seleccionado o es de un tipo no contemplado, solo queda la opcion "Tipo"
+        // si no hay odontologo seleccionado, solo queda la opcion "Tipo"
     }
 
     private void guardarTurno() {

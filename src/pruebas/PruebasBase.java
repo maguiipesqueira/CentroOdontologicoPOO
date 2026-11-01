@@ -58,6 +58,7 @@ public class PruebasBase {
         Path respaldo = respaldarArchivos();
         try {
             v.seccion("Entidades: enums y Domicilio (Etapa 15)", PruebasBase::enumsYDomicilio);
+            v.seccion("Entidades: personas (Etapa 16)", PruebasBase::personas);
             v.seccion("Pacientes (servicio)", PruebasBase::pacientes);
             v.seccion("Odontologos (servicio)", PruebasBase::odontologos);
             v.seccion("Turnos (servicio)", PruebasBase::turnos);
@@ -144,6 +145,134 @@ public class PruebasBase {
                         && java.util.Arrays.stream(Domicilio.class.getMethods()).noneMatch(m -> m.getName().startsWith("set")));
     }
 
+    // ------------------------------------------------------------------ personas (etapa 16)
+
+    private static boolean tieneMetodo(Class<?> clase, String nombre) {
+        return java.util.Arrays.stream(clase.getMethods()).anyMatch(m -> m.getName().equals(nombre));
+    }
+
+    private static void personas() throws Exception {
+        // clase base comun
+        Paciente fatima = new Paciente(1L, "Fatima", "Persi", 46113226, "f@x.com", LocalDate.of(2026, 1, 15), null, true);
+        Odontologo magali = new General(2L, "Magali", "Pesqueira", 1131, TipoConsulta.LIMPIEZA);
+        v.verdadero("Paciente es una Persona", fatima instanceof Persona);
+        v.verdadero("Odontologo es una Persona", magali instanceof Persona);
+        v.verdadero("Persona es abstracta", java.lang.reflect.Modifier.isAbstract(Persona.class.getModifiers()));
+        v.igual("nombre completo del paciente", "Fatima Persi", fatima.getNombreCompleto());
+        v.igual("nombre completo del odontologo", "Magali Pesqueira", magali.getNombreCompleto());
+        v.igual("getNombreCompleto se declara una sola vez (en Persona)", Persona.class,
+                Paciente.class.getMethod("getNombreCompleto").getDeclaringClass());
+        v.igual("getNombreCompleto de Odontologo tambien viene de Persona", Persona.class,
+                Odontologo.class.getMethod("getNombreCompleto").getDeclaringClass());
+        v.igual("id del paciente", 1L, fatima.getId());
+        v.igual("id del odontologo", 2L, magali.getId());
+
+        // paciente: constructor unico, sin setters de identidad
+        v.igual("Paciente tiene un unico constructor", 1, Paciente.class.getConstructors().length);
+        v.verdadero("Paciente sin setId", !tieneMetodo(Paciente.class, "setId"));
+        v.verdadero("Paciente sin setDni", !tieneMetodo(Paciente.class, "setDni"));
+        v.verdadero("Paciente sin setFechaAlta", !tieneMetodo(Paciente.class, "setFechaAlta"));
+        v.verdadero("sin domicilio", !fatima.tieneDomicilio());
+        v.igual("toString de un paciente sin domicilio",
+                "Paciente ID: 1 | Fatima Persi | DNI: 46113226 | Email: f@x.com | Domicilio: Sin domicilio | Obra social: Sí",
+                fatima.toString());
+        Domicilio dom = new Domicilio("Necochea", 581, "Lobos", "Buenos Aires", TipoHogar.CASA);
+        Paciente conDom = new Paciente(3L, "Tomas", "Barea", 46443494, "t@x.com", LocalDate.of(2026, 2, 1), dom, false);
+        v.verdadero("con domicilio", conDom.tieneDomicilio());
+        v.igual("toString de un paciente con domicilio",
+                "Paciente ID: 3 | Tomas Barea | DNI: 46443494 | Email: t@x.com | Domicilio: Necochea 581 (Lobos, Buenos Aires) | Obra social: No",
+                conDom.toString());
+        v.igual("fecha de alta", LocalDate.of(2026, 2, 1), conDom.getFechaAlta());
+
+        // paciente: la identidad natural es el DNI
+        Paciente mismoDni = new Paciente(9L, "Otro", "Nombre", 46113226, "otro@x.com", LocalDate.now(), null, false);
+        v.verdadero("mismo DNI: son el mismo paciente (aunque cambie el resto)", fatima.equals(mismoDni));
+        v.igual("mismo DNI: mismo hashCode", fatima.hashCode(), mismoDni.hashCode());
+        v.verdadero("distinto DNI: no son iguales", !fatima.equals(conDom));
+        v.verdadero("un paciente no es igual a null", !fatima.equals(null));
+        v.verdadero("un paciente no es igual a un odontologo con el mismo numero",
+                !new Paciente(1L, "A", "B", 5, "a@b.com", LocalDate.now(), null, false)
+                        .equals(new General(1L, "A", "B", 5, TipoConsulta.CONTROL)));
+
+        // odontologo: abstracto, sin setters de identidad ni de tipo
+        v.verdadero("Odontologo es abstracta", java.lang.reflect.Modifier.isAbstract(Odontologo.class.getModifiers()));
+        v.verdadero("Odontologo sin setId", !tieneMetodo(Odontologo.class, "setId"));
+        v.verdadero("Odontologo sin setMatricula", !tieneMetodo(Odontologo.class, "setMatricula"));
+        v.verdadero("General sin setTipoConsulta", !tieneMetodo(General.class, "setTipoConsulta"));
+        v.verdadero("Cirujano sin setTipoCirugia", !tieneMetodo(Cirujano.class, "setTipoCirugia"));
+        v.verdadero("Ortodoncista sin setTipoOrtodoncia", !tieneMetodo(Ortodoncista.class, "setTipoOrtodoncia"));
+        v.igual("General tiene un unico constructor", 1, General.class.getConstructors().length);
+        v.igual("Cirujano tiene un unico constructor", 1, Cirujano.class.getConstructors().length);
+        v.igual("Ortodoncista tiene un unico constructor", 1, Ortodoncista.class.getConstructors().length);
+
+        // cada subclase dice su especialidad y sus motivos (no hace falta instanceof)
+        Odontologo cirujano = new Cirujano(5L, "Blas", "Pesce", 3367, TipoCirugia.IMPLANTE);
+        Odontologo orto = new Ortodoncista(6L, "Nahuel", "Torres", 2245, TipoOrtodoncia.BRACKETS_CERAMICOS);
+        v.igual("especialidad General", Especialidad.GENERAL, magali.getEspecialidad());
+        v.igual("especialidad Cirujano", Especialidad.CIRUJANO, cirujano.getEspecialidad());
+        v.igual("especialidad Ortodoncista", Especialidad.ORTODONCISTA, orto.getEspecialidad());
+        v.igual("subespecialidad General", TipoConsulta.LIMPIEZA, magali.getSubespecialidad());
+        v.igual("subespecialidad Cirujano", TipoCirugia.IMPLANTE, cirujano.getSubespecialidad());
+        v.igual("subespecialidad Ortodoncista", TipoOrtodoncia.BRACKETS_CERAMICOS, orto.getSubespecialidad());
+        v.igual("motivos posibles de General", List.<MotivoConsulta>of(TipoConsulta.values()), magali.getMotivosPosibles());
+        v.igual("motivos posibles de Cirujano", List.<MotivoConsulta>of(TipoCirugia.values()), cirujano.getMotivosPosibles());
+        v.igual("motivos posibles de Ortodoncista", List.<MotivoConsulta>of(TipoOrtodoncia.values()), orto.getMotivosPosibles());
+        v.lanza("la lista de motivos no se puede modificar", UnsupportedOperationException.class,
+                () -> magali.getMotivosPosibles().clear());
+        v.igual("getTipoConsulta sigue disponible", TipoConsulta.LIMPIEZA, ((General) magali).getTipoConsulta());
+        v.lanza("General sin tipo", NullPointerException.class, () -> new General(1L, "A", "B", 1, null));
+        v.lanza("Cirujano sin tipo", NullPointerException.class, () -> new Cirujano(1L, "A", "B", 1, null));
+        v.lanza("Ortodoncista sin tipo", NullPointerException.class, () -> new Ortodoncista(1L, "A", "B", 1, null));
+
+        // toString: mismo texto que antes, escrito una sola vez en Odontologo
+        v.igual("toString General", "Especialidad: General (LIMPIEZA) | ID: 2 | Magali Pesqueira | Matrícula: 1131", magali.toString());
+        v.igual("toString Cirujano", "Especialidad: Cirujano (IMPLANTE) | ID: 5 | Blas Pesce | Matrícula: 3367", cirujano.toString());
+        v.igual("toString Ortodoncista", "Especialidad: Ortodoncista (BRACKETS_CERAMICOS) | ID: 6 | Nahuel Torres | Matrícula: 2245", orto.toString());
+        v.igual("las subclases no repiten toString", Odontologo.class, General.class.getMethod("toString").getDeclaringClass());
+
+        // odontologo: la identidad natural es la matricula, sea cual sea la especialidad
+        Odontologo otraEspecialidad = new Cirujano(77L, "Otro", "Nombre", 1131, TipoCirugia.EXTRACCION_MUELA);
+        v.verdadero("misma matricula: es el mismo odontologo", magali.equals(otraEspecialidad));
+        v.igual("misma matricula: mismo hashCode", magali.hashCode(), otraEspecialidad.hashCode());
+        v.verdadero("distinta matricula: no son iguales", !magali.equals(cirujano));
+
+        // conId: copia con otro id, el original no cambia
+        Odontologo copia = cirujano.conId(50L);
+        v.igual("conId: el original conserva su id", 5L, cirujano.getId());
+        v.igual("conId: la copia tiene el id nuevo", 50L, copia.getId());
+        v.verdadero("conId: es otro objeto", copia != cirujano);
+        v.verdadero("conId: mismo tipo y mismos datos",
+                copia instanceof Cirujano && copia.getMatricula() == 3367
+                        && copia.getSubespecialidad() == TipoCirugia.IMPLANTE
+                        && copia.getNombreCompleto().equals("Blas Pesce"));
+        v.verdadero("conId: sigue siendo el mismo odontologo (misma matricula)", copia.equals(cirujano));
+
+        // Especialidad
+        v.igual("hay 3 especialidades", 3, Especialidad.values().length);
+        v.igual("nombre guardado: General", "General", Especialidad.GENERAL.getNombre());
+        v.igual("nombre guardado: Cirujano", "Cirujano", Especialidad.CIRUJANO.getNombre());
+        v.igual("nombre guardado: Ortodoncista", "Ortodoncista", Especialidad.ORTODONCISTA.getNombre());
+        v.igual("toString para el combo", "Cirujano", Especialidad.CIRUJANO.toString());
+        v.igual("desdeNombre General", java.util.Optional.of(Especialidad.GENERAL), Especialidad.desdeNombre("General"));
+        v.verdadero("desdeNombre distingue mayusculas", Especialidad.desdeNombre("general").isEmpty());
+        v.verdadero("desdeNombre de un tipo desconocido", Especialidad.desdeNombre("Odontologo").isEmpty());
+        v.verdadero("desdeNombre null", Especialidad.desdeNombre(null).isEmpty());
+        v.igual("subespecialidad por defecto General", TipoConsulta.LIMPIEZA, Especialidad.GENERAL.getSubespecialidadPorDefecto());
+        v.igual("subespecialidad por defecto Cirujano", TipoCirugia.EXTRACCION_MUELA, Especialidad.CIRUJANO.getSubespecialidadPorDefecto());
+        v.igual("subespecialidad por defecto Ortodoncista", TipoOrtodoncia.BRACKETS_METALICOS, Especialidad.ORTODONCISTA.getSubespecialidadPorDefecto());
+        v.igual("subespecialidadPorNombre", TipoCirugia.IMPLANTE, Especialidad.CIRUJANO.subespecialidadPorNombre("IMPLANTE"));
+        v.lanza("subespecialidadPorNombre inexistente", IllegalArgumentException.class,
+                () -> Especialidad.CIRUJANO.subespecialidadPorNombre("LIMPIEZA"));
+        Odontologo creado = Especialidad.ORTODONCISTA.crearConSubespecialidadPorDefecto(8L, "Ana", "Paz", 99);
+        v.verdadero("crear por defecto: Ortodoncista con brackets metalicos",
+                creado instanceof Ortodoncista o && o.getTipoOrtodoncia() == TipoOrtodoncia.BRACKETS_METALICOS
+                        && creado.getId() == 8L && creado.getMatricula() == 99);
+        v.lanza("crear con un motivo de otra especialidad", IllegalArgumentException.class,
+                () -> Especialidad.GENERAL.crear(1L, "A", "B", 1, TipoCirugia.IMPLANTE));
+        v.lanza("crear sin motivo", NullPointerException.class,
+                () -> Especialidad.GENERAL.crear(1L, "A", "B", 1, null));
+    }
+
     // ------------------------------------------------------------------ pacientes
 
     private static void pacientes() throws Exception {
@@ -213,8 +342,13 @@ public class PruebasBase {
 
         Odontologo magali = new General(99L, "Magali", "Pesqueira", 1131, TipoConsulta.LIMPIEZA);
         Odontologo registrado = s.registrarOdontologo(magali);
-        v.verdadero("devuelve el mismo objeto recibido", registrado == magali);
-        v.igual("el servicio reasigna el id (1)", 1L, magali.getId());
+        v.verdadero("devuelve una copia con el id asignado, no el objeto recibido", registrado != magali);
+        v.igual("el servicio asigna el id (1)", 1L, registrado.getId());
+        v.igual("el objeto recibido no se modifica (conserva su id)", 99L, magali.getId());
+        v.verdadero("la copia es del mismo tipo y tiene los mismos datos",
+                registrado instanceof General && registrado.getMatricula() == 1131
+                        && registrado.getSubespecialidad() == TipoConsulta.LIMPIEZA
+                        && registrado.getNombreCompleto().equals("Magali Pesqueira"));
 
         Odontologo blas = s.registrarOdontologo(new Cirujano(0L, "Blas", "Pesce", 3367, TipoCirugia.EXTRACCION_MUELA));
         v.igual("segundo id", 2L, blas.getId());
@@ -512,20 +646,20 @@ public class PruebasBase {
         RepositorioPaciente rp = new RepositorioPaciente();
         v.verdadero("buscarPorId inexistente devuelve null", rp.buscarPorId(1L) == null);
         v.verdadero("buscarPorDni inexistente devuelve null", rp.buscarPorDni(5) == null);
-        Paciente p = new Paciente(1L, "A", "B", 5, "a@b.com");
+        Paciente p = new Paciente(1L, "A", "B", 5, "a@b.com", LocalDate.now(), null, false);
         rp.guardar(p);
         v.verdadero("buscarPorId", rp.buscarPorId(1L) == p);
         v.verdadero("buscarPorDni", rp.buscarPorDni(5) == p);
         v.verdadero("existeDni", rp.existeDni(5));
         v.verdadero("no existeDni", !rp.existeDni(6));
-        rp.actualizar(new Paciente(77L, "Z", "Z", 9, "z@z.com"));
+        rp.actualizar(new Paciente(77L, "Z", "Z", 9, "z@z.com", LocalDate.now(), null, false));
         v.igual("actualizar un id inexistente no agrega nada", 1, rp.listarTodos().size());
         rp.eliminar(1L);
         v.igual("eliminar", 0, rp.listarTodos().size());
 
         RepositorioTurno rt = new RepositorioTurno();
         v.igual("siguienteId de turnos vacio", 1L, rt.siguienteId());
-        Paciente pac = new Paciente(1L, "A", "B", 5, "a@b.com");
+        Paciente pac = new Paciente(1L, "A", "B", 5, "a@b.com", LocalDate.now(), null, false);
         Odontologo od = new General(4L, "O", "D", 44, TipoConsulta.CONTROL);
         LocalDate dia = LocalDate.now().plusDays(1);
         Turno t = new Turno(7L, pac, od, dia, LocalTime.of(9, 0), TipoConsulta.CONTROL);
@@ -629,6 +763,23 @@ public class PruebasBase {
         v.igual("nombre", "Magali", o1.getNombre());
         v.igual("apellido", "Pesqueira", o1.getApellido());
         v.igual("matricula", 1131, o1.getMatricula());
+
+        // el formato del archivo no cambio: se leen lineas guardadas antes de la etapa 16
+        escribir("odontologos.txt",
+                "1,General,Ana,Paz,10,LIMPIEZA",
+                "2,Odontologo,Base,Vieja,20,",
+                "3,Cirujano,Luis,Gil,30,IMPLANTE");
+        ServicioOdontologo viejo = new ServicioOdontologo(new RepositorioOdontologo());
+        PersistenciaOdontologo.cargar(viejo);
+        v.igual("un tipo desconocido se saltea y se cargan los demas (actual)", 2, viejo.listarTodos().size());
+        v.verdadero("la linea de Cirujano se carga con su motivo",
+                viejo.buscarPorId(3) instanceof Cirujano c && c.getTipoCirugia() == TipoCirugia.IMPLANTE);
+
+        // lo que se guarda conserva los nombres de especialidad de siempre
+        PersistenciaOdontologo.guardar(viejo.listarTodos());
+        List<String> lineas = Files.readAllLines(Path.of("odontologos.txt"));
+        v.verdadero("se escribe General, Cirujano u Ortodoncista (sin cambios en el formato)",
+                lineas.contains("1,General,Ana,Paz,10,LIMPIEZA") && lineas.contains("3,Cirujano,Luis,Gil,30,IMPLANTE"));
     }
 
     private static void persistenciaTurnos() throws Exception {

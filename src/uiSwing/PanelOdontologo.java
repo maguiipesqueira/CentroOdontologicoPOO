@@ -11,7 +11,7 @@ public class PanelOdontologo extends JPanel {
     private JTable tabla;
     private DefaultTableModel modeloTabla;
     private JTextField campNombre, campApellido, campMatricula;
-    private JComboBox<String> combTipo;
+    private JComboBox<Especialidad> combTipo;
     private long idSeleccionado = -1;
 
     public PanelOdontologo(ControladorOdontologo controlador) {
@@ -29,7 +29,7 @@ public class PanelOdontologo extends JPanel {
         campNombre = new JTextField();
         campApellido = new JTextField();
         campMatricula = new JTextField();
-        combTipo = new JComboBox<>(new String[]{"General", "Cirujano", "Ortodoncista"});
+        combTipo = new JComboBox<>(Especialidad.values());
 
         form.add(new JLabel("Nombre:")); form.add(campNombre);
         form.add(new JLabel("Apellido:")); form.add(campApellido);
@@ -67,13 +67,11 @@ public class PanelOdontologo extends JPanel {
     private void guardar() {
         try {
             int mat = Integer.parseInt(campMatricula.getText());
-            int index = combTipo.getSelectedIndex();
 
             if (idSeleccionado == -1) {
-                Odontologo o = null;
-                if (index == 0) o = new General(0, campNombre.getText(), campApellido.getText(), mat, TipoConsulta.LIMPIEZA);
-                else if (index == 1) o = new Cirujano(0, campNombre.getText(), campApellido.getText(), mat, TipoCirugia.EXTRACCION_MUELA);
-                else if (index == 2) o = new Ortodoncista(0, campNombre.getText(), campApellido.getText(), mat, TipoOrtodoncia.BRACKETS_METALICOS);
+                Especialidad especialidad = (Especialidad) combTipo.getSelectedItem();
+                Odontologo o = especialidad.crearConSubespecialidadPorDefecto(
+                        0, campNombre.getText(), campApellido.getText(), mat);
 
                 controlador.registrarOdontologo(o);
                 JOptionPane.showMessageDialog(this, "Odontólogo guardado correctamente");
@@ -115,8 +113,8 @@ public class PanelOdontologo extends JPanel {
     public void refrescarTabla() {
         modeloTabla.setRowCount(0);
         for (Odontologo o : controlador.listarTodos()) {
-            String esp = o.getClass().getSimpleName();
-            modeloTabla.addRow(new Object[]{o.getId(), o.getNombre(), o.getApellido(), o.getMatricula(), esp});
+            modeloTabla.addRow(new Object[]{o.getId(), o.getNombre(), o.getApellido(), o.getMatricula(),
+                    o.getEspecialidad().getNombre()});
         }
     }
 }

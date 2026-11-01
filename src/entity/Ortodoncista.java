@@ -1,25 +1,21 @@
 package entity;
 
+import java.util.Objects;
+
 public class Ortodoncista extends Odontologo {
 
-    private TipoOrtodoncia tipoOrtodoncia;
+    private final TipoOrtodoncia tipoOrtodoncia;
 
-    // constructor con tipo de ortodoncia
     public Ortodoncista(long id, String nombre, String apellido, int matricula, TipoOrtodoncia tipoOrtodoncia) {
         super(id, nombre, apellido, matricula);
-        this.tipoOrtodoncia = tipoOrtodoncia;
+        this.tipoOrtodoncia = Objects.requireNonNull(tipoOrtodoncia, "El tipo no puede ser nulo");
     }
 
-    // devuelve tipo de ortodoncia
-    public TipoOrtodoncia getTipoOrtodoncia() {
-        return tipoOrtodoncia; }
-    // cambia tipo de ortodoncia
-    public void setTipoOrtodoncia(TipoOrtodoncia tipoOrtodoncia) {
-        this.tipoOrtodoncia = tipoOrtodoncia; }
+    public TipoOrtodoncia getTipoOrtodoncia() { return tipoOrtodoncia; }
 
-    // texto con especialidad
     @Override
-    public String toString() {
-        return "Especialidad: Ortodoncista (" + tipoOrtodoncia + ") | " + super.toString();
-    }
+    public Especialidad getEspecialidad() { return Especialidad.ORTODONCISTA; }
+
+    @Override
+    public MotivoConsulta getSubespecialidad() { return tipoOrtodoncia; }
 }

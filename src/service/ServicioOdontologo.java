@@ -34,10 +34,12 @@ public class ServicioOdontologo {
                 maxId = o.getId();
             }
         }
-        odontologo.setId(maxId + 1);
 
-        repositorio.guardar(odontologo);
-        return odontologo;
+        // el id se asigna sobre una copia: el objeto que llega de afuera no se modifica
+        Odontologo guardado = odontologo.conId(maxId + 1);
+
+        repositorio.guardar(guardado);
+        return guardado;
     }
 
     public Odontologo buscarPorId(long id) throws OdontologoNoEncontradoException {

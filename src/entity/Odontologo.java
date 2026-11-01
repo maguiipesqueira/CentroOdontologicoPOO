@@ -1,54 +1,56 @@
 package entity;
 
-public class Odontologo {
+import java.util.List;
 
-    private long id;
-    private String nombre;
-    private String apellido;
-    private int matricula;
+/**
+ * Odontologo del consultorio. Es abstracta: todo odontologo tiene una especialidad concreta
+ * (General, Cirujano u Ortodoncista) y cada subclase dice cual es. Asi el resto del sistema
+ * pregunta al objeto en lugar de usar instanceof o el nombre de la clase.
+ * La matricula y el id no cambian una vez creado el odontologo.
+ */
+public abstract class Odontologo extends Persona {
 
-    // constructor con datos y el de vista odon
-    public Odontologo(String nombre, String apellido, int matricula) {
-        this.nombre = nombre;
-        this.apellido = apellido;
-        this.matricula = matricula;
-    }
-    public Odontologo(long id, String nombre, String apellido, int matricula) {
-        this.id = id;
-        this.nombre = nombre;
-        this.apellido = apellido;
+    private final int matricula;
+
+    protected Odontologo(long id, String nombre, String apellido, int matricula) {
+        super(id, nombre, apellido);
         this.matricula = matricula;
     }
 
-    // constructor vacío
-    public Odontologo() {}
-
-    // devuelve id
-    public long getId() { return id; }
-    // devuelve nombre
-    public String getNombre() { return nombre; }
-    // devuelve apellido
-    public String getApellido() { return apellido; }
-    // devuelve matrícula
     public int getMatricula() { return matricula; }
 
-    // cambia id
-    public void setId(long id) { this.id = id; }
-    // cambia nombre
-    public void setNombre(String nombre) { this.nombre = nombre; }
-    // cambia apellido
-    public void setApellido(String apellido) { this.apellido = apellido; }
-    // cambia matrícula
-    public void setMatricula(int matricula) { this.matricula = matricula; }
+    // especialidad del odontologo
+    public abstract Especialidad getEspecialidad();
 
-    // nombre y apellido juntos
-    public String getNombreCompleto() {
-        return this.nombre + " " + this.apellido;
+    // motivo concreto con el que fue dado de alta (ej. LIMPIEZA, IMPLANTE, BRACKETS_METALICOS)
+    public abstract MotivoConsulta getSubespecialidad();
+
+    // motivos por los que se le puede pedir un turno
+    public List<MotivoConsulta> getMotivosPosibles() {
+        return getEspecialidad().getMotivosPosibles();
     }
 
-    // texto corto para listar
+    // copia del odontologo con otro id (el original no se modifica)
+    public Odontologo conId(long nuevoId) {
+        return getEspecialidad().crear(nuevoId, getNombre(), getApellido(), matricula, getSubespecialidad());
+    }
+
+    // dos odontologos son el mismo si tienen la misma matricula, sea cual sea su especialidad
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Odontologo)) return false;
+        return matricula == ((Odontologo) o).matricula;
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(matricula);
+    }
+
     @Override
     public String toString() {
-        return "ID: " + id + " | " + getNombreCompleto() + " | Matrícula: " + matricula;
+        return "Especialidad: " + getEspecialidad().getNombre() + " (" + getSubespecialidad() + ") | ID: "
+                + getId() + " | " + getNombreCompleto() + " | Matrícula: " + matricula;
     }
 }
