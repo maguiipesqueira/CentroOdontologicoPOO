@@ -2,10 +2,11 @@ package repository;
 
 import entity.Turno;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/** Repositorio de turnos; las reglas de solapamiento pertenecen al servicio. */
+/** Consultas específicas de turnos; las reglas de agenda pertenecen al servicio. */
 public class RepositorioTurno extends RepositorioEnMemoriaMutable<Turno> {
 
     @Override
@@ -22,6 +23,19 @@ public class RepositorioTurno extends RepositorioEnMemoriaMutable<Turno> {
     public List<Turno> buscarPorOdontologo(long odontologoId) {
         return listarTodos().stream()
                 .filter(turno -> turno.getOdontologo().getId() == odontologoId)
+                .collect(Collectors.toList());
+    }
+
+    public List<Turno> buscarPorOdontologoYFecha(long odontologoId, LocalDate fecha) {
+        return listarTodos().stream()
+                .filter(turno -> turno.getOdontologo().getId() == odontologoId
+                        && turno.getFecha().equals(fecha))
+                .collect(Collectors.toList());
+    }
+
+    public List<Turno> buscarPorRangoFechas(LocalDate inicio, LocalDate fin) {
+        return listarTodos().stream()
+                .filter(turno -> !turno.getFecha().isBefore(inicio) && !turno.getFecha().isAfter(fin))
                 .collect(Collectors.toList());
     }
 }

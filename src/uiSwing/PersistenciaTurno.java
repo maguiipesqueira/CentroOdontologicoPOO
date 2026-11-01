@@ -60,7 +60,7 @@ public class PersistenciaTurno {
 
                     Turno turno = new Turno(id, paciente, odontologo, fecha, hora, estado, motivo);
 
-                    servTurno.getRepositorio().guardar(turno);
+                    servTurno.guardarDesdePersistencia(turno);
 
                 } catch (Exception e) {
                     System.out.println("Linea corrupta ignorada: " + linea);

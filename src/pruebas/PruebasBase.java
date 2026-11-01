@@ -21,6 +21,7 @@ import service.ServicioFactura;
 import service.ServicioOdontologo;
 import service.ServicioPaciente;
 import service.ServicioTurno;
+import service.HorarioAtencion;
 import service.Tarifario;
 import uiSwing.PersistenciaFactura;
 import uiSwing.PersistenciaOdontologo;
@@ -69,6 +70,7 @@ public class PruebasBase {
             v.seccion("Pacientes (servicio)", PruebasBase::pacientes);
             v.seccion("Odontologos (servicio)", PruebasBase::odontologos);
             v.seccion("Turnos (servicio)", PruebasBase::turnos);
+            v.seccion("Horario configurable y reloj de turnos", PruebasBase::horarioConfigurableYClock);
             v.seccion("Tarifario", PruebasBase::tarifario);
             v.seccion("Medios de pago", PruebasBase::mediosDePago);
             v.seccion("CalculadorMonto", PruebasBase::calculador);
@@ -470,7 +472,7 @@ public class PruebasBase {
         Odontologo o = so.registrarOdontologo(new General(0L, "Magali", "Pesqueira", 31, TipoConsulta.LIMPIEZA));
         LocalDate manana = LocalDate.now().plusDays(1);
         Turno aus = stFac.registrarTurno(p, o, manana, LocalTime.of(9, 0), TipoConsulta.LIMPIEZA);
-        stFac.getRepositorio().guardar(new Turno(aus.getId(), p, o, manana, LocalTime.of(9, 0), EstadoTurno.AUSENTE, TipoConsulta.LIMPIEZA));
+        stFac.guardarDesdePersistencia(new Turno(aus.getId(), p, o, manana, LocalTime.of(9, 0), EstadoTurno.AUSENTE, TipoConsulta.LIMPIEZA));
         Turno cobrable = stFac.registrarTurno(p, o, manana, LocalTime.of(10, 0), TipoConsulta.CONTROL);
         v.igual("un turno ausente no aparece para cobrar", 1, sf.listarTurnosPorCobrar().size());
         v.igual("el unico por cobrar es el otro", cobrable.getId(), sf.listarTurnosPorCobrar().get(0).getId());
@@ -683,8 +685,10 @@ public class PruebasBase {
         v.lanza("cancelar un cancelado", DatoInvalidoException.class, () -> st.cancelarTurno(c.getId()));
         v.lanza("confirmar un cancelado", DatoInvalidoException.class, () -> st.confirmarTurno(c.getId()));
         v.lanza("completar un cancelado", DatoInvalidoException.class, () -> st.completarTurno(c.getId()));
-        v.lanza("un turno cancelado sigue bloqueando el horario (actual)", TurnoYaReservadoException.class,
-                () -> st.registrarTurno(p2, o1, manana, LocalTime.of(15, 0), TipoConsulta.CONTROL));
+        Turno reemplazo = st.registrarTurno(p2, o1, manana, LocalTime.of(15, 0), TipoConsulta.CONTROL);
+        v.verdadero("un turno cancelado libera el horario", reemplazo.getId() != c.getId());
+        st.cancelarTurno(reemplazo.getId());
+        st.eliminarTurno(reemplazo.getId());
         st.eliminarTurno(c.getId());
         v.lanza("buscar un turno eliminado", DatoInvalidoException.class, () -> st.buscarPorId(c.getId()));
         v.lanza("buscar un turno inexistente", DatoInvalidoException.class, () -> st.buscarPorId(12345));
@@ -702,6 +706,38 @@ public class PruebasBase {
                 () -> st.listarPorRangoFechas(manana.plusDays(1), manana));
         v.lanza("rango con fecha nula", DatoInvalidoException.class,
                 () -> st.listarPorRangoFechas(null, manana));
+    }
+
+    private static void horarioConfigurableYClock() throws Exception {
+        Clock reloj = Clock.fixed(Instant.parse("2026-11-01T10:00:00Z"), ZoneOffset.UTC);
+        LocalDate hoy = LocalDate.now(reloj);
+        RepositorioTurno repositorio = new RepositorioTurno();
+        ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno(), reloj);
+        ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
+        Paciente paciente = sp.registrarPaciente("Prueba", "Reloj", 99001, "reloj@x.test", null, false);
+        Odontologo odontologo = so.registrarOdontologo(
+                new General(0L, "Odontologo", "Reloj", 99001, TipoConsulta.CONTROL));
+        ServicioTurno servicio = new ServicioTurno(repositorio, reloj,
+                new HorarioAtencion(LocalTime.of(9, 0), LocalTime.of(17, 0)));
+
+        v.lanza("horario configurable rechaza antes de apertura", DatoInvalidoException.class,
+                () -> servicio.registrarTurno(paciente, odontologo, hoy.plusDays(1), LocalTime.of(8, 59)));
+        v.lanza("horario configurable rechaza después del cierre", DatoInvalidoException.class,
+                () -> servicio.registrarTurno(paciente, odontologo, hoy.plusDays(1), LocalTime.of(17, 1)));
+        v.verdadero("horario configurable acepta apertura", servicio.registrarTurno(
+                paciente, odontologo, hoy.plusDays(1), LocalTime.of(9, 0)) != null);
+        v.verdadero("horario configurable acepta cierre", servicio.registrarTurno(
+                paciente, odontologo, hoy.plusDays(1), LocalTime.of(17, 0)) != null);
+        v.lanza("no permite una hora anterior a la hora actual de hoy", DatoInvalidoException.class,
+                () -> servicio.registrarTurno(paciente, odontologo, hoy, LocalTime.of(9, 30)));
+        v.lanza("no permite la hora actual de hoy", DatoInvalidoException.class,
+                () -> servicio.registrarTurno(paciente, odontologo, hoy, LocalTime.of(10, 0)));
+        v.verdadero("permite una hora posterior a la actual de hoy", servicio.registrarTurno(
+                paciente, odontologo, hoy, LocalTime.of(10, 1)) != null);
+        v.lanza("sigue rechazando fechas anteriores a hoy", DatoInvalidoException.class,
+                () -> servicio.registrarTurno(paciente, odontologo, hoy.minusDays(1), LocalTime.of(11, 0)));
+        v.lanza("horario inválido rechaza apertura posterior al cierre", IllegalArgumentException.class,
+                () -> new HorarioAtencion(LocalTime.of(18, 0), LocalTime.of(8, 0)));
     }
 
     // ------------------------------------------------------------------ tarifario
@@ -1108,7 +1144,7 @@ public class PruebasBase {
 
         // un turno ausente y un completado tambien hacen el viaje de ida y vuelta
         Turno d = st.registrarTurno(p, o, dia, LocalTime.of(12, 0), TipoConsulta.URGENCIA);
-        st.getRepositorio().guardar(new Turno(d.getId(), p, o, dia, LocalTime.of(12, 0), EstadoTurno.AUSENTE, TipoConsulta.URGENCIA));
+        st.guardarDesdePersistencia(new Turno(d.getId(), p, o, dia, LocalTime.of(12, 0), EstadoTurno.AUSENTE, TipoConsulta.URGENCIA));
         Turno e = st.registrarTurno(p, o, dia, LocalTime.of(13, 0), TipoConsulta.CONTROL);
         st.completarTurno(e.getId());
         PersistenciaTurno.guardar(st.listarTodos());
