@@ -13,7 +13,7 @@ public class PersistenciaFactura {
     // nombre del archivo donde se guardan las facturas
     private static final String ARCHIVO = "facturas.txt";
 
-    // cantidad de columnas que tiene cada linea: id,turnoId,pacienteId,pacienteNombre,concepto,fecha,metodo,base,descOS,descEfectivo,total
+    // cantidad de columnas que tiene cada linea: id,turnoId,pacienteId,pacienteNombre,concepto,fecha,codigoMedioPago,base,descOS,descMedioPago,total
     private static final int COLUMNAS = 11;
 
     // guarda todas las facturas en el archivo, una por linea
@@ -27,10 +27,10 @@ public class PersistenciaFactura {
                         limpiar(f.getPacienteNombre()) + "," +
                         limpiar(f.getConcepto()) + "," +
                         f.getFecha() + "," +
-                        limpiar(f.getMetodoPago()) + "," +
+                        limpiar(f.getMetodoPagoCodigo()) + "," +
                         f.getMontoBase() + "," +
                         f.getDescuentoObraSocial() + "," +
-                        f.getDescuentoEfectivo() + "," +
+                        f.getDescuentoMedioPago() + "," +
                         f.getMontoTotal();
 
                 writer.println(linea);
@@ -64,10 +64,10 @@ public class PersistenciaFactura {
                     String pacienteNombre = partes[3];
                     String concepto = partes[4];
                     LocalDate fecha = LocalDate.parse(partes[5]);
-                    String metodoPago = partes[6];
+                    String metodoPago = servicio.codigoMedioPago(partes[6]);
                     double montoBase = Double.parseDouble(partes[7]);
                     double descuentoObraSocial = Double.parseDouble(partes[8]);
-                    double descuentoEfectivo = Double.parseDouble(partes[9]);
+                    double descuentoMedioPago = Double.parseDouble(partes[9]);
                     double montoTotal = Double.parseDouble(partes[10]);
 
                     Factura f = Factura.builder()
@@ -78,7 +78,7 @@ public class PersistenciaFactura {
                             .concepto(concepto)
                             .fecha(fecha)
                             .metodoPago(metodoPago)
-                            .desglose(new DesgloseMonto(montoBase, descuentoObraSocial, descuentoEfectivo, montoTotal))
+                            .desglose(new DesgloseMonto(montoBase, descuentoObraSocial, descuentoMedioPago, montoTotal))
                             .build();
                     servicio.getRepositorio().guardar(f);
 

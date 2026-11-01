@@ -424,23 +424,23 @@ public class PruebasBase {
         DesgloseMonto desglose = new DesgloseMonto(100, 0, 10, 90);
         LocalDate hoy = LocalDate.now();
         Factura f = Factura.builder().id(1L).turnoId(10L).pacienteId(5L).pacienteNombre("A B").concepto("LIMPIEZA")
-                .fecha(hoy).metodoPago("Efectivo").desglose(desglose).build();
+                .fecha(hoy).metodoPago("EFECTIVO").desglose(desglose).build();
         v.igual("factura: id", 1L, f.getId());
         v.igual("factura: turno", 10L, f.getTurnoId());
         v.igual("factura: paciente", 5L, f.getPacienteId());
         v.igual("factura: nombre", "A B", f.getPacienteNombre());
         v.igual("factura: concepto", "LIMPIEZA", f.getConcepto());
         v.igual("factura: fecha", hoy, f.getFecha());
-        v.igual("factura: medio", "Efectivo", f.getMetodoPago());
+        v.igual("factura: medio (codigo)", "EFECTIVO", f.getMetodoPagoCodigo());
         v.verdadero("factura: contiene el desglose recibido", f.getDesglose() == desglose);
         v.casi("factura: base (atajo al desglose)", 100, f.getMontoBase());
         v.casi("factura: desc. obra social (atajo)", 0, f.getDescuentoObraSocial());
-        v.casi("factura: desc. efectivo (atajo)", 10, f.getDescuentoEfectivo());
+        v.casi("factura: desc. medio de pago (atajo)", 10, f.getDescuentoMedioPago());
         v.casi("factura: total (atajo)", 90, f.getMontoTotal());
         v.igual("DesgloseMonto ahora vive en entity", "entity", DesgloseMonto.class.getPackageName());
         v.igual("toString de la factura",
                 "FACTURA #1 | Turno: 10 | Paciente: A B | Concepto: LIMPIEZA | Fecha: " + hoy
-                        + " | Medio: Efectivo | Base: $100.0 | Desc. obra social: $0.0 | Desc. efectivo: $10.0 | Total: $90.0",
+                        + " | Medio (codigo): EFECTIVO | Base: $100.0 | Desc. obra social: $0.0 | Desc. medio de pago: $10.0 | Total: $90.0",
                 f.toString());
         v.lanza("factura sin desglose", NullPointerException.class,
                 () -> Factura.builder().id(1L).pacienteNombre("A").concepto("C").fecha(hoy).metodoPago("Efectivo").build());
@@ -697,15 +697,22 @@ public class PruebasBase {
         MedioPago ef = new Efectivo();
         MedioPago mp = new MercadoPago();
         MedioPago tj = new Tarjeta();
+        v.igual("codigo estable Efectivo", "EFECTIVO", ef.getCodigo());
+        v.igual("codigo estable Mercado Pago", "MERCADO_PAGO", mp.getCodigo());
+        v.igual("codigo estable Tarjeta", "TARJETA", tj.getCodigo());
         v.igual("nombre Efectivo", "Efectivo", ef.getNombre());
         v.igual("nombre Mercado Pago", "Mercado Pago", mp.getNombre());
         v.igual("nombre Tarjeta", "Tarjeta", tj.getNombre());
-        v.casi("Efectivo descuenta 10%", 0.10, ef.getPorcentajeDescuento());
-        v.casi("Mercado Pago no descuenta", 0.0, mp.getPorcentajeDescuento());
-        v.casi("Tarjeta no descuenta", 0.0, tj.getPorcentajeDescuento());
-        v.igual("toString de Efectivo", "Efectivo", ef.toString());
-        v.igual("toString de Mercado Pago", "Mercado Pago", mp.toString());
-        v.igual("toString de Tarjeta", "Tarjeta", tj.toString());
+        v.casi("Efectivo calcula 10% de descuento", 10.0, ef.calcularDescuento(100));
+        v.casi("Efectivo aplica 10% de descuento", 90.0, ef.aplicarDescuento(100));
+        v.casi("Mercado Pago no descuenta", 0.0, mp.calcularDescuento(100));
+        v.casi("Tarjeta no descuenta", 0.0, tj.calcularDescuento(100));
+
+        Efectivo efectivoConfigurable = new Efectivo(0.15);
+        v.casi("Efectivo acepta descuento configurable", 15.0, efectivoConfigurable.calcularDescuento(100));
+        v.casi("Efectivo configurable aplica el descuento", 85.0, efectivoConfigurable.aplicarDescuento(100));
+        v.lanza("Efectivo rechaza descuento negativo", IllegalArgumentException.class, () -> new Efectivo(-0.01));
+        v.lanza("Efectivo rechaza descuento mayor al 100%", IllegalArgumentException.class, () -> new Efectivo(1.01));
     }
 
     // ------------------------------------------------------------------ calculador
@@ -730,13 +737,13 @@ public class PruebasBase {
                 for (MedioPago medio : new MedioPago[]{new Tarjeta(), new Efectivo()}) {
                     double descOs = os ? redondear(base * 0.30) : 0.0;
                     double tras = base - descOs;
-                    double descMedio = redondear(tras * medio.getPorcentajeDescuento());
+                    double descMedio = medio.calcularDescuento(tras);
                     double total = redondear(base - descOs - descMedio);
 
                     DesgloseMonto d = calc.calcular(base, os, medio);
                     combinaciones++;
                     if (Math.abs(d.getDescuentoObraSocial() - descOs) < 0.005
-                            && Math.abs(d.getDescuentoEfectivo() - descMedio) < 0.005
+                            && Math.abs(d.getDescuentoMedioPago() - descMedio) < 0.005
                             && Math.abs(d.getMontoTotal() - total) < 0.005
                             && Math.abs(d.getMontoBase() - base) < 0.005) {
                         combinacionesOk++;
@@ -750,12 +757,15 @@ public class PruebasBase {
 
         DesgloseMonto implante = calc.calcular(450000, true, new Efectivo());
         v.casi("implante + obra social + efectivo: desc. obra social", 135000, implante.getDescuentoObraSocial());
-        v.casi("implante + obra social + efectivo: desc. efectivo", 31500, implante.getDescuentoEfectivo());
+        v.casi("implante + obra social + efectivo: desc. medio de pago", 31500, implante.getDescuentoMedioPago());
         v.casi("implante + obra social + efectivo: total", 283500, implante.getMontoTotal());
 
         DesgloseMonto sinMedio = calc.calcular(25000, true);
         v.casi("vista previa sin medio: total con obra social", 17500, sinMedio.getMontoTotal());
-        v.casi("vista previa sin medio: sin descuento de medio", 0, sinMedio.getDescuentoEfectivo());
+        v.casi("vista previa sin medio: sin descuento de medio", 0, sinMedio.getDescuentoMedioPago());
+        DesgloseMonto descuentoConfigurable = calc.calcular(100, false, new Efectivo(0.15));
+        v.casi("calculador delega el descuento configurable al medio", 15, descuentoConfigurable.getDescuentoMedioPago());
+        v.casi("calculador obtiene el total del medio configurable", 85, descuentoConfigurable.getMontoTotal());
 
         v.lanza("base en cero", DatoInvalidoException.class, () -> calc.calcular(0, false, new Efectivo()));
         v.lanza("base negativa", DatoInvalidoException.class, () -> calc.calcular(-5, false));
@@ -812,10 +822,10 @@ public class PruebasBase {
         v.igual("factura 1: nombre del paciente (texto)", conOs.getNombreCompleto(), f1.getPacienteNombre());
         v.igual("factura 1: concepto (texto)", "LIMPIEZA", f1.getConcepto());
         v.igual("factura 1: fecha de hoy", LocalDate.now(), f1.getFecha());
-        v.igual("factura 1: medio (nombre)", "Efectivo", f1.getMetodoPago());
+        v.igual("factura 1: medio (codigo)", "EFECTIVO", f1.getMetodoPagoCodigo());
         v.casi("factura 1: base", 25000, f1.getMontoBase());
         v.casi("factura 1: desc. obra social", 7500, f1.getDescuentoObraSocial());
-        v.casi("factura 1: desc. efectivo", 1750, f1.getDescuentoEfectivo());
+        v.casi("factura 1: desc. medio de pago", 1750, f1.getDescuentoMedioPago());
         v.casi("factura 1: total", 15750, f1.getMontoTotal());
         v.igual("despues de cobrar quedan 2 por cobrar", 2, sf.listarTurnosPorCobrar().size());
 
@@ -1061,9 +1071,11 @@ public class PruebasBase {
     private static void persistenciaFacturas() throws Exception {
         LocalDate hoy = LocalDate.now();
         List<Factura> facturas = List.of(
-                factura(1L, 10L, 1L, "Fatima Persi", "LIMPIEZA", hoy, "Efectivo", 25000, 7500, 1750, 15750),
+                factura(1L, 10L, 1L, "Fatima Persi", "LIMPIEZA", hoy, "EFECTIVO", 25000, 7500, 1750, 15750),
                 factura(2L, 11L, 2L, "Barea, Tomas", "IMPLANTE", hoy.minusDays(1), "Tarjeta", 450000, 0, 0, 450000));
         PersistenciaFactura.guardar(facturas);
+        List<String> lineasGuardadas = Files.readAllLines(Path.of("facturas.txt"));
+        v.igual("persistencia guarda el codigo del medio", "EFECTIVO", lineasGuardadas.get(0).split(",", -1)[6]);
 
         // le agrega una linea rota al final
         java.nio.file.Files.writeString(Path.of("facturas.txt"), "esto,no,es,una,factura\n",
@@ -1082,10 +1094,15 @@ public class PruebasBase {
         v.igual("factura 1: paciente", "Fatima Persi", f1.getPacienteNombre());
         v.igual("factura 1: concepto", "LIMPIEZA", f1.getConcepto());
         v.igual("factura 1: fecha", hoy, f1.getFecha());
-        v.igual("factura 1: medio", "Efectivo", f1.getMetodoPago());
+        v.igual("factura 1: medio migrado a codigo", "EFECTIVO", f1.getMetodoPagoCodigo());
+        v.igual("factura 2: nombre antiguo migrado a codigo", "TARJETA", cargadas.get(1).getMetodoPagoCodigo());
+        PersistenciaFactura.guardar(cargadas);
+        List<String> facturasMigradas = Files.readAllLines(Path.of("facturas.txt"));
+        v.igual("al reescribir, el nombre antiguo queda guardado como codigo",
+                "TARJETA", facturasMigradas.get(1).split(",", -1)[6]);
         v.casi("factura 1: base", 25000, f1.getMontoBase());
         v.casi("factura 1: desc. obra social", 7500, f1.getDescuentoObraSocial());
-        v.casi("factura 1: desc. efectivo", 1750, f1.getDescuentoEfectivo());
+        v.casi("factura 1: desc. medio de pago", 1750, f1.getDescuentoMedioPago());
         v.casi("factura 1: total", 15750, f1.getMontoTotal());
         v.igual("la coma del nombre se reemplaza por un espacio (actual)", "Barea  Tomas", cargadas.get(1).getPacienteNombre());
         v.igual("el proximo numero de factura sigue al maximo", 3L, destino.getRepositorio().siguienteId());

@@ -51,6 +51,26 @@ public class ServicioFactura {
         return new ArrayList<>(mediosPago);
     }
 
+    // Devuelve el codigo actual de un medio, aceptando tambien nombres de archivos anteriores.
+    public String codigoMedioPago(String codigoONombre) {
+        if (codigoONombre == null) return null;
+        return mediosPago.stream()
+                .filter(medio -> medio.getCodigo().equals(codigoONombre)
+                        || medio.getNombre().equals(codigoONombre))
+                .map(MedioPago::getCodigo)
+                .findFirst()
+                .orElse(codigoONombre);
+    }
+
+    // Resuelve el nombre visible a partir del codigo guardado en la factura.
+    public String nombreMedioPago(String codigo) {
+        return mediosPago.stream()
+                .filter(medio -> medio.getCodigo().equals(codigo))
+                .map(MedioPago::getNombre)
+                .findFirst()
+                .orElse(codigo);
+    }
+
     // calcula cuanto costaria el turno sin elegir todavia el medio de pago (solo obra social)
     public DesgloseMonto calcularVistaPrevia(long turnoId) throws DatoInvalidoException {
         Turno turno = buscarTurnoCobrable(turnoId);
@@ -80,7 +100,7 @@ public class ServicioFactura {
                 .pacienteNombre(paciente.getNombreCompleto())
                 .concepto(motivoDe(turno).name())
                 .fecha(LocalDate.now())
-                .metodoPago(medioPago.getNombre())
+                .metodoPago(medioPago.getCodigo())
                 .desglose(desglose)
                 .build();
 
@@ -112,7 +132,8 @@ public class ServicioFactura {
         double total = 0.0;
         for (Factura f : facturasDelDia) {
             total += f.getMontoTotal();
-            totalPorMedio.merge(f.getMetodoPago(), f.getMontoTotal(), Double::sum);
+            String nombreMedio = nombreMedioPago(f.getMetodoPagoCodigo());
+            totalPorMedio.merge(nombreMedio, f.getMontoTotal(), Double::sum);
         }
 
         totalPorMedio.replaceAll((medio, monto) -> redondear(monto));

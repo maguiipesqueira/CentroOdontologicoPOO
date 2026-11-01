@@ -261,7 +261,7 @@ public class PanelFacturacion extends JPanel {
             Factura factura = controlador.cobrarTurno(turnoId, medio);
 
             // el comprobante muestra el desglose del cobro recien hecho
-            ComprobanteFactura.mostrar(this, factura);
+            ComprobanteFactura.mostrar(this, factura, controlador.listarMediosPago());
 
             // vuelve a pedir el medio en el proximo cobro, para no cobrar con uno elegido de antes
             comboMedioPago.setSelectedIndex(0);

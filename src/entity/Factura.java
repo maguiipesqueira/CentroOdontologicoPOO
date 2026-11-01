@@ -8,11 +8,11 @@ import java.util.Objects;
  * Se arma con el Builder:
  * <pre>
  * Factura.builder().id(1).turnoId(5).pacienteId(2).pacienteNombre("Ana Perez")
- *        .concepto("LIMPIEZA").fecha(hoy).metodoPago("Efectivo").desglose(desglose).build();
+ *        .concepto("LIMPIEZA").fecha(hoy).metodoPago("EFECTIVO").desglose(desglose).build();
  * </pre>
- * Decision de diseno: el nombre del paciente, el concepto y el medio de pago se guardan como texto (copia de
- * lo que valian al cobrar) y no como referencias, para que el comprobante no cambie si despues se modifica
- * o se borra el paciente, el tratamiento o el medio de pago.
+ * Decision de diseno: el nombre del paciente y el concepto se guardan como texto (copia de lo que valian
+ * al cobrar). El medio de pago se identifica mediante un codigo estable, independiente del nombre visible,
+ * para que un cambio de etiqueta no afecte las facturas existentes.
  */
 public class Factura {
 
@@ -22,7 +22,7 @@ public class Factura {
     private final String pacienteNombre;  // copia del nombre al momento del cobro
     private final String concepto;        // tratamiento cobrado (nombre tecnico del motivo), tambien copiado
     private final LocalDate fecha;        // fecha de pago, se usa en el cierre del dia
-    private final String metodoPago;      // identifica el medio con que se pago (hoy: su nombre, ej "Efectivo")
+    private final String metodoPago;      // codigo estable del medio de pago (ej. "EFECTIVO")
     private final DesgloseMonto desglose; // precio de lista, descuentos y total
 
     private Factura(Builder b) {
@@ -53,15 +53,25 @@ public class Factura {
     public String getConcepto() { return concepto; }
     // devuelve la fecha de pago
     public LocalDate getFecha() { return fecha; }
-    // devuelve el medio de pago con que se cobro
-    public String getMetodoPago() { return metodoPago; }
+    // devuelve el codigo estable del medio de pago con que se cobro
+    public String getMetodoPagoCodigo() { return metodoPago; }
+
+    /**
+     * @deprecated usar getMetodoPagoCodigo(); el valor devuelto es un codigo, no el nombre visible.
+     */
+    @Deprecated
+    public String getMetodoPago() { return getMetodoPagoCodigo(); }
     // devuelve el desglose completo de los importes
     public DesgloseMonto getDesglose() { return desglose; }
 
     // atajos al desglose (asi quien muestra la factura no tiene que encadenar llamadas)
     public double getMontoBase() { return desglose.getMontoBase(); }
     public double getDescuentoObraSocial() { return desglose.getDescuentoObraSocial(); }
-    public double getDescuentoEfectivo() { return desglose.getDescuentoEfectivo(); }
+    public double getDescuentoMedioPago() { return desglose.getDescuentoMedioPago(); }
+
+    /** @deprecated usar getDescuentoMedioPago(). */
+    @Deprecated
+    public double getDescuentoEfectivo() { return getDescuentoMedioPago(); }
     public double getMontoTotal() { return desglose.getMontoTotal(); }
 
     // texto con los datos de la factura
@@ -72,10 +82,10 @@ public class Factura {
                 " | Paciente: " + pacienteNombre +
                 " | Concepto: " + concepto +
                 " | Fecha: " + fecha +
-                " | Medio: " + metodoPago +
+                " | Medio (codigo): " + metodoPago +
                 " | Base: $" + getMontoBase() +
                 " | Desc. obra social: $" + getDescuentoObraSocial() +
-                " | Desc. efectivo: $" + getDescuentoEfectivo() +
+                " | Desc. medio de pago: $" + getDescuentoMedioPago() +
                 " | Total: $" + getMontoTotal();
     }
 

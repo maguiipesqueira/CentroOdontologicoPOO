@@ -1,18 +1,18 @@
 package entity;
 
-// Resultado de calcular un cobro: el precio de lista, cuanto se descuento por cada motivo y el total a pagar
+// Resultado de calcular un cobro: el precio de lista, cuanto se descuento por obra social y por el medio de pago y el total a pagar
 public class DesgloseMonto {
 
     private final double montoBase;
     private final double descuentoObraSocial;
-    private final double descuentoEfectivo;
+    private final double descuentoMedioPago;
     private final double montoTotal;
 
     // constructor con todos los importes
-    public DesgloseMonto(double montoBase, double descuentoObraSocial, double descuentoEfectivo, double montoTotal) {
+    public DesgloseMonto(double montoBase, double descuentoObraSocial, double descuentoMedioPago, double montoTotal) {
         this.montoBase = montoBase;
         this.descuentoObraSocial = descuentoObraSocial;
-        this.descuentoEfectivo = descuentoEfectivo;
+        this.descuentoMedioPago = descuentoMedioPago;
         this.montoTotal = montoTotal;
     }
 
@@ -20,8 +20,12 @@ public class DesgloseMonto {
     public double getMontoBase() { return montoBase; }
     // devuelve lo descontado por obra social
     public double getDescuentoObraSocial() { return descuentoObraSocial; }
-    // devuelve lo descontado por el medio de pago (efectivo)
-    public double getDescuentoEfectivo() { return descuentoEfectivo; }
+    // devuelve lo descontado por el medio de pago elegido
+    public double getDescuentoMedioPago() { return descuentoMedioPago; }
+
+    /** @deprecated usar getDescuentoMedioPago(). */
+    @Deprecated
+    public double getDescuentoEfectivo() { return getDescuentoMedioPago(); }
     // devuelve el total a pagar
     public double getMontoTotal() { return montoTotal; }
 
@@ -30,7 +34,7 @@ public class DesgloseMonto {
     public String toString() {
         return "Base: $" + montoBase +
                 " | Desc. obra social: $" + descuentoObraSocial +
-                " | Desc. efectivo: $" + descuentoEfectivo +
+                " | Desc. medio de pago: $" + descuentoMedioPago +
                 " | Total: $" + montoTotal;
     }
 }

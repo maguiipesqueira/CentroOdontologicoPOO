@@ -1,12 +1,24 @@
 package pago;
 
-// Contrato de un medio de pago. El resto del sistema trabaja contra esta interfaz
-// y no conoce cada medio en particular: para agregar uno nuevo se crea una clase que la implemente
+/**
+ * Contrato de un medio de pago.
+ * Cada implementacion define su identificador estable, nombre visible y politica de descuento.
+ */
 public interface MedioPago {
 
-    // nombre que se muestra en pantalla y se guarda en la factura (ej "Efectivo")
+    String getCodigo();
+
     String getNombre();
 
-    // descuento propio del medio como fraccion (0.10 = 10%, 0.0 = sin descuento)
-    double getPorcentajeDescuento();
+    /**
+     * Calcula el descuento que aplica este medio sobre el importe recibido.
+     */
+    double calcularDescuento(double monto);
+
+    /**
+     * Devuelve el importe luego de aplicar el descuento propio del medio.
+     */
+    default double aplicarDescuento(double monto) {
+        return monto - calcularDescuento(monto);
+    }
 }

@@ -1,23 +1,22 @@
 package pago;
 
-// Pago con Mercado Pago: no tiene descuento propio
+/** Pago mediante Mercado Pago, sin descuento propio. */
 public class MercadoPago implements MedioPago {
 
-    // nombre del medio
+    private static final double SIN_DESCUENTO = 0.0;
+
+    @Override
+    public String getCodigo() {
+        return "MERCADO_PAGO";
+    }
+
     @Override
     public String getNombre() {
         return "Mercado Pago";
     }
 
-    // sin descuento
     @Override
-    public double getPorcentajeDescuento() {
-        return 0.0;
-    }
-
-    // el nombre es lo que se ve en un JComboBox
-    @Override
-    public String toString() {
-        return getNombre();
+    public double calcularDescuento(double monto) {
+        return SIN_DESCUENTO;
     }
 }

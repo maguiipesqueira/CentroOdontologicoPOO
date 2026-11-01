@@ -30,6 +30,10 @@ public class ControladorFactura {
         return servicio.listarMediosPago();
     }
 
+    public String nombreMedioPago(String codigo) {
+        return servicio.nombreMedioPago(codigo);
+    }
+
     // calcula el monto sin elegir medio de pago, dejando pasar el error de datos
     public DesgloseMonto calcularVistaPrevia(long turnoId) throws DatoInvalidoException {
         return servicio.calcularVistaPrevia(turnoId);

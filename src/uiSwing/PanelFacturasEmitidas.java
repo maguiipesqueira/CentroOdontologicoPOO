@@ -144,7 +144,7 @@ public class PanelFacturasEmitidas extends JPanel {
                     f.getFecha().toString(),
                     f.getPacienteNombre(),
                     f.getConcepto(),
-                    f.getMetodoPago(),
+                    controlador.nombreMedioPago(f.getMetodoPagoCodigo()),
                     FormatoPlata.formatear(f.getMontoTotal())
             });
         }
@@ -162,7 +162,7 @@ public class PanelFacturasEmitidas extends JPanel {
             return;
         }
 
-        ComprobanteFactura.mostrar(this, facturasCache.get(fila));
+        ComprobanteFactura.mostrar(this, facturasCache.get(fila), controlador.listarMediosPago());
     }
 
     // muestra el cierre del dia de la fecha escrita (hoy si esta vacia): total, cantidad de facturas y detalle por medio
