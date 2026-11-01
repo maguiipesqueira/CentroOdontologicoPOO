@@ -107,11 +107,6 @@ public class ServicioOdontologo {
         repositorio.eliminar(id);
     }
 
-    /** Punto de entrada controlado para reconstruir datos desde persistencia hasta la etapa 24. */
-    public void guardarDesdePersistencia(Odontologo odontologo) {
-        repositorio.guardar(Objects.requireNonNull(odontologo));
-    }
-
     private void validarMatricula(int matricula) throws DatoInvalidoException {
         if (matricula <= 0) {
             throw new DatoInvalidoException("Matrícula", "Debe ser un número mayor a cero.");

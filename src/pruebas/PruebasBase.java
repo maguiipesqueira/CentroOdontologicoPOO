@@ -25,19 +25,13 @@ import service.ServicioPaciente;
 import service.ServicioTurno;
 import service.HorarioAtencion;
 import service.Tarifario;
-import uiSwing.PersistenciaFactura;
-import uiSwing.PersistenciaOdontologo;
-import uiSwing.PersistenciaPaciente;
-import uiSwing.PersistenciaTurno;
+import persistence.*;
 import uiSwing.TextoMotivo;
 
-import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -57,37 +51,30 @@ import java.util.stream.Collectors;
  * Las lineas marcadas con "(actual)" describen comportamientos que la bitacora marca como defectos:
  * se prueban tal como funcionan hoy y se actualizan en la etapa que los corrige.
  *
- * IMPORTANTE: las pruebas de persistencia usan los archivos pacientes.txt, odontologos.txt, turnos.txt y
- * facturas.txt de la carpeta de trabajo. Se hace un respaldo al empezar y se restauran al terminar.
+ * Las pruebas de persistencia trabajan con carpetas temporales aisladas y no modifican los datos reales.
  */
 public class PruebasBase {
 
     private static final Verificador v = new Verificador();
-    private static final String[] ARCHIVOS = {"pacientes.txt", "odontologos.txt", "turnos.txt", "facturas.txt"};
-
     public static void main(String[] args) throws Exception {
-        Path respaldo = respaldarArchivos();
-        try {
-            v.seccion("Entidades: enums y Domicilio (Etapa 15)", PruebasBase::enumsYDomicilio);
-            v.seccion("Entidades: personas (Etapa 16)", PruebasBase::personas);
-            v.seccion("Entidades: turno y factura (Etapa 17)", PruebasBase::turnoYFactura);
-            v.seccion("Pacientes (servicio)", PruebasBase::pacientes);
-            v.seccion("Odontologos (servicio)", PruebasBase::odontologos);
-            v.seccion("Turnos (servicio)", PruebasBase::turnos);
-            v.seccion("Horario configurable y reloj de turnos", PruebasBase::horarioConfigurableYClock);
-            v.seccion("Tarifario", PruebasBase::tarifario);
-            v.seccion("Medios de pago", PruebasBase::mediosDePago);
-            v.seccion("CalculadorMonto", PruebasBase::calculador);
-            v.seccion("Facturacion (servicio)", PruebasBase::facturacion);
-            v.seccion("Controladores y DTO", PruebasBase::controladores);
-            v.seccion("Repositorios", PruebasBase::repositorios);
-            v.seccion("Persistencia de pacientes", PruebasBase::persistenciaPacientes);
-            v.seccion("Persistencia de odontologos", PruebasBase::persistenciaOdontologos);
-            v.seccion("Persistencia de turnos", PruebasBase::persistenciaTurnos);
-            v.seccion("Persistencia de facturas", PruebasBase::persistenciaFacturas);
-        } finally {
-            restaurarArchivos(respaldo);
-        }
+        v.seccion("Entidades: enums y Domicilio (Etapa 15)", PruebasBase::enumsYDomicilio);
+        v.seccion("Entidades: personas (Etapa 16)", PruebasBase::personas);
+        v.seccion("Entidades: turno y factura (Etapa 17)", PruebasBase::turnoYFactura);
+        v.seccion("Pacientes (servicio)", PruebasBase::pacientes);
+        v.seccion("Odontologos (servicio)", PruebasBase::odontologos);
+        v.seccion("Turnos (servicio)", PruebasBase::turnos);
+        v.seccion("Horario configurable y reloj de turnos", PruebasBase::horarioConfigurableYClock);
+        v.seccion("Tarifario", PruebasBase::tarifario);
+        v.seccion("Medios de pago", PruebasBase::mediosDePago);
+        v.seccion("CalculadorMonto", PruebasBase::calculador);
+        v.seccion("Facturacion (servicio)", PruebasBase::facturacion);
+        v.seccion("Controladores y DTO", PruebasBase::controladores);
+        v.seccion("Repositorios", PruebasBase::repositorios);
+        v.seccion("Persistencia de pacientes", PruebasBase::persistenciaPacientes);
+        v.seccion("Persistencia de odontologos", PruebasBase::persistenciaOdontologos);
+        v.seccion("Persistencia de turnos", PruebasBase::persistenciaTurnos);
+        v.seccion("Persistencia de facturas", PruebasBase::persistenciaFacturas);
+        v.seccion("Persistencia integrada y rutas configurables", PruebasBase::persistenciaIntegrada);
         boolean ok = v.resumen();
         System.exit(ok ? 0 : 1);
     }
@@ -470,14 +457,15 @@ public class PruebasBase {
         // ---- Facturacion con turnos ausentes y sin motivo
         ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
         ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
-        ServicioTurno stFac = new ServicioTurno(new RepositorioTurno());
+        RepositorioTurno repoTurnosFac = new RepositorioTurno();
+        ServicioTurno stFac = new ServicioTurno(repoTurnosFac);
         ServicioFactura sf = new ServicioFactura(new RepositorioFactura(), stFac, new Tarifario(), new CalculadorMonto(),
                 List.of(new Efectivo()));
         Paciente p = sp.registrarPaciente("Fatima", "Persi", 3001, "f@x.com", null, false);
         Odontologo o = so.registrarOdontologo(new General(0L, "Magali", "Pesqueira", 31, TipoConsulta.LIMPIEZA));
         LocalDate manana = LocalDate.now().plusDays(1);
         Turno aus = stFac.registrarTurno(p, o, manana, LocalTime.of(9, 0), TipoConsulta.LIMPIEZA);
-        stFac.guardarDesdePersistencia(new Turno(aus.getId(), p, o, manana, LocalTime.of(9, 0), EstadoTurno.AUSENTE, TipoConsulta.LIMPIEZA));
+        repoTurnosFac.actualizar(new Turno(aus.getId(), p, o, manana, LocalTime.of(9, 0), EstadoTurno.AUSENTE, TipoConsulta.LIMPIEZA));
         Turno cobrable = stFac.registrarTurno(p, o, manana, LocalTime.of(10, 0), TipoConsulta.CONTROL);
         v.igual("un turno ausente no aparece para cobrar", 1, sf.listarTurnosPorCobrar().size());
         v.igual("el unico por cobrar es el otro", cobrable.getId(), sf.listarTurnosPorCobrar().get(0).getId());
@@ -1093,6 +1081,13 @@ public class PruebasBase {
                 generador.siguienteId(() -> 8L));
         v.igual("generador refleja eliminaciones segun la politica actual", 4L,
                 generador.siguienteId(() -> 3L));
+        v.verdadero("ServicioPaciente no expone el repositorio", !tieneMetodoPublico(ServicioPaciente.class, "getRepositorio")
+                && !tieneMetodoPublico(ServicioPaciente.class, "guardarDesdePersistencia"));
+        v.verdadero("ServicioOdontologo no expone el repositorio", !tieneMetodoPublico(ServicioOdontologo.class, "getRepositorio")
+                && !tieneMetodoPublico(ServicioOdontologo.class, "guardarDesdePersistencia"));
+        v.verdadero("ServicioTurno no expone el repositorio", !tieneMetodoPublico(ServicioTurno.class, "getRepositorio")
+                && !tieneMetodoPublico(ServicioTurno.class, "guardarDesdePersistencia"));
+        v.verdadero("ServicioFactura no expone el repositorio", !tieneMetodoPublico(ServicioFactura.class, "getRepositorio"));
     }
 
     private static boolean tieneMetodoPublico(Class<?> tipo, String nombre) {
@@ -1104,211 +1099,167 @@ public class PruebasBase {
         return false;
     }
 
-    // ------------------------------------------------------------------ persistencia
+    // ------------------------------------------------------------------ persistencia (etapa 24)
+
+    private static Path directorioTemporal(String nombre) throws IOException {
+        Path dir = Files.createTempDirectory("clinica-" + nombre + "-");
+        dir.toFile().deleteOnExit();
+        return dir;
+    }
 
     private static void persistenciaPacientes() throws Exception {
-        ServicioPaciente origen = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
+        Path archivo = directorioTemporal("pacientes").resolve("pacientes.txt");
+        RepositorioCsv<Paciente> csv = new RepositorioCsv<>(archivo, new PacienteCsvMapper());
         Domicilio dom = new Domicilio("Necochea", 581, "Lobos", "Buenos Aires", TipoHogar.CASA);
-        Domicilio dom2 = new Domicilio("San Martin", 1200, "Moron", "Buenos Aires", TipoHogar.DEPARTAMENTO);
-        origen.registrarPaciente("Fatima", "Persi", 100, "f@x.com", dom, true);
-        origen.registrarPaciente("Tomas", "Barea", 200, "t@x.com", null, false);
-        origen.registrarPaciente("Maria", "Garcia", 300, "m@x.com", dom2, true);
+        Domicilio domComa = new Domicilio("Gaboto", 849, "La Tablada, La Matanza", "Buenos Aires", TipoHogar.CASA);
+        List<Paciente> origen = List.of(
+                new Paciente(1L, "Fatima", "Persi", 100, "f@x.com", LocalDate.of(2024, 1, 1), dom, true),
+                new Paciente(2L, "Tomas", "Barea", 200, "t@x.com", LocalDate.of(2024, 2, 2), null, false),
+                new Paciente(3L, "Maria\nGarcia", "Garcia \"Sol\"", 300, "m@x.com", LocalDate.of(2024, 3, 3), domComa, true));
+        csv.guardar(origen);
+        ResultadoCarga<Paciente> carga = csv.cargar();
+        v.igual("CSV de pacientes: se cargan los 3 registros", 3, carga.registros().size());
+        v.igual("CSV de pacientes: sin errores", 0, carga.errores().size());
+        v.igual("CSV de pacientes: encabezado por nombre", "id,nombre,apellido,dni,email,fechaAlta,tieneObraSocial,calle,numero,localidad,provincia,hogar",
+                Files.readAllLines(archivo).get(0));
+        v.igual("CSV de pacientes: localidad con coma conserva su valor", "La Tablada, La Matanza",
+                carga.registros().get(2).getDomicilio().getLocalidad());
+        v.igual("CSV de pacientes: salto de línea se escapa y recupera", "Maria\nGarcia", carga.registros().get(2).getNombre());
+        v.igual("CSV de pacientes: comillas dobles se escapan y recuperan", "Garcia \"Sol\"",
+                carga.registros().get(2).getApellido());
+        v.igual("CSV de pacientes: obra social", true, carga.registros().get(0).tieneObraSocial());
+        v.igual("CSV de pacientes: paciente sin domicilio", false, carga.registros().get(1).tieneDomicilio());
 
-        PersistenciaPaciente.guardar(origen.listarTodos());
-
-        ServicioPaciente destino = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
-        PersistenciaPaciente.cargar(destino);
-        v.igual("se cargan los 3 pacientes", 3, destino.listarTodos().size());
-        for (Paciente esperado : origen.listarTodos()) {
-            Paciente real = destino.buscarPorId(esperado.getId());
-            String quien = "paciente " + esperado.getId();
-            v.igual(quien + ": nombre", esperado.getNombre(), real.getNombre());
-            v.igual(quien + ": apellido", esperado.getApellido(), real.getApellido());
-            v.igual(quien + ": dni", esperado.getDni(), real.getDni());
-            v.igual(quien + ": email", esperado.getEmail(), real.getEmail());
-            v.igual(quien + ": fecha de alta", esperado.getFechaAlta(), real.getFechaAlta());
-            v.igual(quien + ": obra social", esperado.tieneObraSocial(), real.tieneObraSocial());
-            v.igual(quien + ": tiene domicilio", esperado.tieneDomicilio(), real.tieneDomicilio());
-            if (esperado.tieneDomicilio()) {
-                v.igual(quien + ": calle", esperado.getDomicilio().getCalle(), real.getDomicilio().getCalle());
-                v.igual(quien + ": numero", esperado.getDomicilio().getNumero(), real.getDomicilio().getNumero());
-                v.igual(quien + ": localidad", esperado.getDomicilio().getLocalidad(), real.getDomicilio().getLocalidad());
-                v.igual(quien + ": provincia", esperado.getDomicilio().getProvincia(), real.getDomicilio().getProvincia());
-                v.igual(quien + ": hogar", esperado.getDomicilio().getHogar(), real.getDomicilio().getHogar());
-            }
-        }
-
-        // formato viejo (sin obra social, 6 y 11 columnas) y una linea rota
-        escribir("pacientes.txt",
+        Files.write(archivo, List.of(
                 "1,Ana,Lopez,111,a@x.com,2024-01-01",
                 "2,Luis,Perez,222,l@x.com,2024-02-02,Belgrano,430,San Justo,Buenos Aires,CASA",
-                "esto,no,es,un,paciente");
-        ServicioPaciente viejo = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
-        String salida = capturarSalida(() -> PersistenciaPaciente.cargar(viejo));
-        v.igual("formato viejo: se cargan las 2 lineas validas", 2, viejo.listarTodos().size());
-        v.verdadero("formato viejo: obra social en false", !viejo.buscarPorId(1).tieneObraSocial());
-        v.verdadero("formato viejo de 6 columnas: sin domicilio", !viejo.buscarPorId(1).tieneDomicilio());
-        v.igual("formato viejo de 11 columnas: calle", "Belgrano", viejo.buscarPorId(2).getDomicilio().getCalle());
-        v.verdadero("la linea rota se informa", salida.contains("Linea corrupta ignorada"));
+                "basura,corrupta"));
+        ResultadoCarga<Paciente> legado = csv.cargar();
+        v.igual("CSV de pacientes: compatibilidad con 6 y 11 columnas históricas", 2, legado.registros().size());
+        v.igual("CSV de pacientes: formato histórico asigna obra social false", false, legado.registros().get(0).tieneObraSocial());
+        v.igual("CSV de pacientes: domicilio histórico", "Belgrano", legado.registros().get(1).getDomicilio().getCalle());
+        v.igual("CSV de pacientes: error de una fila no corta la carga", 1, legado.errores().size());
 
-        borrar("pacientes.txt");
-        ServicioPaciente sinArchivo = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
-        PersistenciaPaciente.cargar(sinArchivo);
-        v.igual("sin archivo no carga nada ni falla", 0, sinArchivo.listarTodos().size());
+        Files.write(archivo, List.of(
+                "4,Nuevo,Formato,444,n@x.com,2025-01-01,true",
+                "5,Con,Domicilio,555,d@x.com,2025-02-02,true,Calle,12,Localidad,Buenos Aires,PH"));
+        ResultadoCarga<Paciente> formatoEtapa20 = csv.cargar();
+        v.igual("CSV de pacientes: compatibilidad con formato intermedio de 7/12 columnas", 2,
+                formatoEtapa20.registros().size());
+        v.igual("CSV de pacientes: formato intermedio conserva obra social", true,
+                formatoEtapa20.registros().get(1).tieneObraSocial());
+
+        Files.write(archivo, List.of(
+                "apellido,nombre,id,dni,email,fechaAlta,tieneObraSocial,calle,numero,localidad,provincia,hogar",
+                "Lopez,Ana,9,999,a@x.com,2025-03-03,false,,,,,"));
+        ResultadoCarga<Paciente> encabezadoReordenado = csv.cargar();
+        v.igual("CSV de pacientes: resuelve columnas por nombre y no por posición", "Ana",
+                encabezadoReordenado.registros().get(0).getNombre());
+        v.igual("CSV de pacientes: encabezado reordenado conserva el DNI", 999,
+                encabezadoReordenado.registros().get(0).getDni());
     }
 
     private static void persistenciaOdontologos() throws Exception {
-        ServicioOdontologo origen = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
-        origen.registrarOdontologo(new General(0L, "Magali", "Pesqueira", 1131, TipoConsulta.LIMPIEZA));
-        origen.registrarOdontologo(new Ortodoncista(0L, "Nahuel", "Torres", 2245, TipoOrtodoncia.BRACKETS_METALICOS));
-        origen.registrarOdontologo(new Cirujano(0L, "Blas", "Pesce", 3367, TipoCirugia.EXTRACCION_MUELA));
-
-        PersistenciaOdontologo.guardar(origen.listarTodos());
-
-        ServicioOdontologo destino = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
-        PersistenciaOdontologo.cargar(destino);
-        v.igual("se cargan los 3 odontologos", 3, destino.listarTodos().size());
-
-        Odontologo o1 = destino.buscarPorId(1);
-        Odontologo o2 = destino.buscarPorId(2);
-        Odontologo o3 = destino.buscarPorId(3);
-        v.verdadero("el 1 vuelve como General", o1 instanceof General);
-        v.verdadero("el 2 vuelve como Ortodoncista", o2 instanceof Ortodoncista);
-        v.verdadero("el 3 vuelve como Cirujano", o3 instanceof Cirujano);
-        v.igual("General: especialidad", TipoConsulta.LIMPIEZA, ((General) o1).getTipoConsulta());
-        v.igual("Ortodoncista: especialidad", TipoOrtodoncia.BRACKETS_METALICOS, ((Ortodoncista) o2).getTipoOrtodoncia());
-        v.igual("Cirujano: especialidad", TipoCirugia.EXTRACCION_MUELA, ((Cirujano) o3).getTipoCirugia());
-        v.igual("nombre", "Magali", o1.getNombre());
-        v.igual("apellido", "Pesqueira", o1.getApellido());
-        v.igual("matricula", 1131, o1.getMatricula());
-
-        // el formato del archivo no cambio: se leen lineas guardadas antes de la etapa 16
-        escribir("odontologos.txt",
-                "1,General,Ana,Paz,10,LIMPIEZA",
-                "2,Odontologo,Base,Vieja,20,",
-                "3,Cirujano,Luis,Gil,30,IMPLANTE");
-        ServicioOdontologo viejo = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
-        PersistenciaOdontologo.cargar(viejo);
-        v.igual("un tipo desconocido se saltea y se cargan los demas (actual)", 2, viejo.listarTodos().size());
-        v.verdadero("la linea de Cirujano se carga con su motivo",
-                viejo.buscarPorId(3) instanceof Cirujano c && c.getTipoCirugia() == TipoCirugia.IMPLANTE);
-
-        // lo que se guarda conserva los nombres de especialidad de siempre
-        PersistenciaOdontologo.guardar(viejo.listarTodos());
-        List<String> lineas = Files.readAllLines(Path.of("odontologos.txt"));
-        v.verdadero("se escribe General, Cirujano u Ortodoncista (sin cambios en el formato)",
-                lineas.contains("1,General,Ana,Paz,10,LIMPIEZA") && lineas.contains("3,Cirujano,Luis,Gil,30,IMPLANTE"));
+        Path archivo = directorioTemporal("odontologos").resolve("odontologos.txt");
+        RepositorioCsv<Odontologo> csv = new RepositorioCsv<>(archivo, new OdontologoCsvMapper());
+        List<Odontologo> origen = List.of(
+                new General(1L, "Ana", "Paz", 10, TipoConsulta.LIMPIEZA),
+                new Cirujano(2L, "Luis", "Gil", 20, TipoCirugia.IMPLANTE),
+                new Ortodoncista(3L, "Eva", "Sol", 30, TipoOrtodoncia.BRACKETS_CERAMICOS));
+        csv.guardar(origen);
+        ResultadoCarga<Odontologo> carga = csv.cargar();
+        v.igual("CSV de odontólogos: round-trip de subtipos", 3, carga.registros().size());
+        v.verdadero("CSV de odontólogos: reconstruye los tres subtipos", carga.registros().get(0) instanceof General
+                && carga.registros().get(1) instanceof Cirujano && carga.registros().get(2) instanceof Ortodoncista);
+        Files.write(archivo, List.of("1,General,Ana,Paz,10,LIMPIEZA", "2,Desconocida,Luis,Gil,20,IMPLANTE",
+                "3,Cirujano,Sol,Eva,30,IMPLANTE"));
+        ResultadoCarga<Odontologo> legado = csv.cargar();
+        v.igual("CSV de odontólogos: procesa registros válidos después de uno corrupto", 2, legado.registros().size());
+        v.igual("CSV de odontólogos: informa fila corrupta sin detenerse", 1, legado.errores().size());
     }
 
     private static void persistenciaTurnos() throws Exception {
-        ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
-        ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
-        ServicioTurno st = new ServicioTurno(new RepositorioTurno());
-        Paciente p = sp.registrarPaciente("Fatima", "Persi", 100, "f@x.com", null, true);
-        Odontologo o = so.registrarOdontologo(new General(0L, "Magali", "Pesqueira", 1131, TipoConsulta.LIMPIEZA));
-        LocalDate dia = LocalDate.now().plusDays(2);
-
-        Turno a = st.registrarTurno(p, o, dia, LocalTime.of(9, 0), TipoConsulta.LIMPIEZA);
-        Turno b = st.registrarTurno(p, o, dia, LocalTime.of(10, 0), TipoConsulta.CONTROL);
-        st.confirmarTurno(b.getId());
-        Turno c = st.registrarTurno(p, o, dia, LocalTime.of(11, 0)); // sin motivo
-        st.cancelarTurno(c.getId());
-
-        PersistenciaTurno.guardar(st.listarTodos());
-
-        ServicioTurno stNuevo = new ServicioTurno(new RepositorioTurno());
-        PersistenciaTurno.cargar(stNuevo, sp, so);
-        v.igual("se cargan los 3 turnos", 3, stNuevo.listarTodos().size());
-
-        Turno ra = stNuevo.buscarPorId(a.getId());
-        v.igual("turno a: fecha", dia, ra.getFecha());
-        v.igual("turno a: hora", LocalTime.of(9, 0), ra.getHora());
-        v.igual("turno a: estado", EstadoTurno.PENDIENTE, ra.getEstado());
-        v.igual("turno a: paciente", p.getId(), ra.getPaciente().getId());
-        v.igual("turno a: odontologo", o.getId(), ra.getOdontologo().getId());
-        v.igual("turno a: el motivo vuelve tipado", TipoConsulta.LIMPIEZA, ra.getMotivoConsulta().orElse(null));
-        v.igual("turno b: estado confirmado", EstadoTurno.CONFIRMADO, stNuevo.buscarPorId(b.getId()).getEstado());
-        v.igual("turno c: estado cancelado", EstadoTurno.CANCELADO, stNuevo.buscarPorId(c.getId()).getEstado());
-        v.verdadero("turno c: sin motivo vuelve sin motivo", stNuevo.buscarPorId(c.getId()).getMotivoConsulta().isEmpty());
-        v.verdadero("turno c: en el archivo sigue guardado como 'Consulta' (formato sin cambios)",
-                Files.readAllLines(Path.of("turnos.txt")).stream().anyMatch(l -> l.endsWith(",CANCELADO,Consulta")));
-
-        // un turno ausente y un completado tambien hacen el viaje de ida y vuelta
-        Turno d = st.registrarTurno(p, o, dia, LocalTime.of(12, 0), TipoConsulta.URGENCIA);
-        st.guardarDesdePersistencia(new Turno(d.getId(), p, o, dia, LocalTime.of(12, 0), EstadoTurno.AUSENTE, TipoConsulta.URGENCIA));
-        Turno e = st.registrarTurno(p, o, dia, LocalTime.of(13, 0), TipoConsulta.CONTROL);
-        st.completarTurno(e.getId());
-        PersistenciaTurno.guardar(st.listarTodos());
-        ServicioTurno stEstados = new ServicioTurno(new RepositorioTurno());
-        PersistenciaTurno.cargar(stEstados, sp, so);
-        v.igual("turno ausente: estado", EstadoTurno.AUSENTE, stEstados.buscarPorId(d.getId()).getEstado());
-        v.igual("turno completado: estado", EstadoTurno.COMPLETADO, stEstados.buscarPorId(e.getId()).getEstado());
-        v.igual("al recargar, todos los turnos siguen siendo iguales a los guardados", 5, stEstados.listarTodos().size());
-
-        // un motivo que no es de ningun tratamiento deja el turno sin motivo (antes quedaba como texto suelto)
-        escribir("turnos.txt", "1,1,1," + dia + ",09:00,PENDIENTE,XYZ");
-        ServicioTurno desconocido = new ServicioTurno(new RepositorioTurno());
-        PersistenciaTurno.cargar(desconocido, sp, so);
-        v.igual("motivo desconocido: el turno se carga", 1, desconocido.listarTodos().size());
-        v.verdadero("motivo desconocido: queda sin motivo", desconocido.buscarPorId(1).getMotivoConsulta().isEmpty());
-
-        // un turno con un paciente inexistente se ignora, el resto se carga
-        escribir("turnos.txt",
-                "1,1,1," + dia + ",09:00,PENDIENTE,LIMPIEZA",
-                "2,99,1," + dia + ",10:00,PENDIENTE,CONTROL",
-                "basura");
-        ServicioTurno parcial = new ServicioTurno(new RepositorioTurno());
-        String salida = capturarSalida(() -> PersistenciaTurno.cargar(parcial, sp, so));
-        v.igual("las lineas invalidas se saltean", 1, parcial.listarTodos().size());
-        v.verdadero("se informa la linea corrupta", salida.contains("Linea corrupta ignorada"));
+        Path archivo = directorioTemporal("turnos").resolve("turnos.txt");
+        RepositorioPaciente rp = new RepositorioPaciente();
+        RepositorioOdontologo ro = new RepositorioOdontologo();
+        Paciente p = new Paciente(1L, "Ana", "Lopez", 111, "a@x.com", LocalDate.now(), null, false);
+        Odontologo o = new General(1L, "Magali", "Pesqueira", 1131, TipoConsulta.LIMPIEZA);
+        rp.guardar(p); ro.guardar(o);
+        LocalDate fecha = LocalDate.now().plusDays(2);
+        List<Turno> origen = List.of(
+                new Turno(1L, p, o, fecha, LocalTime.of(9, 0), EstadoTurno.PENDIENTE, TipoConsulta.LIMPIEZA),
+                new Turno(2L, p, o, fecha, LocalTime.of(10, 0), EstadoTurno.AUSENTE, TipoConsulta.URGENCIA),
+                new Turno(3L, p, o, fecha, LocalTime.of(11, 0), EstadoTurno.CANCELADO, null));
+        RepositorioCsv<Turno> csv = new RepositorioCsv<>(archivo, new TurnoCsvMapper(
+                id -> rp.buscarPorId(id).orElse(null), id -> ro.buscarPorId(id).orElse(null)));
+        csv.guardar(origen);
+        ResultadoCarga<Turno> carga = csv.cargar();
+        v.igual("CSV de turnos: round-trip de estados", 3, carga.registros().size());
+        v.igual("CSV de turnos: motivo tipado", TipoConsulta.URGENCIA, carga.registros().get(1).getMotivoConsulta().orElse(null));
+        v.verdadero("CSV de turnos: turno sin motivo conserva ausencia", carga.registros().get(2).getMotivoConsulta().isEmpty());
+        Files.write(archivo, List.of("1,99,1," + fecha + ",09:00,PENDIENTE,LIMPIEZA",
+                "2,1,1," + fecha + ",10:00,PENDIENTE,XYZ"));
+        ResultadoCarga<Turno> parcial = csv.cargar();
+        v.igual("CSV de turnos: una referencia inválida se aísla", 1, parcial.registros().size());
+        v.igual("CSV de turnos: informa la referencia inválida", 1, parcial.errores().size());
+        v.verdadero("CSV de turnos: motivo desconocido mantiene el comportamiento histórico sin motivo",
+                parcial.registros().get(0).getMotivoConsulta().isEmpty());
     }
 
     private static void persistenciaFacturas() throws Exception {
+        Path archivo = directorioTemporal("facturas").resolve("facturas.txt");
+        FacturaCsvMapper mapper = new FacturaCsvMapper(codigo -> codigo.equals("Tarjeta") ? "TARJETA" : codigo);
+        RepositorioCsv<Factura> csv = new RepositorioCsv<>(archivo, mapper);
         LocalDate hoy = LocalDate.now();
         List<Factura> facturas = List.of(
                 factura(1L, 10L, 1L, "Fatima Persi", "LIMPIEZA", hoy, "EFECTIVO", 25000, 7500, 1750, 15750),
                 factura(2L, 11L, 2L, "Barea, Tomas", "IMPLANTE", hoy.minusDays(1), "Tarjeta", 450000, 0, 0, 450000));
-        PersistenciaFactura.guardar(facturas);
-        List<String> lineasGuardadas = Files.readAllLines(Path.of("facturas.txt"));
-        v.igual("persistencia guarda el codigo del medio", "EFECTIVO", lineasGuardadas.get(0).split(",", -1)[6]);
+        csv.guardar(facturas);
+        ResultadoCarga<Factura> carga = csv.cargar();
+        v.igual("CSV de facturas: carga ambos registros", 2, carga.registros().size());
+        v.igual("CSV de facturas: nombre con coma conserva su valor", "Barea, Tomas", carga.registros().get(1).getPacienteNombre());
+        v.igual("CSV de facturas: medio antiguo se migra a código", "TARJETA", carga.registros().get(1).getMetodoPagoCodigo());
+        v.casi("CSV de facturas: total decimal", 15750, carga.registros().get(0).getMontoTotal());
+        Files.write(archivo, List.of("id,turnoId,pacienteId,pacienteNombre,concepto,fecha,medioPago,montoBase,descuentoObraSocial,descuentoMedioPago,montoTotal",
+                "3,12,4,Paciente,CONTROL," + hoy + ",EFECTIVO,100.00,0.00,0.00,100.00", "fila,corrupta"));
+        ResultadoCarga<Factura> parcial = csv.cargar();
+        v.igual("CSV de facturas: carga válida pese a una línea corrupta", 1, parcial.registros().size());
+        v.igual("CSV de facturas: registra el error de la línea corrupta", 1, parcial.errores().size());
+        Files.write(archivo, List.of("4,13,5,Paciente,CONTROL," + hoy + ",Tarjeta,100.00,0.00,0.00,100.00"));
+        ResultadoCarga<Factura> formatoAnterior = csv.cargar();
+        v.igual("CSV de facturas: compatibilidad con archivo anterior sin encabezado", 1, formatoAnterior.registros().size());
+        v.igual("CSV de facturas: medio de pago antiguo se convierte en código", "TARJETA",
+                formatoAnterior.registros().get(0).getMetodoPagoCodigo());
+    }
 
-        // le agrega una linea rota al final
-        java.nio.file.Files.writeString(Path.of("facturas.txt"), "esto,no,es,una,factura\n",
-                java.nio.file.StandardOpenOption.APPEND);
+    private static void persistenciaIntegrada() throws Exception {
+        Path directorio = directorioTemporal("integrada");
+        RepositorioPaciente rp = new RepositorioPaciente();
+        RepositorioOdontologo ro = new RepositorioOdontologo();
+        RepositorioTurno rt = new RepositorioTurno();
+        RepositorioFactura rf = new RepositorioFactura();
+        Paciente paciente = new Paciente(1L, "Ana", "Lopez", 111, "a@x.com", LocalDate.now(), null, true);
+        Odontologo odontologo = new General(1L, "Magali", "Pesqueira", 1131, TipoConsulta.LIMPIEZA);
+        Turno turno = new Turno(1L, paciente, odontologo, LocalDate.now().plusDays(1), LocalTime.of(9, 0),
+                EstadoTurno.COMPLETADO, TipoConsulta.LIMPIEZA);
+        Factura factura = factura(1L, 1L, 1L, "Ana Lopez", "LIMPIEZA", LocalDate.now(), "EFECTIVO", 100, 0, 0, 100);
+        rp.guardar(paciente); ro.guardar(odontologo); rt.guardar(turno); rf.guardar(factura);
+        PersistenciaClinica escritura = new PersistenciaClinica(directorio, rp, ro, rt, rf, codigo -> codigo);
+        escritura.guardar(rp.listarTodos(), rt.listarTodos(), ro.listarTodos(), rf.listarTodos());
 
-        ServicioTurno turnosDestino = new ServicioTurno(new RepositorioTurno());
-        ServicioFactura destino = new ServicioFactura(new RepositorioFactura(),
-                turnosDestino, new Tarifario(), new CalculadorMonto(),
-                List.of(new MercadoPago(), new Tarjeta(), new Efectivo()));
-        String salida = capturarSalida(() -> PersistenciaFactura.cargar(destino));
-        List<Factura> cargadas = destino.listarTodos();
-        v.igual("se cargan las 2 facturas validas", 2, cargadas.size());
-        v.verdadero("se informa la linea rota", salida.contains("Linea corrupta ignorada"));
-
-        Factura f1 = cargadas.get(0);
-        v.igual("factura 1: turno", 10L, f1.getTurnoId());
-        v.igual("factura 1: paciente", "Fatima Persi", f1.getPacienteNombre());
-        v.igual("factura 1: concepto", "LIMPIEZA", f1.getConcepto());
-        v.igual("factura 1: fecha", hoy, f1.getFecha());
-        v.igual("factura 1: medio migrado a codigo", "EFECTIVO", f1.getMetodoPagoCodigo());
-        v.igual("factura 2: nombre antiguo migrado a codigo", "TARJETA", cargadas.get(1).getMetodoPagoCodigo());
-        PersistenciaFactura.guardar(cargadas);
-        List<String> facturasMigradas = Files.readAllLines(Path.of("facturas.txt"));
-        v.igual("al reescribir, el nombre antiguo queda guardado como codigo",
-                "TARJETA", facturasMigradas.get(1).split(",", -1)[6]);
-        v.casi("factura 1: base", 25000, f1.getMontoBase());
-        v.casi("factura 1: desc. obra social", 7500, f1.getDescuentoObraSocial());
-        v.casi("factura 1: desc. medio de pago", 1750, f1.getDescuentoMedioPago());
-        v.casi("factura 1: total", 15750, f1.getMontoTotal());
-        v.igual("la coma del nombre se reemplaza por un espacio (actual)", "Barea  Tomas", cargadas.get(1).getPacienteNombre());
-
-        Paciente pacienteNuevo = new Paciente(1L, "Nuevo", "Paciente", 777, "nuevo@x.com",
-                LocalDate.now(), null, false);
-        Odontologo odontologoNuevo = new General(1L, "Nuevo", "Odontologo", 778, TipoConsulta.LIMPIEZA);
-        Turno turnoNuevo = turnosDestino.registrarTurno(pacienteNuevo, odontologoNuevo,
-                LocalDate.now().plusDays(1), LocalTime.of(9, 0), TipoConsulta.LIMPIEZA);
-        Factura tercera = destino.cobrarTurno(turnoNuevo.getId(), new Tarjeta());
-        v.igual("el generador de facturas contempla las facturas cargadas", 3L, tercera.getId());
+        RepositorioPaciente rp2 = new RepositorioPaciente();
+        RepositorioOdontologo ro2 = new RepositorioOdontologo();
+        RepositorioTurno rt2 = new RepositorioTurno();
+        RepositorioFactura rf2 = new RepositorioFactura();
+        PersistenciaClinica lectura = new PersistenciaClinica(directorio, rp2, ro2, rt2, rf2, codigo -> codigo);
+        lectura.cargar();
+        v.verdadero("PersistenciaClinica usa la carpeta configurada", Files.exists(directorio.resolve("pacientes.txt"))
+                && Files.exists(directorio.resolve("odontologos.txt")) && Files.exists(directorio.resolve("turnos.txt"))
+                && Files.exists(directorio.resolve("facturas.txt")));
+        v.igual("PersistenciaClinica carga pacientes", 1, rp2.listarTodos().size());
+        v.igual("PersistenciaClinica carga odontólogos", 1, ro2.listarTodos().size());
+        v.igual("PersistenciaClinica carga turnos después de las personas", 1, rt2.listarTodos().size());
+        v.igual("PersistenciaClinica carga facturas al final", 1, rf2.listarTodos().size());
     }
 
     // ------------------------------------------------------------------ utilidades de prueba
@@ -1331,48 +1282,4 @@ public class PruebasBase {
         }
     }
 
-    private static void escribir(String archivo, String... lineas) throws IOException {
-        Files.writeString(Path.of(archivo), String.join("\n", lineas) + "\n");
-    }
-
-    private static void borrar(String archivo) throws IOException {
-        Files.deleteIfExists(Path.of(archivo));
-    }
-
-    // ejecuta algo y devuelve lo que imprimio por consola (despues vuelve a imprimir normal)
-    private static String capturarSalida(Verificador.Ejecutable accion) throws Exception {
-        PrintStream original = System.out;
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        System.setOut(new PrintStream(buffer, true, "UTF-8"));
-        try {
-            accion.ejecutar();
-        } finally {
-            System.setOut(original);
-        }
-        return buffer.toString("UTF-8");
-    }
-
-    // mueve los .txt reales a una carpeta temporal para que las pruebas no los pisen
-    private static Path respaldarArchivos() throws IOException {
-        Path carpeta = Files.createTempDirectory("respaldo-pruebas-");
-        for (String nombre : ARCHIVOS) {
-            Path origen = Path.of(nombre);
-            if (Files.exists(origen)) {
-                Files.move(origen, carpeta.resolve(nombre), StandardCopyOption.REPLACE_EXISTING);
-            }
-        }
-        return carpeta;
-    }
-
-    // borra lo que dejaron las pruebas y devuelve los .txt reales a su lugar
-    private static void restaurarArchivos(Path carpeta) throws IOException {
-        for (String nombre : ARCHIVOS) {
-            Files.deleteIfExists(Path.of(nombre));
-            Path guardado = carpeta.resolve(nombre);
-            if (Files.exists(guardado)) {
-                Files.move(guardado, Path.of(nombre), StandardCopyOption.REPLACE_EXISTING);
-            }
-        }
-        Files.deleteIfExists(carpeta);
-    }
 }

@@ -95,14 +95,6 @@ public class ServicioPaciente {
         repositorio.eliminar(id);
     }
 
-    /**
-     * Punto de entrada controlado para reconstruir datos desde la persistencia.
-     * Se mantiene hasta que la etapa 24 introduzca el repositorio CSV.
-     */
-    public void guardarDesdePersistencia(Paciente paciente) {
-        repositorio.guardar(java.util.Objects.requireNonNull(paciente));
-    }
-
     private void validarDni(int dni) throws DatoInvalidoException {
         if (dni <= 0) {
             throw new DatoInvalidoException("DNI", "Debe ser un número entero positivo.");

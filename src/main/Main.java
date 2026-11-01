@@ -24,10 +24,9 @@ import ui.VistaPaciente;
 import ui.VistaPrincipal;
 import ui.VistaTurno;
 import uiSwing.VentanaPrincipal;
-import uiSwing.PersistenciaFactura;
-import uiSwing.PersistenciaPaciente;
-import uiSwing.PersistenciaTurno;
-import uiSwing.PersistenciaOdontologo;
+import persistence.PersistenciaClinica;
+import java.nio.file.Path;
+import java.nio.file.Files;
 
 import javax.swing.*;
 import java.util.List;
@@ -57,12 +56,21 @@ public class Main {
         ControladorTurno ctrlTurno = new ControladorTurno(servTurno, servPaciente, servOdontologo);
         ControladorFactura ctrlFactura = new ControladorFactura(servFactura);
 
-        // si ya existe el archivo carga desde ahi, sino carga los datos de prueba
-        if (new java.io.File("pacientes.txt").exists() || new java.io.File("odontologos.txt").exists()) {
-            PersistenciaPaciente.cargar(servPaciente);
-            PersistenciaOdontologo.cargar(servOdontologo); // Carga la persistencia en txt
-            PersistenciaTurno.cargar(servTurno, servPaciente, servOdontologo);
-            PersistenciaFactura.cargar(servFactura); // despues de turnos, porque cada factura refiere a un turno
+        // La carpeta puede configurarse con -Dclinica.data.dir=/ruta/a/datos.
+        Path directorioDatos = Path.of(System.getProperty("clinica.data.dir", "."));
+        PersistenciaClinica persistencia = new PersistenciaClinica(directorioDatos, repoPaciente,
+                repoOdontologo, repoTurno, repoFactura, servFactura::codigoMedioPago);
+
+        // Si ya hay archivos, se cargan en orden de dependencias; de lo contrario se crean datos de ejemplo.
+        if (Files.exists(directorioDatos.resolve("pacientes.txt"))
+                || Files.exists(directorioDatos.resolve("odontologos.txt"))
+                || Files.exists(directorioDatos.resolve("turnos.txt"))
+                || Files.exists(directorioDatos.resolve("facturas.txt"))) {
+            try {
+                persistencia.cargar();
+            } catch (java.io.IOException e) {
+                System.err.println("No se pudieron cargar los datos: " + e.getMessage());
+            }
         } else {
             try {
                 Domicilio domicilioFati = new Domicilio("Necochea", 581, "Lobos", "Buenos Aires", TipoHogar.CASA);
@@ -132,7 +140,7 @@ public class Main {
 
         SwingUtilities.invokeLater(() -> {
             // Se le envían los controladores para que no tire error de null
-            VentanaPrincipal ventana = new VentanaPrincipal(ctrlTurno, ctrlPaciente, ctrlOdontologo, ctrlFactura);
+            VentanaPrincipal ventana = new VentanaPrincipal(ctrlTurno, ctrlPaciente, ctrlOdontologo, ctrlFactura, persistencia);
             ventana.iniciar();
         });
 

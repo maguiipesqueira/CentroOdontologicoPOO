@@ -136,11 +136,6 @@ public class ServicioTurno {
         repositorio.eliminar(id);
     }
 
-    /** Entrada explícita para reconstruir los turnos cargados desde persistencia. */
-    public void guardarDesdePersistencia(Turno turno) {
-        repositorio.guardar(turno);
-    }
-
     private void validarPaciente(Paciente paciente) throws DatoInvalidoException {
         if (paciente == null) {
             throw new DatoInvalidoException("Paciente", "El paciente no puede estar vacío.");

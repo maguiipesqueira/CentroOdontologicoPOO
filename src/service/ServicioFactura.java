@@ -134,11 +134,6 @@ public class ServicioFactura {
         return CierreDelDia.calcular(fecha, facturasDelDia, nombresPorCodigo);
     }
 
-    // expone el repositorio para la persistencia
-    public RepositorioFactura getRepositorio() {
-        return repositorio;
-    }
-
     // busca el turno y comprueba que se pueda cobrar (existe, no esta cancelado y no tiene factura)
     private Turno buscarTurnoCobrable(long turnoId) throws DatoInvalidoException {
         Turno turno = servicioTurno.buscarPorId(turnoId);
