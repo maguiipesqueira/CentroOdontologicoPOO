@@ -2,20 +2,18 @@ package uiSwing;
 
 import controller.ControladorTurno;
 import entity.Turno;
+import entity.EstadoTurno;
 import exception.ClinicaException;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class PanelLateral extends JPanel {
 
-    private ControladorTurno controlador;
-    private Runnable alActualizar; // Función para avisarle a la Agenda que se repinte
+    private final ControladorTurno controlador;
     private JPanel listaPacientes;
     private JPanel panelDetalle;
     private Turno turnoSeleccionado;
@@ -23,9 +21,8 @@ public class PanelLateral extends JPanel {
     private JLabel valPaciente, valDni, valTipo, valOdontologo, valEstado;
     private JButton btnAsistio, btnNoAsistio;
 
-    public PanelLateral(ControladorTurno controlador, Runnable alActualizar) {
-        this.controlador = controlador;
-        this.alActualizar = alActualizar;
+    public PanelLateral(ControladorTurno controlador) {
+        this.controlador = java.util.Objects.requireNonNull(controlador);
 
         setPreferredSize(new Dimension(230, 0));
         setBackground(Color.WHITE);
@@ -58,12 +55,8 @@ public class PanelLateral extends JPanel {
     // Busca los turnos del día y los dibuja
     public void refrescar() {
         listaPacientes.removeAll();
-        LocalDate hoy = LocalDate.now();
-
-        // Trae todos los turnos y filtra los que sean de hoy
-        List<Turno> turnosHoy = controlador.listarTodos().stream()
-                .filter(t -> t.getFecha().equals(hoy))
-                .collect(Collectors.toList());
+        // La fecha actual se resuelve en el controlador mediante su Clock inyectado.
+        List<Turno> turnosHoy = controlador.listarTurnosDeHoy();
 
         if (turnosHoy.isEmpty()) {
             JLabel lblVacio = new JLabel("Sin turnos pendientes");
@@ -177,9 +170,8 @@ public class PanelLateral extends JPanel {
         btnNoAsistio.setForeground(new Color(136, 19, 55));
         btnNoAsistio.setFocusPainted(false);
 
-        // Lógica de los botones
-        btnAsistio.addActionListener(e -> accionTurno(true));
-        btnNoAsistio.addActionListener(e -> accionTurno(false));
+        btnAsistio.addActionListener(e -> marcarAsistencia());
+        btnNoAsistio.addActionListener(e -> marcarAusencia());
 
         botones.add(btnAsistio);
         botones.add(btnNoAsistio);
@@ -213,8 +205,10 @@ public class PanelLateral extends JPanel {
             valOdontologo.setText(turnoSeleccionado.getOdontologo().getApellido());
             valEstado.setText(turnoSeleccionado.getEstado().name());
 
-            btnAsistio.setEnabled(true);
-            btnNoAsistio.setEnabled(true);
+            boolean pendienteDeAtencion = turnoSeleccionado.getEstado() == EstadoTurno.PENDIENTE
+                    || turnoSeleccionado.getEstado() == EstadoTurno.CONFIRMADO;
+            btnAsistio.setEnabled(pendienteDeAtencion);
+            btnNoAsistio.setEnabled(pendienteDeAtencion);
         } else {
             valPaciente.setText("-"); valDni.setText("-"); valTipo.setText("-");
             valOdontologo.setText("-"); valEstado.setText("-");
@@ -223,17 +217,25 @@ public class PanelLateral extends JPanel {
         }
     }
 
-    // Ejecuta Completar o Cancelar en el controlador y actualiza visualmente
-    private void accionTurno(boolean asistio) {
+    private void marcarAsistencia() {
+        ejecutarAccion(() -> controlador.completarTurno(turnoSeleccionado.getId()));
+    }
+
+    private void marcarAusencia() {
+        ejecutarAccion(() -> controlador.marcarAusente(turnoSeleccionado.getId()));
+    }
+
+    private void ejecutarAccion(AccionTurno accion) {
         if (turnoSeleccionado == null) return;
         try {
-            if (asistio) controlador.completarTurno(turnoSeleccionado.getId());
-            else controlador.cancelarTurno(turnoSeleccionado.getId());
-
-            refrescar(); // Repinta esta barra lateral
-            if (alActualizar != null) alActualizar.run(); // Le avisa a la agenda central que se repinte
+            accion.ejecutar();
+            refrescar();
+            firePropertyChange("turnosActualizados", false, true);
         } catch (ClinicaException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Atención", JOptionPane.WARNING_MESSAGE);
         }
     }
+
+    @FunctionalInterface
+    private interface AccionTurno { void ejecutar() throws ClinicaException; }
 }

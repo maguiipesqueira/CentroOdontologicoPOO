@@ -1,36 +1,34 @@
 package uiSwing;
 
 import controller.ControladorFactura;
+import controller.ControladorOdontologo;
+import controller.ControladorPaciente;
 import controller.ControladorTurno;
+
 import javax.swing.*;
 import java.awt.*;
-import controller.ControladorPaciente;
-import controller.ControladorOdontologo;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 
+/** Contenedor de secciones; coordina actualizaciones mediante eventos Observer. */
 public class PanelContenido extends JPanel {
 
-    private CardLayout cardLayout;
+    private final CardLayout cardLayout;
+    private final PanelTurnos panelTurnos;
+    private final PanelAgenda panelAgenda;
+    private final PanelLateral panelLateral;
+    private final PanelFacturacion panelFacturacion;
 
-    public static final String AGENDA       = "AGENDA";
-    public static final String PACIENTES    = "PACIENTES";
-    public static final String ODONTOLOGOS  = "ODONTOLOGOS";
-    public static final String TURNOS       = "TURNOS";
-    public static final String FACTURACION  = "FACTURACION";
+    private final PropertyChangeListener listenerActualizacionTurnos = this::alActualizarTurnos;
 
-    private PanelTurnos panelTurnos;
-    private PanelAgenda panelAgenda;
-    private PanelPaciente panelPaciente;
-    private PanelOdontologo panelOdontologo;
-    private PanelFacturacion panelFacturacion;
-    private PanelLateral panelLateral; // Instanciado a nivel clase
-
-
-    public PanelContenido(ControladorTurno controladorTurno, ControladorPaciente controladorPaciente, ControladorOdontologo controladorOdontologo, ControladorFactura controladorFactura) {
+    public PanelContenido(ControladorTurno controladorTurno,
+                          ControladorPaciente controladorPaciente,
+                          ControladorOdontologo controladorOdontologo,
+                          ControladorFactura controladorFactura) {
         cardLayout = new CardLayout();
         setLayout(cardLayout);
         setBackground(new Color(248, 247, 244));
 
-        // Instanciamos el de turnos primero para que el callback lo pueda usar
         panelTurnos = new PanelTurnos(controladorTurno);
 
         JPanel panelAgendaContenedor = new JPanel(new BorderLayout());
@@ -38,35 +36,35 @@ public class PanelContenido extends JPanel {
 
         PanelEstadistica estadisticas = new PanelEstadistica();
         panelAgenda = new PanelAgenda(controladorTurno, estadisticas);
-
-        // Ahora el PanelLateral recibe el controlador y un lambda que refresca todo cuando hay un cambio
-        panelLateral = new PanelLateral(controladorTurno, () -> {
-            panelAgenda.refrescar();
-            panelTurnos.refrescarTabla();
-        });
+        panelLateral = new PanelLateral(controladorTurno);
+        panelLateral.addPropertyChangeListener("turnosActualizados", listenerActualizacionTurnos);
 
         panelAgendaContenedor.add(panelLateral, BorderLayout.EAST);
         panelAgendaContenedor.add(estadisticas, BorderLayout.NORTH);
         panelAgendaContenedor.add(panelAgenda, BorderLayout.CENTER);
-        add(panelAgendaContenedor, AGENDA);
+        add(panelAgendaContenedor, SeccionContenido.AGENDA.claveTarjeta());
 
-        panelPaciente = new PanelPaciente(controladorPaciente);
-        add(panelPaciente, PACIENTES);
-
-        panelOdontologo = new PanelOdontologo(controladorOdontologo);
-        add(panelOdontologo, ODONTOLOGOS);
-
-        add(panelTurnos, TURNOS);
+        add(new PanelPaciente(controladorPaciente), SeccionContenido.PACIENTES.claveTarjeta());
+        add(new PanelOdontologo(controladorOdontologo), SeccionContenido.ODONTOLOGOS.claveTarjeta());
+        add(panelTurnos, SeccionContenido.TURNOS.claveTarjeta());
 
         panelFacturacion = new PanelFacturacion(controladorFactura);
-        add(panelFacturacion, FACTURACION);
+        add(panelFacturacion, SeccionContenido.FACTURACION.claveTarjeta());
     }
 
-    public void mostrar(String nombre) { cardLayout.show(this, nombre); }
+    private void alActualizarTurnos(PropertyChangeEvent evento) {
+        panelAgenda.refrescar();
+        panelTurnos.refrescarTabla();
+        firePropertyChange("datosActualizados", false, true);
+    }
+
+    public void mostrar(SeccionContenido seccion) {
+        if (seccion == null) throw new IllegalArgumentException("La sección es obligatoria.");
+        cardLayout.show(this, seccion.claveTarjeta());
+    }
+
     public PanelTurnos getPanelTurnos() { return panelTurnos; }
     public PanelAgenda getPanelAgenda() { return panelAgenda; }
     public PanelFacturacion getPanelFacturacion() { return panelFacturacion; }
-
-    // NUEVO: Permite acceder al lateral para refrescarlo
     public PanelLateral getPanelLateral() { return panelLateral; }
 }

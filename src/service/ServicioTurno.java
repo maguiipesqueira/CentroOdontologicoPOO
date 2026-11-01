@@ -128,6 +128,13 @@ public class ServicioTurno {
         return turno;
     }
 
+    public Turno marcarAusente(long id) throws DatoInvalidoException {
+        Turno turno = buscarPorId(id);
+        turno.marcarAusente();
+        repositorio.actualizar(turno);
+        return turno;
+    }
+
     public void eliminarTurno(long id) throws DatoInvalidoException {
         Turno turno = buscarPorId(id);
         if (turno.getEstado() != EstadoTurno.CANCELADO) {

@@ -10,6 +10,7 @@ public class PanelEstadistica extends JPanel {
     private final JLabel numConfirmados;
     private final JLabel numCompletados;
     private final JLabel numCancelados;
+    private final JLabel numAusentes;
 
     public PanelEstadistica() {
         setBackground(new Color(248, 247, 244));
@@ -19,12 +20,13 @@ public class PanelEstadistica extends JPanel {
         numConfirmados = crearTarjeta("Confirmados", PaletaEstadoTurno.fondo(entity.EstadoTurno.CONFIRMADO));
         numCompletados = crearTarjeta("Completados", PaletaEstadoTurno.fondo(entity.EstadoTurno.COMPLETADO));
         numCancelados = crearTarjeta("Cancelados", PaletaEstadoTurno.fondo(entity.EstadoTurno.CANCELADO));
+        numAusentes = crearTarjeta("Ausentes", PaletaEstadoTurno.fondo(entity.EstadoTurno.AUSENTE));
     }
 
     private JLabel crearTarjeta(String titulo, Color colorFondo) {
         TarjetaRedondeada tarjeta = new TarjetaRedondeada(colorFondo);
         tarjeta.setLayout(new BoxLayout(tarjeta, BoxLayout.Y_AXIS));
-        tarjeta.setPreferredSize(new Dimension(160, 80));
+        tarjeta.setPreferredSize(new Dimension(145, 80));
         tarjeta.setBorder(BorderFactory.createEmptyBorder(15, 0, 15, 0));
 
         JLabel numero = new JLabel("0", SwingConstants.CENTER);
@@ -48,4 +50,5 @@ public class PanelEstadistica extends JPanel {
     public void setConfirmados(int n) { numConfirmados.setText(String.valueOf(n)); }
     public void setCompletados(int n) { numCompletados.setText(String.valueOf(n)); }
     public void setCancelados(int n) { numCancelados.setText(String.valueOf(n)); }
+    public void setAusentes(int n) { numAusentes.setText(String.valueOf(n)); }
 }

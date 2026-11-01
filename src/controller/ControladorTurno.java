@@ -120,6 +120,7 @@ public class ControladorTurno {
     public Turno confirmarTurno(long id) throws ClinicaException { return servicioTurno.confirmarTurno(id); }
     public Turno cancelarTurno(long id) throws ClinicaException { return servicioTurno.cancelarTurno(id); }
     public Turno completarTurno(long id) throws ClinicaException { return servicioTurno.completarTurno(id); }
+    public Turno marcarAusente(long id) throws ClinicaException { return servicioTurno.marcarAusente(id); }
     public void eliminarTurno(long id) throws ClinicaException { servicioTurno.eliminarTurno(id); }
     public List<Paciente> listarPacientes() { return servicioPaciente.listarTodos(); }
     public List<Odontologo> listarOdontologos() { return servicioOdontologo.listarTodos(); }

@@ -1,125 +1,103 @@
 package uiSwing;
 
 import controller.ControladorFactura;
+import controller.ControladorOdontologo;
+import controller.ControladorPaciente;
 import controller.ControladorTurno;
+import persistence.PersistenciaClinica;
+
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import controller.ControladorPaciente;
-import persistence.PersistenciaClinica;
 import java.io.IOException;
+import java.util.Objects;
 
 public class VentanaPrincipal extends JFrame {
 
-private Sidebar sidebar;
-private TopBar topBar;
-private PanelContenido contenido;
-private ControladorTurno controladorTurno;
-private ControladorPaciente controladorPaciente;
-private controller.ControladorOdontologo controladorOdontologo;
-private ControladorFactura controladorFactura;
-private final PersistenciaClinica persistencia;
+    private final Sidebar sidebar;
+    private final TopBar topBar;
+    private final PanelContenido contenido;
+    private final ControladorTurno controladorTurno;
+    private final ControladorPaciente controladorPaciente;
+    private final ControladorOdontologo controladorOdontologo;
+    private final ControladorFactura controladorFactura;
+    private final PersistenciaClinica persistencia;
 
-public VentanaPrincipal(ControladorTurno controladorTurno, ControladorPaciente controladorPaciente, controller.ControladorOdontologo controladorOdontologo, ControladorFactura controladorFactura, PersistenciaClinica persistencia) {
-    this.controladorTurno = controladorTurno;
-    this.controladorPaciente = controladorPaciente;
-    this.controladorOdontologo = controladorOdontologo;
-    this.controladorFactura = controladorFactura;
-    this.persistencia = java.util.Objects.requireNonNull(persistencia);
+    public VentanaPrincipal(ControladorTurno controladorTurno,
+                            ControladorPaciente controladorPaciente,
+                            ControladorOdontologo controladorOdontologo,
+                            ControladorFactura controladorFactura,
+                            PersistenciaClinica persistencia) {
+        this.controladorTurno = Objects.requireNonNull(controladorTurno);
+        this.controladorPaciente = Objects.requireNonNull(controladorPaciente);
+        this.controladorOdontologo = Objects.requireNonNull(controladorOdontologo);
+        this.controladorFactura = Objects.requireNonNull(controladorFactura);
+        this.persistencia = Objects.requireNonNull(persistencia);
 
-    setTitle("Centro Odontológico - Sistema de Gestión");
-    setSize(1100, 620);
-    setLocationRelativeTo(null);
-    setLayout(new BorderLayout());
+        setTitle("Centro Odontológico - Sistema de Gestión");
+        setSize(1100, 620);
+        setLocationRelativeTo(null);
+        setLayout(new BorderLayout());
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosing(java.awt.event.WindowEvent e) { confirmarCierre(); }
+        });
 
-    setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-    addWindowListener(new java.awt.event.WindowAdapter() {
-        public void windowClosing(java.awt.event.WindowEvent e) {
-            int respuesta = JOptionPane.showConfirmDialog(
-                    null,
-                    "Los datos se guardarán antes de cerrar. ¿Desea salir?",
-                    "Cerrar aplicación",
-                    JOptionPane.YES_NO_OPTION
-            );
-            if (respuesta == JOptionPane.YES_OPTION) {
-                try {
-                    persistencia.guardar(controladorPaciente.listarTodos(), controladorTurno.listarTodos(),
-                            controladorOdontologo.listarTodos(), controladorFactura.listarTodos());
-                    System.exit(0);
-                } catch (IOException ex) {
-                    JOptionPane.showMessageDialog(VentanaPrincipal.this, "No se pudieron guardar los datos: " + ex.getMessage(),
-                            "Error de persistencia", JOptionPane.ERROR_MESSAGE);
-                }
+        sidebar = new Sidebar();
+        topBar = new TopBar();
+        contenido = new PanelContenido(controladorTurno, controladorPaciente,
+                controladorOdontologo, controladorFactura);
+
+        add(sidebar, BorderLayout.WEST);
+        add(topBar, BorderLayout.NORTH);
+        add(contenido, BorderLayout.CENTER);
+
+        sidebar.addPropertyChangeListener("seccionSeleccionada", evento ->
+                navegarA((SeccionContenido) evento.getNewValue()));
+        topBar.getBtnNuevo().addActionListener(e -> abrirNuevoTurno());
+        contenido.addPropertyChangeListener("datosActualizados", evento ->
+                contenido.getPanelLateral().refrescar());
+
+        navegarA(SeccionContenido.AGENDA);
+    }
+
+    private void navegarA(SeccionContenido seccion) {
+        contenido.mostrar(seccion);
+        topBar.setTitulo(seccion.titulo());
+        sidebar.marcarActivo(seccion);
+        switch (seccion) {
+            case AGENDA -> {
+                contenido.getPanelAgenda().refrescar();
+                contenido.getPanelLateral().refrescar();
             }
+            case TURNOS -> contenido.getPanelTurnos().refrescarTabla();
+            case FACTURACION -> contenido.getPanelFacturacion().refrescar();
+            case PACIENTES, ODONTOLOGOS -> { /* La sección se actualiza al entrar en su propia pantalla. */ }
         }
-    });
+    }
 
-    sidebar   = new Sidebar();
-    topBar    = new TopBar();
-    contenido = new PanelContenido(controladorTurno, controladorPaciente, controladorOdontologo, controladorFactura);
-
-    add(sidebar,   BorderLayout.WEST);
-    add(topBar,    BorderLayout.NORTH);
-    add(contenido, BorderLayout.CENTER);
-
-    sidebar.getBtnAgenda().addMouseListener(new MouseAdapter() {
-        public void mouseClicked(MouseEvent e) {
-            contenido.mostrar(PanelContenido.AGENDA);
-            topBar.setTitulo("Agenda semanal");
-            sidebar.marcarActivo(sidebar.getBtnAgenda());
-            contenido.getPanelAgenda().refrescar();
-            contenido.getPanelLateral().refrescar(); // Actualizamos lateral al entrar
-        }
-    });
-
-    sidebar.getBtnPacientes().addMouseListener(new MouseAdapter() {
-        public void mouseClicked(MouseEvent e) {
-            contenido.mostrar(PanelContenido.PACIENTES);
-            topBar.setTitulo("Pacientes");
-            sidebar.marcarActivo(sidebar.getBtnPacientes());
-        }
-    });
-
-    sidebar.getBtnOdontologos().addMouseListener(new MouseAdapter() {
-        public void mouseClicked(MouseEvent e) {
-            contenido.mostrar(PanelContenido.ODONTOLOGOS);
-            topBar.setTitulo("Odontologos");
-            sidebar.marcarActivo(sidebar.getBtnOdontologos());
-        }
-    });
-
-    sidebar.getBtnTurnos().addMouseListener(new MouseAdapter() {
-        public void mouseClicked(MouseEvent e) {
-            contenido.mostrar(PanelContenido.TURNOS);
-            topBar.setTitulo("Turnos");
-            sidebar.marcarActivo(sidebar.getBtnTurnos());
-            contenido.getPanelTurnos().refrescarTabla();
-        }
-    });
-
-    sidebar.getBtnFacturacion().addMouseListener(new MouseAdapter() {
-        public void mouseClicked(MouseEvent e) {
-            contenido.mostrar(PanelContenido.FACTURACION);
-            topBar.setTitulo("Facturación");
-            sidebar.marcarActivo(sidebar.getBtnFacturacion());
-            contenido.getPanelFacturacion().refrescar(); // actualizamos los turnos por cobrar al entrar
-        }
-    });
-
-    // Al crear un turno nuevo, forzamos a refrescar toda la pantalla
-    topBar.getBtnNuevo().addActionListener(e -> {
-        BotonNuevoTurno dialog = new BotonNuevoTurno(this, controladorTurno);
-        dialog.setVisible(true);
-
-        // Cuando se cierra el modal, repintamos todo para que aparezca el nuevo dato
+    private void abrirNuevoTurno() {
+        BotonNuevoTurno dialogo = new BotonNuevoTurno(this, controladorTurno);
+        dialogo.setVisible(true);
         contenido.getPanelAgenda().refrescar();
         contenido.getPanelTurnos().refrescarTabla();
         contenido.getPanelLateral().refrescar();
-    });
-}
+    }
 
-public void iniciar() {
-    setVisible(true);
-}
+    private void confirmarCierre() {
+        int respuesta = JOptionPane.showConfirmDialog(this,
+                "Los datos se guardarán antes de cerrar. ¿Desea salir?",
+                "Cerrar aplicación", JOptionPane.YES_NO_OPTION);
+        if (respuesta != JOptionPane.YES_OPTION) return;
+        try {
+            persistencia.guardar(controladorPaciente.listarTodos(), controladorTurno.listarTodos(),
+                    controladorOdontologo.listarTodos(), controladorFactura.listarTodos());
+            dispose();
+            System.exit(0);
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this, "No se pudieron guardar los datos: " + ex.getMessage(),
+                    "Error de persistencia", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    public void iniciar() { setVisible(true); }
 }

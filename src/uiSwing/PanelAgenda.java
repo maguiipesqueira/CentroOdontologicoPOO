@@ -1,7 +1,6 @@
 package uiSwing;
 
 import controller.ControladorTurno;
-import entity.EstadoTurno;
 import entity.Turno;
 
 import javax.swing.*;
@@ -148,49 +147,20 @@ public class PanelAgenda extends JPanel {
         return bloque;
     }
 
-    // cuenta los turnos de la semana visible y actualiza las tarjetas de arriba (Turnos hoy / Pendientes / Confirmados / Completados / Cancelados)
+    // El controlador calcula los indicadores; la vista solo los presenta.
     private void actualizarEstadisticas() {
-        List<Turno> turnos = controlador.listarTodos();
-
-        int totalEnSemana = 0;
-        int pendientesEnSemana = 0;
-        int confirmadosEnSemana = 0;
-        int completadosEnSemana = 0;
-        int canceladosEnSemana = 0;
-
-        for (Turno t : turnos) {
-            if (esFechaDeLaSemanaVisible(t.getFecha())) {
-                totalEnSemana = totalEnSemana + 1;
-
-                if (t.getEstado() == EstadoTurno.PENDIENTE) {
-                    pendientesEnSemana = pendientesEnSemana + 1;
-                } else if (t.getEstado() == EstadoTurno.CONFIRMADO) {
-                    confirmadosEnSemana = confirmadosEnSemana + 1;
-                } else if (t.getEstado() == EstadoTurno.COMPLETADO) {
-                    completadosEnSemana = completadosEnSemana + 1;
-                } else if (t.getEstado() == EstadoTurno.CANCELADO) {
-                    canceladosEnSemana = canceladosEnSemana + 1;
-                }
-            }
+        if (estadisticas == null || diasSemana.length == 0) return;
+        try {
+            controller.ResumenSemanalTurnos resumen = controlador.obtenerResumenSemanal(diasSemana[0]);
+            estadisticas.setTurnos(resumen.total());
+            estadisticas.setPendientes(resumen.pendientes());
+            estadisticas.setConfirmados(resumen.confirmados());
+            estadisticas.setCompletados(resumen.completados());
+            estadisticas.setCancelados(resumen.cancelados());
+            estadisticas.setAusentes(resumen.ausentes());
+        } catch (exception.DatoInvalidoException ex) {
+            throw new IllegalStateException("No se pudo calcular el resumen de la agenda.", ex);
         }
-
-        if (estadisticas != null) {
-            estadisticas.setTurnos(totalEnSemana);
-            estadisticas.setPendientes(pendientesEnSemana);
-            estadisticas.setConfirmados(confirmadosEnSemana);
-            estadisticas.setCompletados(completadosEnSemana);
-            estadisticas.setCancelados(canceladosEnSemana);
-        }
-    }
-
-    // true si la fecha pasada coincide con alguno de los 5 dias mostrados en la grilla
-    private boolean esFechaDeLaSemanaVisible(LocalDate fecha) {
-        for (LocalDate dia : diasSemana) {
-            if (dia.equals(fecha)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     // se llama al navegar a la seccion Agenda, para traer los turnos mas recientes

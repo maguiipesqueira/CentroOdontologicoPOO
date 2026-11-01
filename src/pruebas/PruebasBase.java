@@ -30,6 +30,8 @@ import uiSwing.TextoMotivo;
 import uiSwing.FormatoPlata;
 import uiSwing.PaletaEstadoTurno;
 import uiSwing.ComprobanteFactura;
+import uiSwing.SeccionContenido;
+import uiSwing.Sidebar;
 import ui.LectorConsola;
 import ui.MenuConsola;
 import ui.OpcionMenu;
@@ -1041,6 +1043,12 @@ public class PruebasBase {
                 () -> new FiltroTurnos(null, null, manana, hoy, null));
         v.lanza("resumen semanal requiere fecha", DatoInvalidoException.class,
                 () -> ct.obtenerResumenSemanal(null));
+        ct.marcarAusente(mananaDos.getId());
+        v.igual("controlador marca un turno como AUSENTE", EstadoTurno.AUSENTE,
+                ct.buscarPorId(mananaDos.getId()).getEstado());
+        ResumenSemanalTurnos resumenConAusente = ct.obtenerResumenSemanal(manana);
+        v.igual("resumen semanal cuenta ausentes", 1, resumenConAusente.ausentes());
+        v.igual("resumen semanal conserva el total al marcar ausencia", 2, resumenConAusente.total());
         v.lanza("turno inexistente usa excepción específica", TurnoNoEncontradoException.class,
                 () -> ct.buscarPorId(99999));
         try {
@@ -1307,6 +1315,24 @@ public class PruebasBase {
     // ------------------------------------------------------------------ Swing: piezas compartidas (etapa 26)
 
     private static void uiSwingCompartida() {
+        Sidebar sidebar = new Sidebar();
+        v.igual("sidebar genera una opción por cada sección enum", SeccionContenido.values().length,
+                sidebar.getOpciones().size());
+        v.igual("sidebar respeta el orden declarado por el enum", SeccionContenido.AGENDA,
+                sidebar.getOpciones().get(0));
+        java.util.concurrent.atomic.AtomicReference<SeccionContenido> seleccion =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        sidebar.addPropertyChangeListener("seccionSeleccionada",
+                evento -> seleccion.set((SeccionContenido) evento.getNewValue()));
+        for (java.awt.event.MouseListener listener : sidebar.getBoton(SeccionContenido.TURNOS).getMouseListeners()) {
+            listener.mouseClicked(new java.awt.event.MouseEvent(sidebar.getBoton(SeccionContenido.TURNOS),
+                    java.awt.event.MouseEvent.MOUSE_CLICKED, System.currentTimeMillis(), 0, 1, 1, 1, false));
+        }
+        v.igual("sidebar publica el cambio de sección mediante Observer", SeccionContenido.TURNOS,
+                seleccion.get());
+        v.igual("sidebar marca la sección seleccionada", SeccionContenido.TURNOS,
+                sidebar.getSeleccionada());
+
         v.igual("paleta pendiente del renderer", PaletaEstadoTurno.fondo(EstadoTurno.PENDIENTE),
                 new java.awt.Color(254, 243, 199));
         v.igual("paleta completado de la agenda", PaletaEstadoTurno.borde(EstadoTurno.COMPLETADO),
