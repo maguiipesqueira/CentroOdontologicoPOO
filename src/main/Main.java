@@ -127,16 +127,28 @@ public class Main {
             }
         }
 
-        VistaPaciente vistaPaciente = new VistaPaciente(ctrlPaciente, scanner);
-        VistaOdontologo vistaOdontologo = new VistaOdontologo(ctrlOdontologo, scanner);
-        VistaTurno vistaTurno = new VistaTurno(ctrlTurno, scanner);
-
+        ui.LectorConsola lectorConsola = new ui.LectorConsola(scanner);
+        VistaPaciente vistaPaciente = new VistaPaciente(ctrlPaciente, lectorConsola);
+        VistaOdontologo vistaOdontologo = new VistaOdontologo(ctrlOdontologo, lectorConsola);
+        VistaTurno vistaTurno = new VistaTurno(ctrlTurno, lectorConsola);
+        ui.VistaFactura vistaFactura = new ui.VistaFactura(ctrlFactura, lectorConsola);
         VistaPrincipal vistaPrincipal = new VistaPrincipal(
-                vistaPaciente,
-                vistaOdontologo,
-                vistaTurno,
-                scanner
-        );
+                vistaPaciente, vistaOdontologo, vistaTurno, vistaFactura, lectorConsola);
+
+        // La interfaz de consola puede iniciarse explícitamente con --consola.
+        if (java.util.Arrays.asList(args).contains("--consola")) {
+            try {
+                vistaPrincipal.iniciar();
+            } finally {
+                try {
+                    persistencia.guardar(repoPaciente.listarTodos(), repoTurno.listarTodos(),
+                            repoOdontologo.listarTodos(), repoFactura.listarTodos());
+                } catch (java.io.IOException e) {
+                    System.err.println("No se pudieron guardar los datos: " + e.getMessage());
+                }
+            }
+            return;
+        }
 
         SwingUtilities.invokeLater(() -> {
             // Se le envían los controladores para que no tire error de null

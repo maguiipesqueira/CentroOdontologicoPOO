@@ -3,233 +3,115 @@ package ui;
 import controller.ControladorTurno;
 import controller.SolicitudTurno;
 import entity.Turno;
+import exception.ClinicaException;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Scanner;
 
-import exception.ClinicaException;
-
 public class VistaTurno {
-
     private final ControladorTurno controlador;
-    private final Scanner scanner;
+    private final LectorConsola lector;
+    private final MenuConsola menu;
+
+    public VistaTurno(ControladorTurno controlador, LectorConsola lector) {
+        this.controlador = controlador;
+        this.lector = lector;
+        this.menu = new MenuConsola(lector);
+    }
 
     public VistaTurno(ControladorTurno controlador, Scanner scanner) {
-        this.controlador = controlador;
-        this.scanner = scanner;
+        this(controlador, new LectorConsola(scanner));
     }
 
     public void mostrarMenu() {
-        int opcion;
-
-        do {
-            System.out.println("\n=========== GESTIÓN DE TURNOS ===========");
-            System.out.println("1. Registrar turno");
-            System.out.println("2. Buscar turno por ID");
-            System.out.println("3. Listar turnos");
-            System.out.println("4. Listar por paciente");
-            System.out.println("5. Listar por odontólogo");
-            System.out.println("6. Confirmar turno");
-            System.out.println("7. Cancelar turno");
-            System.out.println("8. Completar turno");
-            System.out.println("9. Eliminar turno");
-            System.out.println("10. Listar por rango de fechas");
-            System.out.println("0. Volver");
-            System.out.print("Opción: ");
-
-            opcion = leerEntero();
-
-            switch (opcion) {
-                case 1 -> registrarTurno();
-                case 2 -> buscarPorId();
-                case 3 -> listarTodos();
-                case 4 -> listarPorPaciente();
-                case 5 -> listarPorOdontologo();
-                case 6 -> confirmarTurno();
-                case 7 -> cancelarTurno();
-                case 8 -> completarTurno();
-                case 9 -> eliminarTurno();
-                case 10 -> listarPorRangoFechas();
-                case 0 -> System.out.println("Volviendo...");
-                default -> System.out.println("Opción inválida.");
-            }
-
-        } while (opcion != 0);
+        menu.ejecutar("=========== GESTIÓN DE TURNOS ===========", List.of(
+                new OpcionMenu(1, "Registrar turno", this::registrarTurno),
+                new OpcionMenu(2, "Buscar turno por ID", this::buscarPorId),
+                new OpcionMenu(3, "Listar turnos", this::listarTodos),
+                new OpcionMenu(4, "Listar por paciente", this::listarPorPaciente),
+                new OpcionMenu(5, "Listar por odontólogo", this::listarPorOdontologo),
+                new OpcionMenu(6, "Confirmar turno", this::confirmarTurno),
+                new OpcionMenu(7, "Cancelar turno", this::cancelarTurno),
+                new OpcionMenu(8, "Completar turno", this::completarTurno),
+                new OpcionMenu(9, "Eliminar turno", this::eliminarTurno),
+                new OpcionMenu(10, "Listar por rango de fechas", this::listarPorRangoFechas)
+        ));
     }
 
-    // registra capturando si el paciente o el odontólogo no existen
     private void registrarTurno() {
-        System.out.print("ID paciente: ");
-        long pacienteId = leerLong();
-
-        System.out.print("ID odontólogo: ");
-        long odontologoId = leerLong();
-
-        System.out.print("Fecha (YYYY-MM-DD): ");
-        LocalDate fecha = leerFecha();
-
-        if (fecha == null) return;
-
-        System.out.print("Hora (HH:MM): ");
-        LocalTime hora = leerHora();
-
-        if (hora == null) return;
-
+        long pacienteId = lector.leerLong("ID paciente: ");
+        long odontologoId = lector.leerLong("ID odontólogo: ");
+        LocalDate fecha = lector.leerFecha("Fecha (YYYY-MM-DD): ");
+        LocalTime hora = lector.leerHora("Hora (HH:MM): ");
         try {
-            Turno turno = controlador.registrarTurno(new SolicitudTurno(pacienteId, odontologoId, fecha, hora, null));
+            Turno turno = controlador.registrarTurno(
+                    new SolicitudTurno(pacienteId, odontologoId, fecha, hora, null));
             System.out.println("Turno registrado: " + turno);
         } catch (ClinicaException e) {
-            System.out.println(e);
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
     private void buscarPorId() {
-        System.out.print("ID turno: ");
-        long id = leerLong();
-
+        long id = lector.leerLong("ID turno: ");
         try {
-            Turno turno = controlador.buscarPorId(id);
-            System.out.println("Turno encontrado: " + turno);
+            System.out.println("Turno encontrado: " + controlador.buscarPorId(id));
         } catch (ClinicaException e) {
-            System.out.println(e);
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
-    private void listarTodos() {
-        List<Turno> turnos = controlador.listarTodos();
-        mostrarLista(turnos);
-    }
+    private void listarTodos() { mostrarLista(controlador.listarTodos()); }
 
     private void listarPorPaciente() {
-        System.out.print("ID paciente: ");
-        long id = leerLong();
-
-        mostrarLista(controlador.listarPorPaciente(id));
+        mostrarLista(controlador.listarPorPaciente(lector.leerLong("ID paciente: ")));
     }
 
     private void listarPorOdontologo() {
-        System.out.print("ID odontólogo: ");
-        long id = leerLong();
-
-        mostrarLista(controlador.listarPorOdontologo(id));
+        mostrarLista(controlador.listarPorOdontologo(lector.leerLong("ID odontólogo: ")));
     }
 
-    private void confirmarTurno() {
-        System.out.print("ID turno: ");
-        long id = leerLong();
-
-        try {
-            controlador.confirmarTurno(id);
-            System.out.println("Turno confirmado.");
-        } catch (ClinicaException e) {
-            System.out.println(e);
-        }
-    }
-
-    private void cancelarTurno() {
-        System.out.print("ID turno: ");
-        long id = leerLong();
-
-        try {
-            controlador.cancelarTurno(id);
-            System.out.println("Turno cancelado.");
-        } catch (ClinicaException e) {
-            System.out.println(e);
-        }
-    }
-
-    private void completarTurno() {
-        System.out.print("ID turno: ");
-        long id = leerLong();
-
-        try {
-            controlador.completarTurno(id);
-            System.out.println("Turno completado.");
-        } catch (ClinicaException e) {
-            System.out.println(e);
-        }
-    }
+    private void confirmarTurno() { ejecutarAccionSobreTurno("ID turno: ", controlador::confirmarTurno, "Turno confirmado."); }
+    private void cancelarTurno() { ejecutarAccionSobreTurno("ID turno: ", controlador::cancelarTurno, "Turno cancelado."); }
+    private void completarTurno() { ejecutarAccionSobreTurno("ID turno: ", controlador::completarTurno, "Turno completado."); }
 
     private void eliminarTurno() {
-        System.out.print("ID turno: ");
-        long id = leerLong();
-
+        long id = lector.leerLong("ID turno: ");
         try {
             controlador.eliminarTurno(id);
             System.out.println("Turno eliminado correctamente.");
         } catch (ClinicaException e) {
-            System.out.println(e);
+            System.out.println("Error: " + e.getMessage());
         }
     }
-
-
-    private void mostrarLista(List<Turno> turnos) {
-        if (turnos.isEmpty()) {
-            System.out.println("No hay turnos.");
-        } else {
-            for (Turno t : turnos) {
-                System.out.println(t);
-            }
-        }
-    }
-
 
     private void listarPorRangoFechas() {
-        System.out.print("Fecha inicio (YYYY-MM-DD): ");
-        LocalDate inicio = leerFecha();
-
-        if (inicio == null) return;
-
-        System.out.print("Fecha fin (YYYY-MM-DD): ");
-        LocalDate fin = leerFecha();
-
-        if (fin == null) return;
-
+        LocalDate inicio = lector.leerFecha("Fecha inicio (YYYY-MM-DD): ");
+        LocalDate fin = lector.leerFecha("Fecha fin (YYYY-MM-DD): ");
         try {
             mostrarLista(controlador.listarPorRangoFechas(inicio, fin));
         } catch (ClinicaException e) {
-            System.out.println(e);
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
-    private int leerEntero() {
-        while (true) {
-            try {
-                return Integer.parseInt(scanner.nextLine().trim());
-            } catch (NumberFormatException e) {
-                System.out.print("Ingrese un número válido: ");
-            }
-        }
-    }
-
-    private long leerLong() {
-        while (true) {
-            try {
-                return Long.parseLong(scanner.nextLine().trim());
-            } catch (NumberFormatException e) {
-                System.out.print("Ingrese un número válido: ");
-            }
-        }
-    }
-
-    private LocalDate leerFecha() {
+    private void ejecutarAccionSobreTurno(String mensaje, AccionTurno accion, String confirmacion) {
+        long id = lector.leerLong(mensaje);
         try {
-            return LocalDate.parse(scanner.nextLine().trim());
-        } catch (DateTimeParseException e) {
-            System.out.println("Fecha inválida.");
-            return null;
+            accion.ejecutar(id);
+            System.out.println(confirmacion);
+        } catch (ClinicaException e) {
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
-    private LocalTime leerHora() {
-        try {
-            return LocalTime.parse(scanner.nextLine().trim());
-        } catch (DateTimeParseException e) {
-            System.out.println("Hora inválida.");
-            return null;
-        }
+    private void mostrarLista(List<Turno> turnos) {
+        if (turnos.isEmpty()) System.out.println("No hay turnos.");
+        else turnos.forEach(System.out::println);
     }
+
+    @FunctionalInterface
+    private interface AccionTurno { Turno ejecutar(long id) throws ClinicaException; }
 }

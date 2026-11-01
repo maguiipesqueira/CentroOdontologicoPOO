@@ -6,223 +6,119 @@ import controller.DatosPacienteActualizacion;
 import entity.Domicilio;
 import entity.Paciente;
 import entity.TipoHogar;
+import exception.DatoInvalidoException;
+import exception.PacienteNoEncontradoException;
 
 import java.util.List;
 import java.util.Scanner;
 
 public class VistaPaciente {
-
     private final ControladorPaciente controlador;
-    private final Scanner scanner;
+    private final LectorConsola lector;
+    private final MenuConsola menu;
+
+    public VistaPaciente(ControladorPaciente controlador, LectorConsola lector) {
+        this.controlador = controlador;
+        this.lector = lector;
+        this.menu = new MenuConsola(lector);
+    }
 
     public VistaPaciente(ControladorPaciente controlador, Scanner scanner) {
-        this.controlador = controlador;
-        this.scanner = scanner;
+        this(controlador, new LectorConsola(scanner));
     }
 
     public void mostrarMenu() {
-        int opcion;
-
-        do {
-            System.out.println("\n========= GESTIÓN DE PACIENTES =========");
-            System.out.println("1. Registrar paciente");
-            System.out.println("2. Buscar por ID");
-            System.out.println("3. Buscar por DNI");
-            System.out.println("4. Listar pacientes");
-            System.out.println("5. Actualizar paciente");
-            System.out.println("6. Eliminar paciente");
-            System.out.println("0. Volver");
-            System.out.print("Opción: ");
-
-            opcion = leerEntero();
-
-            switch (opcion) {
-                case 1 -> registrarPaciente();
-                case 2 -> buscarPorId();
-                case 3 -> buscarPorDni();
-                case 4 -> listarTodos();
-                case 5 -> actualizarPaciente();
-                case 6 -> eliminarPaciente();
-                case 0 -> System.out.println("Volviendo...");
-                default -> System.out.println("Opción inválida.");
-            }
-
-        } while (opcion != 0);
+        menu.ejecutar("========= GESTIÓN DE PACIENTES =========", List.of(
+                new OpcionMenu(1, "Registrar paciente", this::registrarPaciente),
+                new OpcionMenu(2, "Buscar por ID", this::buscarPorId),
+                new OpcionMenu(3, "Buscar por DNI", this::buscarPorDni),
+                new OpcionMenu(4, "Listar pacientes", this::listarTodos),
+                new OpcionMenu(5, "Actualizar paciente", this::actualizarPaciente),
+                new OpcionMenu(6, "Eliminar paciente", this::eliminarPaciente)
+        ));
     }
 
-    // registra capturando si los datos no cumplen con los formatos requeridos
     private void registrarPaciente() {
-        System.out.print("Nombre: ");
-        String nombre = scanner.nextLine().trim();
-
-        System.out.print("Apellido: ");
-        String apellido = scanner.nextLine().trim();
-
-        System.out.print("DNI: ");
-        int dni = leerEntero();
-
-        System.out.print("Email: ");
-        String email = scanner.nextLine().trim();
-
+        String nombre = lector.leerTexto("Nombre: ");
+        String apellido = lector.leerTexto("Apellido: ");
+        int dni = lector.leerEntero("DNI: ");
+        String email = lector.leerTexto("Email: ");
         System.out.println("-- Domicilio --");
-        System.out.print("Calle: ");
-        String calle = scanner.nextLine().trim();
-
-        System.out.print("Número: ");
-        int numero = leerEntero();
-
-        System.out.print("Localidad: ");
-        String localidad = scanner.nextLine().trim();
-
-        System.out.print("Provincia: ");
-        String provincia = scanner.nextLine().trim();
-
+        String calle = lector.leerTexto("Calle: ");
+        int numero = lector.leerEntero("Número: ");
+        String localidad = lector.leerTexto("Localidad: ");
+        String provincia = lector.leerTexto("Provincia: ");
         TipoHogar tipoHogar = leerTipoHogar();
-
         Domicilio domicilio = new Domicilio(calle, numero, localidad, provincia, tipoHogar);
-
-        boolean tieneObraSocial = leerSiNo("¿Tiene obra social? (S/N): ");
-
-        // captura errores de formato o dni duplicado
+        boolean obraSocial = lector.leerSiNo("¿Tiene obra social? (S/N): ");
         try {
-            Paciente paciente = controlador.registrarPaciente(new DatosPaciente(nombre, apellido, dni, email, domicilio, tieneObraSocial));
-
-            if (paciente != null) {
-                System.out.println("Paciente registrado: " + paciente);
-            } else {
-                System.out.println("No se pudo registrar el paciente.");
-            }
-        } catch (exception.DatoInvalidoException e) {
+            Paciente paciente = controlador.registrarPaciente(
+                    new DatosPaciente(nombre, apellido, dni, email, domicilio, obraSocial));
+            System.out.println("Paciente registrado: " + paciente);
+        } catch (DatoInvalidoException e) {
             System.out.println("Error: " + e.getMessage());
         }
     }
 
-    // busca capturando si el id ingresado no existe en el sistema
     private void buscarPorId() {
-        System.out.print("ID: ");
-        long id = leerLong();
-
-        // captura error de id inexistente
+        long id = lector.leerLong("ID: ");
         try {
-            Paciente paciente = controlador.buscarPorId(id);
-            System.out.println("Paciente encontrado: " + paciente);
-        } catch (exception.PacienteNoEncontradoException e) {
+            System.out.println("Paciente encontrado: " + controlador.buscarPorId(id));
+        } catch (PacienteNoEncontradoException e) {
             System.out.println("Error: " + e.getMessage());
         }
     }
 
-    // busca capturando si el dni no existe o es un numero negativo
     private void buscarPorDni() {
-        System.out.print("DNI: ");
-        int dni = leerEntero();
-
-        // captura error de dni inexistente o invalido
+        int dni = lector.leerEntero("DNI: ");
         try {
-            Paciente paciente = controlador.buscarPorDni(dni);
-            System.out.println("Paciente encontrado: " + paciente);
-        } catch (exception.PacienteNoEncontradoException | exception.DatoInvalidoException e) {
+            System.out.println("Paciente encontrado: " + controlador.buscarPorDni(dni));
+        } catch (PacienteNoEncontradoException | DatoInvalidoException e) {
             System.out.println("Error: " + e.getMessage());
         }
     }
 
     private void listarTodos() {
         List<Paciente> pacientes = controlador.listarTodos();
-
-        if (pacientes.isEmpty()) {
-            System.out.println("No hay pacientes registrados.");
-        } else {
-            for (Paciente p : pacientes) {
-                System.out.println(p);
-            }
-        }
+        if (pacientes.isEmpty()) System.out.println("No hay pacientes registrados.");
+        else pacientes.forEach(System.out::println);
     }
 
-    // actualiza capturando si el id no existe o si los datos nuevos vienen mal
     private void actualizarPaciente() {
-        System.out.print("ID: ");
-        long id = leerLong();
-
-        System.out.print("Nuevo nombre: ");
-        String nombre = scanner.nextLine().trim();
-
-        System.out.print("Nuevo apellido: ");
-        String apellido = scanner.nextLine().trim();
-
-        System.out.print("Nuevo email: ");
-        String email = scanner.nextLine().trim();
-
-        boolean tieneObraSocial = leerSiNo("¿Tiene obra social? (S/N): ");
-
-        // captura errores de id inexistente o datos incorrectos
+        long id = lector.leerLong("ID: ");
+        String nombre = lector.leerTexto("Nuevo nombre: ");
+        String apellido = lector.leerTexto("Nuevo apellido: ");
+        String email = lector.leerTexto("Nuevo email: ");
+        boolean obraSocial = lector.leerSiNo("¿Tiene obra social? (S/N): ");
         try {
-            Paciente paciente = controlador.actualizarPaciente(id, new DatosPacienteActualizacion(nombre, apellido, email, null, tieneObraSocial));
-
-            if (paciente != null) {
-                System.out.println("Paciente actualizado: " + paciente);
-            } else {
-                System.out.println("No se pudo actualizar el paciente.");
-            }
-        } catch (exception.PacienteNoEncontradoException | exception.DatoInvalidoException e) {
+            Paciente paciente = controlador.actualizarPaciente(id,
+                    new DatosPacienteActualizacion(nombre, apellido, email, null, obraSocial));
+            System.out.println("Paciente actualizado: " + paciente);
+        } catch (PacienteNoEncontradoException | DatoInvalidoException e) {
             System.out.println("Error: " + e.getMessage());
         }
     }
 
-    // elimina capturando si se ingresa un id que no existe
     private void eliminarPaciente() {
-        System.out.print("ID: ");
-        long id = leerLong();
-
-        // captura error si el paciente a borrar no se encuentra
+        long id = lector.leerLong("ID: ");
         try {
             controlador.eliminarPaciente(id);
             System.out.println("Paciente eliminado correctamente.");
-        } catch (exception.PacienteNoEncontradoException | exception.DatoInvalidoException e) {
+        } catch (PacienteNoEncontradoException | DatoInvalidoException e) {
             System.out.println("Error: " + e.getMessage());
-        }
-    }
-
-    private int leerEntero() {
-        while (true) {
-            try {
-                return Integer.parseInt(scanner.nextLine().trim());
-            } catch (NumberFormatException e) {
-                System.out.print("Ingrese un número válido: ");
-            }
-        }
-    }
-
-    private long leerLong() {
-        while (true) {
-            try {
-                return Long.parseLong(scanner.nextLine().trim());
-            } catch (NumberFormatException e) {
-                System.out.print("Ingrese un número válido: ");
-            }
-        }
-    }
-
-    // pregunta hasta que se responda S o N
-    private boolean leerSiNo(String mensaje) {
-        while (true) {
-            System.out.print(mensaje);
-            String texto = scanner.nextLine().trim().toUpperCase();
-
-            if (texto.equals("S")) return true;
-            if (texto.equals("N")) return false;
-            System.out.println("Responda S o N.");
         }
     }
 
     private TipoHogar leerTipoHogar() {
+        TipoHogar[] opciones = TipoHogar.values();
         while (true) {
-            System.out.print("Tipo de hogar (CASA / DEPARTAMENTO / PH): ");
-            String texto = scanner.nextLine().trim().toUpperCase();
-
-            try {
-                return TipoHogar.valueOf(texto);
-            } catch (IllegalArgumentException e) {
-                System.out.println("Tipo inválido.");
+            System.out.println("Tipo de hogar:");
+            for (int i = 0; i < opciones.length; i++) {
+                System.out.println((i + 1) + ". " + opciones[i].getNombreLegible());
             }
+            int seleccion = lector.leerEntero("Opción: ");
+            if (seleccion >= 1 && seleccion <= opciones.length) return opciones[seleccion - 1];
+            System.out.println("Opción inválida.");
         }
     }
 }

@@ -27,6 +27,14 @@ import service.HorarioAtencion;
 import service.Tarifario;
 import persistence.*;
 import uiSwing.TextoMotivo;
+import ui.LectorConsola;
+import ui.MenuConsola;
+import ui.OpcionMenu;
+
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import java.math.BigDecimal;
 import java.io.IOException;
@@ -75,8 +83,37 @@ public class PruebasBase {
         v.seccion("Persistencia de turnos", PruebasBase::persistenciaTurnos);
         v.seccion("Persistencia de facturas", PruebasBase::persistenciaFacturas);
         v.seccion("Persistencia integrada y rutas configurables", PruebasBase::persistenciaIntegrada);
+        v.seccion("UI consola: lecturas y comandos", PruebasBase::uiConsola);
         boolean ok = v.resumen();
         System.exit(ok ? 0 : 1);
+    }
+
+
+    // ------------------------------------------------------------------ UI consola (etapa 25)
+
+    private static void uiConsola() {
+        String entradas = String.join("\n", "abc", "42", "nope", "9223372036854775807",
+                "2026-99-99", "2026-10-30", "25:00", "09:30", "quiz", "s") + "\n";
+        LectorConsola lector = new LectorConsola(new Scanner(
+                new ByteArrayInputStream(entradas.getBytes(StandardCharsets.UTF_8))));
+        v.igual("LectorConsola reintenta hasta leer un entero", 42, lector.leerEntero("entero: "));
+        v.igual("LectorConsola reintenta hasta leer un long", Long.MAX_VALUE,
+                lector.leerLong("long: "));
+        v.igual("LectorConsola reintenta hasta leer una fecha válida", LocalDate.of(2026, 10, 30),
+                lector.leerFecha("fecha: "));
+        v.igual("LectorConsola reintenta hasta leer una hora válida", LocalTime.of(9, 30),
+                lector.leerHora("hora: "));
+        v.verdadero("LectorConsola acepta S como sí", lector.leerSiNo("sí/no: "));
+
+        AtomicInteger ejecuciones = new AtomicInteger();
+        String menuEntradas = "99\n1\n0\n";
+        MenuConsola menu = new MenuConsola(new LectorConsola(new Scanner(
+                new ByteArrayInputStream(menuEntradas.getBytes(StandardCharsets.UTF_8)))));
+        menu.ejecutar("Prueba", List.of(new OpcionMenu(1, "Ejecutar", ejecuciones::incrementAndGet)));
+        v.igual("MenuConsola ejecuta el comando seleccionado una sola vez", 1, ejecuciones.get());
+        v.lanza("MenuConsola rechaza números de opción duplicados", IllegalArgumentException.class,
+                () -> menu.ejecutar("Inválido", List.of(
+                        new OpcionMenu(1, "A", () -> {}), new OpcionMenu(1, "B", () -> {}))));
     }
 
     // ------------------------------------------------------------------ enums y Domicilio (etapa 15)

@@ -1,60 +1,41 @@
 package ui;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
+/** Menú principal de consola; cada entrada delega en un comando de la vista correspondiente. */
 public class VistaPrincipal {
+    private final MenuConsola menu;
+    private final List<OpcionMenu> opciones;
 
-    private final VistaPaciente vistaPaciente;
-    private final VistaOdontologo vistaOdontologo;
-    private final VistaTurno vistaTurno;
-    private final Scanner scanner;
+    public VistaPrincipal(VistaPaciente vistaPaciente, VistaOdontologo vistaOdontologo,
+                          VistaTurno vistaTurno, VistaFactura vistaFactura, LectorConsola lector) {
+        this.menu = new MenuConsola(lector);
+        List<OpcionMenu> comandos = new ArrayList<>();
+        comandos.add(new OpcionMenu(1, "Gestión de Pacientes", vistaPaciente::mostrarMenu));
+        comandos.add(new OpcionMenu(2, "Gestión de Odontólogos", vistaOdontologo::mostrarMenu));
+        comandos.add(new OpcionMenu(3, "Gestión de Turnos", vistaTurno::mostrarMenu));
+        comandos.add(new OpcionMenu(4, "Facturación", vistaFactura::mostrarMenu));
+        this.opciones = List.copyOf(comandos);
+    }
 
-    public VistaPrincipal(VistaPaciente vistaPaciente,
-                          VistaOdontologo vistaOdontologo,
-                          VistaTurno vistaTurno,
-                          Scanner scanner) {
-        this.vistaPaciente = vistaPaciente;
-        this.vistaOdontologo = vistaOdontologo;
-        this.vistaTurno = vistaTurno;
-        this.scanner = scanner;
+    /** Constructor de compatibilidad para clientes anteriores a la opción de facturación. */
+    public VistaPrincipal(VistaPaciente vistaPaciente, VistaOdontologo vistaOdontologo,
+                          VistaTurno vistaTurno, Scanner scanner) {
+        this.menu = new MenuConsola(new LectorConsola(scanner));
+        this.opciones = List.of(
+                new OpcionMenu(1, "Gestión de Pacientes", vistaPaciente::mostrarMenu),
+                new OpcionMenu(2, "Gestión de Odontólogos", vistaOdontologo::mostrarMenu),
+                new OpcionMenu(3, "Gestión de Turnos", vistaTurno::mostrarMenu)
+        );
     }
 
     public void iniciar() {
-        int opcion;
-
-        do {
-
-            System.out.println("\n╔══════════════════════════════════════════╗");
-            System.out.println("║   SISTEMA DE GESTIÓN ODONTOLÓGICA        ║");
-            System.out.println("╠══════════════════════════════════════════╣");
-            System.out.println("║  1. Gestión de Pacientes                 ║");
-            System.out.println("║  2. Gestión de Odontólogos               ║");
-            System.out.println("║  3. Gestión de Turnos                    ║");
-            System.out.println("║  0. Salir                                ║");
-            System.out.println("╚══════════════════════════════════════════╝");
-            System.out.print("  Seleccione una opción: ");
-
-            opcion = leerEntero();
-
-            switch (opcion) {
-                case 1 -> vistaPaciente.mostrarMenu();
-                case 2 -> vistaOdontologo.mostrarMenu();
-                case 3 -> vistaTurno.mostrarMenu();
-                case 0 -> System.out.println("Sistema cerrado. Hasta pronto!");
-                default -> System.out.println("Opción inválida. Intente de nuevo.");
-            }
-
-        } while (opcion != 0);
-    }
-
-    private int leerEntero() {
-        while (true) {
-            try {
-                return Integer.parseInt(scanner.nextLine().trim());
-            } catch (NumberFormatException e) {
-                System.out.print("Ingrese un número válido: ");
-            }
-        }
+        System.out.println("╔══════════════════════════════════════════╗");
+        System.out.println("║   SISTEMA DE GESTIÓN ODONTOLÓGICA        ║");
+        System.out.println("╚══════════════════════════════════════════╝");
+        menu.ejecutar("MENÚ PRINCIPAL", opciones);
+        System.out.println("Sistema cerrado. Hasta pronto!");
     }
 }
-    
