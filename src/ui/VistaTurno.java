@@ -2,6 +2,7 @@ package ui;
 
 import controller.ControladorTurno;
 import controller.SolicitudTurno;
+import entity.MotivoConsulta;
 import entity.Turno;
 import exception.ClinicaException;
 
@@ -43,14 +44,27 @@ public class VistaTurno {
     private void registrarTurno() {
         long pacienteId = lector.leerLong("ID paciente: ");
         long odontologoId = lector.leerLong("ID odontólogo: ");
-        LocalDate fecha = lector.leerFecha("Fecha (YYYY-MM-DD): ");
-        LocalTime hora = lector.leerHora("Hora (HH:MM): ");
         try {
-            Turno turno = controlador.registrarTurno(
-                    new SolicitudTurno(pacienteId, odontologoId, fecha, hora, null));
+            MotivoConsulta motivo = leerMotivo(controlador.motivosPosiblesDe(odontologoId));
+            LocalDate fecha = lector.leerFecha("Fecha (YYYY-MM-DD): ");
+            LocalTime hora = lector.leerHora("Hora (HH:MM): ");
+            Turno turno = controlador.registrarTurno(new SolicitudTurno(pacienteId, odontologoId, fecha, hora, motivo));
             System.out.println("Turno registrado: " + turno);
         } catch (ClinicaException e) {
             System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    // muestra los motivos que atiende el odontólogo elegido y pide uno
+    private MotivoConsulta leerMotivo(List<MotivoConsulta> motivos) {
+        while (true) {
+            System.out.println("Motivos de consulta:");
+            for (int i = 0; i < motivos.size(); i++) {
+                System.out.println((i + 1) + ". " + motivos.get(i).getNombreLegible());
+            }
+            int seleccion = lector.leerEntero("Motivo: ");
+            if (seleccion >= 1 && seleccion <= motivos.size()) return motivos.get(seleccion - 1);
+            System.out.println("Opción inválida.");
         }
     }
 
@@ -66,11 +80,21 @@ public class VistaTurno {
     private void listarTodos() { mostrarLista(controlador.listarTodos()); }
 
     private void listarPorPaciente() {
-        mostrarLista(controlador.listarPorPaciente(lector.leerLong("ID paciente: ")));
+        long id = lector.leerLong("ID paciente: ");
+        try {
+            mostrarLista(controlador.listarPorPaciente(id));
+        } catch (ClinicaException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void listarPorOdontologo() {
-        mostrarLista(controlador.listarPorOdontologo(lector.leerLong("ID odontólogo: ")));
+        long id = lector.leerLong("ID odontólogo: ");
+        try {
+            mostrarLista(controlador.listarPorOdontologo(id));
+        } catch (ClinicaException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
     }
 
     private void confirmarTurno() { ejecutarAccionSobreTurno("ID turno: ", controlador::confirmarTurno, "Turno confirmado."); }

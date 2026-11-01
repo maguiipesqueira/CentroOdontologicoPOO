@@ -1,41 +1,49 @@
 package service;
 
 import entity.MotivoConsulta;
-import entity.TipoCirugia;
-import entity.TipoConsulta;
-import entity.TipoOrtodoncia;
 import exception.DatoInvalidoException;
 
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
-/** Catálogo único de precios de lista, indexado por el motivo tipado del turno. */
+/**
+ * Catálogo de precios de lista, indexado por el motivo tipado del turno.
+ * Por defecto toma el precio que declara cada motivo (MotivoConsulta.getPrecioLista()), de modo que
+ * agregar un tratamiento nuevo se hace en un solo lugar. Un Tarifario también se puede armar con
+ * otra lista de precios (promociones, pruebas).
+ */
 public final class Tarifario {
+
     private final Map<MotivoConsulta, BigDecimal> precios;
     private final Map<String, BigDecimal> preciosLegados;
 
+    /** Tarifario de producción: el precio de lista de cada motivo. */
     public Tarifario() {
-        Map<MotivoConsulta, BigDecimal> valores = new HashMap<>();
-        cargar(valores, TipoConsulta.CONTROL, "15000");
-        cargar(valores, TipoConsulta.LIMPIEZA, "25000");
-        cargar(valores, TipoConsulta.URGENCIA, "40000");
-        cargar(valores, TipoConsulta.BLANQUEAMIENTO, "90000");
-        cargar(valores, TipoCirugia.EXTRACCION_MUELA, "60000");
-        cargar(valores, TipoCirugia.CIRUGIA_ENCIA, "120000");
-        cargar(valores, TipoCirugia.IMPLANTE, "450000");
-        cargar(valores, TipoCirugia.CIRUGIA_MAXILOFACIAL, "600000");
-        cargar(valores, TipoOrtodoncia.BRACKETS_METALICOS, "150000");
-        cargar(valores, TipoOrtodoncia.BRACKETS_CERAMICOS, "250000");
-        precios = Collections.unmodifiableMap(valores);
-        Map<String, BigDecimal> legado = new HashMap<>();
-        valores.forEach((motivo, precio) -> legado.put(motivo.toString(), precio));
-        preciosLegados = Collections.unmodifiableMap(legado);
+        this(preciosDeLista());
     }
 
-    private static void cargar(Map<MotivoConsulta, BigDecimal> destino, MotivoConsulta motivo, String precio) {
-        destino.put(motivo, new BigDecimal(precio).setScale(2));
+    /** Tarifario con precios propios; los motivos que no figuren no se pueden cobrar. */
+    public Tarifario(Map<MotivoConsulta, BigDecimal> precios) {
+        Objects.requireNonNull(precios, "La lista de precios es obligatoria.");
+        Map<MotivoConsulta, BigDecimal> copia = new HashMap<>();
+        precios.forEach((motivo, precio) -> copia.put(
+                Objects.requireNonNull(motivo, "El motivo es obligatorio."),
+                Objects.requireNonNull(precio, "El precio es obligatorio.").setScale(2)));
+        this.precios = Collections.unmodifiableMap(copia);
+        Map<String, BigDecimal> legado = new HashMap<>();
+        copia.forEach((motivo, precio) -> legado.put(motivo.toString(), precio));
+        this.preciosLegados = Collections.unmodifiableMap(legado);
+    }
+
+    private static Map<MotivoConsulta, BigDecimal> preciosDeLista() {
+        Map<MotivoConsulta, BigDecimal> valores = new HashMap<>();
+        for (MotivoConsulta motivo : MotivoConsulta.todos()) {
+            valores.put(motivo, motivo.getPrecioLista());
+        }
+        return valores;
     }
 
     public BigDecimal precioDecimalDe(MotivoConsulta motivo) throws DatoInvalidoException {

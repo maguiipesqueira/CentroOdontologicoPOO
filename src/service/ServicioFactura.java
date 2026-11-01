@@ -10,12 +10,14 @@ import pago.MedioPago;
 import repository.GeneradorIds;
 import repository.RepositorioFactura;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -28,19 +30,30 @@ public class ServicioFactura {
     private final Tarifario tarifario;
     private final CalculadorMonto calculador;
     private final List<MedioPago> mediosPago;
+    private final Clock clock;
 
     // Recibe sus colaboradores ya construidos; los medios de pago llegan por la interfaz
     // para no depender de implementaciones concretas.
     public ServicioFactura(RepositorioFactura repositorio, ServicioTurno servicioTurno, Tarifario tarifario,
                            CalculadorMonto calculador, List<MedioPago> mediosPago) {
-        this.repositorio = repositorio;
-        this.servicioTurno = servicioTurno;
-        this.tarifario = tarifario;
-        this.calculador = calculador;
-        this.mediosPago = new ArrayList<>(mediosPago);
+        this(repositorio, servicioTurno, tarifario, calculador, mediosPago, Clock.systemDefaultZone());
     }
 
-    // turnos que se pueden cobrar: no cancelados y sin factura, ordenados por fecha y hora
+    // el reloj se inyecta para poder probar la fecha de emision de las facturas
+    public ServicioFactura(RepositorioFactura repositorio, ServicioTurno servicioTurno, Tarifario tarifario,
+                           CalculadorMonto calculador, List<MedioPago> mediosPago, Clock clock) {
+        this.repositorio = Objects.requireNonNull(repositorio, "El repositorio de facturas es obligatorio.");
+        this.servicioTurno = Objects.requireNonNull(servicioTurno, "El servicio de turnos es obligatorio.");
+        this.tarifario = Objects.requireNonNull(tarifario, "El tarifario es obligatorio.");
+        this.calculador = Objects.requireNonNull(calculador, "El calculador de montos es obligatorio.");
+        this.mediosPago = new ArrayList<>(Objects.requireNonNull(mediosPago, "La lista de medios de pago es obligatoria."));
+        this.clock = Objects.requireNonNull(clock, "El reloj es obligatorio.");
+    }
+
+    // turnos que se pueden cobrar: no cancelados ni ausentes y sin factura, ordenados por fecha y hora.
+    // Decision de diseno: se puede cobrar un turno pendiente o confirmado (pago anticipado), no hace falta
+    // que ya este completado. Si el negocio exigiera cobrar solo turnos completados, se cambia
+    // EstadoTurno.esCobrable() y se actualiza la prueba correspondiente.
     public List<Turno> listarTurnosPorCobrar() {
         return servicioTurno.listarTodos().stream()
                 .filter(t -> t.getEstado().esCobrable())
@@ -83,6 +96,7 @@ public class ServicioFactura {
     // calcula cuanto costaria el turno con el medio de pago elegido, sin guardar nada
     public DesgloseMonto calcularVistaPrevia(long turnoId, MedioPago medioPago) throws DatoInvalidoException {
         Turno turno = buscarTurnoCobrable(turnoId);
+        validarMedioDisponible(medioPago);
         return calculador.calcular(precioDe(turno), tieneObraSocial(turno), medioPago);
     }
 
@@ -92,6 +106,7 @@ public class ServicioFactura {
             throw new DatoInvalidoException("Método de pago", "Debe elegir un método de pago para cobrar.");
         }
 
+        validarMedioDisponible(medioPago);
         Turno turno = buscarTurnoCobrable(turnoId);
         DesgloseMonto desglose = calculador.calcular(precioDe(turno), tieneObraSocial(turno), medioPago);
         Paciente paciente = turno.getPaciente();
@@ -105,7 +120,7 @@ public class ServicioFactura {
                 .pacienteId(paciente.getId())
                 .pacienteNombre(paciente.getNombreCompleto())
                 .concepto(motivoDe(turno).name())
-                .fecha(LocalDate.now())
+                .fecha(LocalDate.now(clock))
                 .metodoPago(medioPago.getCodigo())
                 .desglose(desglose)
                 .build();
@@ -148,6 +163,17 @@ public class ServicioFactura {
         }
 
         return turno;
+    }
+
+    // el medio elegido tiene que ser uno de los que ofrece el servicio (se compara por codigo)
+    private void validarMedioDisponible(MedioPago medioPago) throws DatoInvalidoException {
+        if (medioPago == null) {
+            throw new DatoInvalidoException("Método de pago", "Debe elegir un método de pago.");
+        }
+        boolean disponible = mediosPago.stream().anyMatch(m -> m.getCodigo().equals(medioPago.getCodigo()));
+        if (!disponible) {
+            throw new DatoInvalidoException("Método de pago", "El medio de pago elegido no está disponible.");
+        }
     }
 
     // precio de lista del tratamiento del turno

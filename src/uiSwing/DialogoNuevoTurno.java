@@ -1,5 +1,7 @@
 package uiSwing;
 
+import controller.ControladorOdontologo;
+import controller.ControladorPaciente;
 import controller.ControladorTurno;
 import controller.SolicitudTurno;
 import entity.MotivoConsulta;
@@ -15,8 +17,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 
-// dialogo de nuevo turno, version con combos en vez de ids sueltos
-// misma estetica que BotonNuevoTurno
+// dialogo de nuevo turno: se eligen paciente, odontologo y motivo en combos (el motivo depende del odontologo)
 public class DialogoNuevoTurno extends JDialog {
 
     private JComboBox<Paciente> comboPaciente;
@@ -25,11 +26,16 @@ public class DialogoNuevoTurno extends JDialog {
     private JTextField txtFecha;
     private JTextField txtHora;
     private final ControladorTurno controlador;
+    private final ControladorPaciente controladorPaciente;
+    private final ControladorOdontologo controladorOdontologo;
     private final Runnable alGuardar; // callback para refrescar el panel que abrio el dialogo
 
-    public DialogoNuevoTurno(JFrame padre, ControladorTurno controlador, Runnable alGuardar) {
+    public DialogoNuevoTurno(JFrame padre, ControladorTurno controlador, ControladorPaciente controladorPaciente,
+                             ControladorOdontologo controladorOdontologo, Runnable alGuardar) {
         super(padre, "Nuevo Turno", true);
         this.controlador = controlador;
+        this.controladorPaciente = controladorPaciente;
+        this.controladorOdontologo = controladorOdontologo;
         this.alGuardar = alGuardar;
 
         setSize(380, 340);
@@ -108,14 +114,14 @@ public class DialogoNuevoTurno extends JDialog {
     }
 
     private void cargarPacientes() {
-        List<Paciente> pacientes = controlador.listarPacientes();
+        List<Paciente> pacientes = controladorPaciente.listarTodos();
         for (Paciente p : pacientes) {
             comboPaciente.addItem(p);
         }
     }
 
     private void cargarOdontologos() {
-        List<Odontologo> odontologos = controlador.listarOdontologos();
+        List<Odontologo> odontologos = controladorOdontologo.listarTodos();
         for (Odontologo o : odontologos) {
             comboOdontologo.addItem(o);
         }

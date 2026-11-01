@@ -9,6 +9,7 @@ import exception.TurnoYaReservadoException;
 import exception.TurnoNoEncontradoException;
 import pago.Efectivo;
 import pago.MedioPago;
+import pago.PoliticaDescuento;
 import pago.MercadoPago;
 import pago.Tarjeta;
 import repository.GeneradorIds;
@@ -84,6 +85,8 @@ public class PruebasBase {
         v.seccion("CalculadorMonto", PruebasBase::calculador);
         v.seccion("Facturacion (servicio)", PruebasBase::facturacion);
         v.seccion("Controladores y DTO", PruebasBase::controladores);
+        v.seccion("Etapa 32: precios, descuentos, facturacion y controlador", PruebasBase::etapa32);
+        v.seccion("Etapa 32: agenda completa", PruebasBase::agendaCompleta);
         v.seccion("Repositorios", PruebasBase::repositorios);
         v.seccion("Persistencia de pacientes", PruebasBase::persistenciaPacientes);
         v.seccion("Persistencia de odontologos", PruebasBase::persistenciaOdontologos);
@@ -527,7 +530,7 @@ public class PruebasBase {
         Factura emitida = sf.cobrarTurno(urgencia.getId(), new Efectivo());
         v.igual("la factura emitida toma el concepto del motivo", "URGENCIA", emitida.getConcepto());
         v.casi("la factura emitida tiene el total del desglose", 36000, emitida.getMontoTotal());
-        Turno sinMotivo = stFac.registrarTurno(p, o, manana, LocalTime.of(12, 0));
+        Turno sinMotivo = turnoSinMotivo(repoTurnosFac, stFac, p, o, manana, LocalTime.of(12, 0));
         v.igual("mensaje: cobrar un turno sin motivo",
                 "Dato inválido en 'Tratamiento': El turno no tiene un tratamiento cargado.",
                 mensajeDe(() -> sf.cobrarTurno(sinMotivo.getId(), new Efectivo())));
@@ -668,11 +671,13 @@ public class PruebasBase {
     private static void turnos() throws Exception {
         ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
         ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
-        ServicioTurno st = new ServicioTurno(new RepositorioTurno());
+        RepositorioTurno repoTurnos = new RepositorioTurno();
+        ServicioTurno st = new ServicioTurno(repoTurnos);
         Paciente p1 = sp.registrarPaciente("Fatima", "Persi", 1001, "f@x.com", null, true);
         Paciente p2 = sp.registrarPaciente("Tomas", "Barea", 1002, "t@x.com", null, false);
         Odontologo o1 = so.registrarOdontologo(new General(0L, "Magali", "Pesqueira", 11, TipoConsulta.LIMPIEZA));
         Odontologo o2 = so.registrarOdontologo(new Ortodoncista(0L, "Nahuel", "Torres", 22, TipoOrtodoncia.BRACKETS_METALICOS));
+        Odontologo o3 = so.registrarOdontologo(new General(0L, "Ana", "Lopez", 13, TipoConsulta.CONTROL));
         LocalDate manana = LocalDate.now().plusDays(1);
 
         Turno t1 = st.registrarTurno(p1, o1, manana, LocalTime.of(9, 0), TipoConsulta.LIMPIEZA);
@@ -680,8 +685,9 @@ public class PruebasBase {
         v.igual("nace PENDIENTE", EstadoTurno.PENDIENTE, t1.getEstado());
         v.igual("guarda el motivo", TipoConsulta.LIMPIEZA, t1.getMotivoConsulta().orElse(null));
 
-        Turno sinMotivo = st.registrarTurno(p2, o1, manana, LocalTime.of(10, 0));
-        v.verdadero("la version sin motivo deja el motivo vacio", sinMotivo.getMotivoConsulta().isEmpty());
+        // un turno viejo (cargado de un archivo antiguo) puede no tener motivo; el servicio ya no permite crearlos
+        Turno sinMotivo = turnoSinMotivo(repoTurnos, st, p2, o1, manana, LocalTime.of(10, 0));
+        v.verdadero("un turno viejo sin motivo tiene el motivo vacio", sinMotivo.getMotivoConsulta().isEmpty());
         v.igual("la pantalla muestra 'Consulta' cuando no hay motivo", "Consulta", TextoMotivo.de(sinMotivo));
         v.igual("la pantalla muestra el nombre del motivo", "LIMPIEZA", TextoMotivo.de(t1));
 
@@ -690,23 +696,48 @@ public class PruebasBase {
         v.igual("otro odontologo en el mismo horario si se puede", 3L,
                 st.registrarTurno(p2, o2, manana, LocalTime.of(9, 0), TipoOrtodoncia.BRACKETS_METALICOS).getId());
 
+        final TipoConsulta ctl = TipoConsulta.CONTROL;
         v.lanza("hora antes de la apertura", DatoInvalidoException.class,
-                () -> st.registrarTurno(p1, o1, manana, LocalTime.of(7, 59)));
+                () -> st.registrarTurno(p1, o1, manana, LocalTime.of(7, 59), ctl));
         v.lanza("hora despues del cierre", DatoInvalidoException.class,
-                () -> st.registrarTurno(p1, o1, manana, LocalTime.of(20, 1)));
-        v.verdadero("08:00 es valida", st.registrarTurno(p1, o1, manana, LocalTime.of(8, 0)) != null);
-        v.verdadero("20:00 es valida (actual: se puede agendar a la hora de cierre)",
-                st.registrarTurno(p1, o1, manana, LocalTime.of(20, 0)) != null);
+                () -> st.registrarTurno(p1, o1, manana, LocalTime.of(20, 1), ctl));
+        v.verdadero("08:00 es valida", st.registrarTurno(p1, o1, manana, LocalTime.of(8, 0), ctl) != null);
+        v.lanza("🔧 20:00 ya no es valida: no se agenda a la hora de cierre", DatoInvalidoException.class,
+                () -> st.registrarTurno(p1, o1, manana, LocalTime.of(20, 0), ctl));
+        v.verdadero("19:59 es valida", st.registrarTurno(p1, o1, manana, LocalTime.of(19, 59), ctl) != null);
         v.lanza("fecha pasada", DatoInvalidoException.class,
-                () -> st.registrarTurno(p1, o1, LocalDate.now().minusDays(1), LocalTime.of(12, 0)));
+                () -> st.registrarTurno(p1, o1, LocalDate.now().minusDays(1), LocalTime.of(12, 0), ctl));
         v.lanza("paciente nulo", DatoInvalidoException.class,
-                () -> st.registrarTurno(null, o1, manana, LocalTime.of(12, 0)));
+                () -> st.registrarTurno(null, o1, manana, LocalTime.of(12, 0), ctl));
         v.lanza("odontologo nulo", DatoInvalidoException.class,
-                () -> st.registrarTurno(p1, null, manana, LocalTime.of(12, 0)));
+                () -> st.registrarTurno(p1, null, manana, LocalTime.of(12, 0), ctl));
         v.lanza("fecha nula", DatoInvalidoException.class,
-                () -> st.registrarTurno(p1, o1, null, LocalTime.of(12, 0)));
+                () -> st.registrarTurno(p1, o1, null, LocalTime.of(12, 0), ctl));
         v.lanza("hora nula", DatoInvalidoException.class,
-                () -> st.registrarTurno(p1, o1, manana, null));
+                () -> st.registrarTurno(p1, o1, manana, null, ctl));
+
+        // ---- motivo obligatorio y coherente con la especialidad (etapa 32)
+        v.igual("🔧 el motivo es obligatorio", "Dato inválido en 'Motivo': Debe indicar el motivo de la consulta.",
+                mensajeDe(() -> st.registrarTurno(p1, o1, manana, LocalTime.of(16, 0), null)));
+        v.lanza("🔧 un odontologo general no atiende un motivo de ortodoncia", DatoInvalidoException.class,
+                () -> st.registrarTurno(p1, o1, manana, LocalTime.of(16, 0), TipoOrtodoncia.BRACKETS_METALICOS));
+        v.lanza("🔧 un ortodoncista no atiende una consulta general", DatoInvalidoException.class,
+                () -> st.registrarTurno(p1, o2, manana, LocalTime.of(16, 0), TipoConsulta.LIMPIEZA));
+        v.verdadero("el mensaje dice quien no atiende que",
+                mensajeDe(() -> st.registrarTurno(p1, o2, manana, LocalTime.of(16, 0), TipoConsulta.LIMPIEZA))
+                        .contains("no atiende 'Limpieza'"));
+
+        // ---- un paciente no puede tener dos turnos a la misma hora (etapa 32)
+        v.lanza("🔧 mismo paciente, misma fecha y hora, otro odontologo", DatoInvalidoException.class,
+                () -> st.registrarTurno(p1, o3, manana, LocalTime.of(9, 0), TipoConsulta.CONTROL));
+        v.igual("mensaje: paciente con turno en ese horario", "Dato inválido en 'Paciente': El paciente ya tiene un turno en ese horario.",
+                mensajeDe(() -> st.registrarTurno(p1, o3, manana, LocalTime.of(9, 0), TipoConsulta.CONTROL)));
+        Turno aCancelar = st.registrarTurno(p2, o3, manana, LocalTime.of(17, 0), TipoConsulta.CONTROL);
+        st.cancelarTurno(aCancelar.getId());
+        v.verdadero("un turno cancelado libera el horario del paciente",
+                st.registrarTurno(p2, o1, manana, LocalTime.of(17, 0), TipoConsulta.CONTROL) != null);
+        v.verdadero("el mismo paciente en otro horario si puede", st.registrarTurno(p1, o2, manana, LocalTime.of(16, 30),
+                TipoOrtodoncia.BRACKETS_METALICOS) != null);
 
         // ---- estados
         Turno t = st.registrarTurno(p1, o1, manana, LocalTime.of(13, 0), TipoConsulta.CONTROL);
@@ -761,22 +792,34 @@ public class PruebasBase {
         ServicioTurno servicio = new ServicioTurno(repositorio, reloj,
                 new HorarioAtencion(LocalTime.of(9, 0), LocalTime.of(17, 0)));
 
+        final TipoConsulta ctl = TipoConsulta.CONTROL;
         v.lanza("horario configurable rechaza antes de apertura", DatoInvalidoException.class,
-                () -> servicio.registrarTurno(paciente, odontologo, hoy.plusDays(1), LocalTime.of(8, 59)));
+                () -> servicio.registrarTurno(paciente, odontologo, hoy.plusDays(1), LocalTime.of(8, 59), ctl));
         v.lanza("horario configurable rechaza después del cierre", DatoInvalidoException.class,
-                () -> servicio.registrarTurno(paciente, odontologo, hoy.plusDays(1), LocalTime.of(17, 1)));
+                () -> servicio.registrarTurno(paciente, odontologo, hoy.plusDays(1), LocalTime.of(17, 1), ctl));
         v.verdadero("horario configurable acepta apertura", servicio.registrarTurno(
-                paciente, odontologo, hoy.plusDays(1), LocalTime.of(9, 0)) != null);
-        v.verdadero("horario configurable acepta cierre", servicio.registrarTurno(
-                paciente, odontologo, hoy.plusDays(1), LocalTime.of(17, 0)) != null);
+                paciente, odontologo, hoy.plusDays(1), LocalTime.of(9, 0), ctl) != null);
+        v.lanza("🔧 el cierre queda excluido: no se agenda a la hora de cierre", DatoInvalidoException.class,
+                () -> servicio.registrarTurno(paciente, odontologo, hoy.plusDays(1), LocalTime.of(17, 0), ctl));
+        v.verdadero("un minuto antes del cierre es valido", servicio.registrarTurno(
+                paciente, odontologo, hoy.plusDays(1), LocalTime.of(16, 59), ctl) != null);
         v.lanza("no permite una hora anterior a la hora actual de hoy", DatoInvalidoException.class,
-                () -> servicio.registrarTurno(paciente, odontologo, hoy, LocalTime.of(9, 30)));
+                () -> servicio.registrarTurno(paciente, odontologo, hoy, LocalTime.of(9, 30), ctl));
         v.lanza("no permite la hora actual de hoy", DatoInvalidoException.class,
-                () -> servicio.registrarTurno(paciente, odontologo, hoy, LocalTime.of(10, 0)));
+                () -> servicio.registrarTurno(paciente, odontologo, hoy, LocalTime.of(10, 0), ctl));
         v.verdadero("permite una hora posterior a la actual de hoy", servicio.registrarTurno(
-                paciente, odontologo, hoy, LocalTime.of(10, 1)) != null);
+                paciente, odontologo, hoy, LocalTime.of(10, 1), ctl) != null);
         v.lanza("sigue rechazando fechas anteriores a hoy", DatoInvalidoException.class,
-                () -> servicio.registrarTurno(paciente, odontologo, hoy.minusDays(1), LocalTime.of(11, 0)));
+                () -> servicio.registrarTurno(paciente, odontologo, hoy.minusDays(1), LocalTime.of(11, 0), ctl));
+        v.lanza("horario inválido rechaza apertura igual al cierre", IllegalArgumentException.class,
+                () -> new HorarioAtencion(LocalTime.of(8, 0), LocalTime.of(8, 0)));
+        v.igual("horas en punto de un horario 09:00-17:00", 8, servicio.getHorarioAtencion().horasEnPunto().size());
+        v.igual("la primera hora en punto es la apertura", LocalTime.of(9, 0), servicio.getHorarioAtencion().horasEnPunto().get(0));
+        v.igual("la ultima hora en punto es la anterior al cierre", LocalTime.of(16, 0),
+                servicio.getHorarioAtencion().horasEnPunto().get(7));
+        v.igual("horas en punto de 09:30 a 12:15 (franjas que toca el horario)",
+                List.of(LocalTime.of(9, 0), LocalTime.of(10, 0), LocalTime.of(11, 0), LocalTime.of(12, 0)),
+                new HorarioAtencion(LocalTime.of(9, 30), LocalTime.of(12, 15)).horasEnPunto());
         v.lanza("horario inválido rechaza apertura posterior al cierre", IllegalArgumentException.class,
                 () -> new HorarioAtencion(LocalTime.of(18, 0), LocalTime.of(8, 0)));
     }
@@ -894,7 +937,8 @@ public class PruebasBase {
     private static void facturacion() throws Exception {
         ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
         ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
-        ServicioTurno st = new ServicioTurno(new RepositorioTurno());
+        RepositorioTurno repoTurnosFac = new RepositorioTurno();
+        ServicioTurno st = new ServicioTurno(repoTurnosFac);
         MedioPago mp = new MercadoPago();
         MedioPago tj = new Tarjeta();
         MedioPago ef = new Efectivo();
@@ -904,12 +948,13 @@ public class PruebasBase {
         Paciente conOs = sp.registrarPaciente("Fatima", "Persi", 2001, "f@x.com", null, true);
         Paciente sinOs = sp.registrarPaciente("Tomas", "Barea", 2002, "t@x.com", null, false);
         Odontologo o = so.registrarOdontologo(new Cirujano(0L, "Blas", "Pesce", 33, TipoCirugia.IMPLANTE));
+        Odontologo oGeneral = so.registrarOdontologo(new General(0L, "Magali", "Pesqueira", 34, TipoConsulta.LIMPIEZA));
         LocalDate manana = LocalDate.now().plusDays(1);
 
-        Turno tA = st.registrarTurno(conOs, o, manana, LocalTime.of(9, 0), TipoConsulta.LIMPIEZA);
+        Turno tA = st.registrarTurno(conOs, oGeneral, manana, LocalTime.of(9, 0), TipoConsulta.LIMPIEZA);
         Turno tB = st.registrarTurno(sinOs, o, manana, LocalTime.of(10, 0), TipoCirugia.IMPLANTE);
-        Turno tD = st.registrarTurno(sinOs, o, manana, LocalTime.of(11, 0)); // sin motivo
-        Turno tC = st.registrarTurno(sinOs, o, manana, LocalTime.of(12, 0), TipoConsulta.CONTROL);
+        Turno tD = turnoSinMotivo(repoTurnosFac, st, sinOs, o, manana, LocalTime.of(11, 0)); // turno viejo sin motivo
+        Turno tC = st.registrarTurno(sinOs, oGeneral, manana, LocalTime.of(12, 0), TipoConsulta.CONTROL);
         st.cancelarTurno(tC.getId());
 
         List<Turno> porCobrar = sf.listarTurnosPorCobrar();
@@ -980,6 +1025,130 @@ public class PruebasBase {
         v.igual("listarTodos ordenadas por numero (2da)", 2L, todas.get(1).getId());
     }
 
+    // ------------------------------------------------------------------ etapa 32
+
+    private static void etapa32() throws Exception {
+        // ---- el precio vive en cada motivo y el Tarifario lo toma de ahi
+        List<MotivoConsulta> motivos = MotivoConsulta.todos();
+        v.igual("MotivoConsulta.todos() trae los 10 motivos", 10, motivos.size());
+        v.verdadero("todos los motivos tienen precio positivo con dos decimales",
+                motivos.stream().allMatch(m -> m.getPrecioLista().signum() > 0 && m.getPrecioLista().scale() == 2));
+        Tarifario tarifario = new Tarifario();
+        int coinciden = 0;
+        for (MotivoConsulta m : motivos) {
+            if (tarifario.precioDecimalDe(m).compareTo(m.getPrecioLista()) == 0) coinciden++;
+        }
+        v.igual("el Tarifario de produccion usa el precio de cada motivo", 10, coinciden);
+        v.casi("el precio del implante sigue siendo 450000", 450000, TipoCirugia.IMPLANTE.getPrecioLista().doubleValue());
+
+        Tarifario promocion = new Tarifario(Map.of(TipoConsulta.CONTROL, new BigDecimal("1000")));
+        v.casi("un Tarifario propio usa sus precios", 1000, promocion.precioDe(TipoConsulta.CONTROL));
+        v.lanza("un motivo que no esta en el Tarifario propio no se puede cobrar", DatoInvalidoException.class,
+                () -> promocion.precioDe(TipoConsulta.LIMPIEZA));
+
+        // ---- el descuento de obra social es una politica inyectable
+        CalculadorMonto mitad = new CalculadorMonto(PoliticaDescuento.porcentaje(new BigDecimal("0.50")));
+        DesgloseMonto conMitad = mitad.calcular(1000, true);
+        v.casi("obra social al 50%: descuento", 500, conMitad.getDescuentoObraSocial());
+        v.casi("obra social al 50%: total", 500, conMitad.getMontoTotal());
+        v.casi("sin obra social no se aplica la politica", 1000, mitad.calcular(1000, false).getMontoTotal());
+        v.casi("50% de obra social + efectivo 10%", 450, mitad.calcular(1000, true, new Efectivo()).getMontoTotal());
+        v.casi("el calculador por defecto sigue en 30%", 700, new CalculadorMonto().calcular(1000, true).getMontoTotal());
+        v.lanza("porcentaje mayor a 100%", IllegalArgumentException.class,
+                () -> PoliticaDescuento.porcentaje(new BigDecimal("1.5")));
+        v.lanza("porcentaje negativo", IllegalArgumentException.class,
+                () -> PoliticaDescuento.porcentaje(new BigDecimal("-0.1")));
+        v.lanza("politica nula", NullPointerException.class, () -> new CalculadorMonto(null));
+
+        // ---- ServicioFactura: reloj inyectado y medio de pago validado
+        Clock reloj = Clock.fixed(Instant.parse("2026-11-01T10:00:00Z"), ZoneOffset.UTC);
+        RepositorioTurno repoTurnos = new RepositorioTurno();
+        ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente(), repoTurnos, reloj);
+        ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo(), repoTurnos);
+        ServicioTurno st = new ServicioTurno(repoTurnos, reloj);
+        Efectivo efectivo = new Efectivo();
+        ServicioFactura sf = new ServicioFactura(new RepositorioFactura(), st, new Tarifario(), new CalculadorMonto(),
+                List.of(efectivo), reloj);
+        Paciente p = sp.registrarPaciente("Ana", "Perez", 77001, "ana@x.com", null, false);
+        Odontologo o = so.registrarOdontologo(new General(0L, "Luis", "Gomez", 77002, TipoConsulta.CONTROL));
+        Turno turno = st.registrarTurno(p, o, LocalDate.of(2026, 11, 2), LocalTime.of(9, 0), TipoConsulta.CONTROL);
+        v.lanza("🔧 un medio de pago que el servicio no ofrece se rechaza al cobrar", DatoInvalidoException.class,
+                () -> sf.cobrarTurno(turno.getId(), new Tarjeta()));
+        v.igual("mensaje: medio no disponible", "Dato inválido en 'Método de pago': El medio de pago elegido no está disponible.",
+                mensajeDe(() -> sf.cobrarTurno(turno.getId(), new Tarjeta())));
+        v.lanza("tambien en la vista previa", DatoInvalidoException.class,
+                () -> sf.calcularVistaPrevia(turno.getId(), new MercadoPago()));
+        v.verdadero("el rechazo no genera facturas", sf.listarTodos().isEmpty());
+        v.verdadero("una instancia equivalente del mismo medio tambien se acepta (se compara por codigo)",
+                sf.calcularVistaPrevia(turno.getId(), new Efectivo()).getMontoTotal() > 0);
+        Factura factura = sf.cobrarTurno(turno.getId(), efectivo);
+        v.igual("🔧 la factura toma la fecha del reloj inyectado", LocalDate.of(2026, 11, 1), factura.getFecha());
+        v.lanza("el servicio exige reloj", NullPointerException.class,
+                () -> new ServicioFactura(new RepositorioFactura(), st, new Tarifario(), new CalculadorMonto(),
+                        List.of(efectivo), null));
+
+        // ---- ControladorTurno: listados validan que exista el paciente/odontologo
+        ControladorTurno ct = new ControladorTurno(st, sp, so, reloj);
+        v.igual("hoy() usa el reloj inyectado", LocalDate.of(2026, 11, 1), ct.hoy());
+        v.lanza("🔧 listarPorPaciente de un paciente inexistente lanza la excepcion", PacienteNoEncontradoException.class,
+                () -> ct.listarPorPaciente(9999));
+        v.lanza("🔧 listarPorOdontologo de un odontologo inexistente lanza la excepcion", OdontologoNoEncontradoException.class,
+                () -> ct.listarPorOdontologo(9999));
+        v.igual("listarPorPaciente de uno existente", 1, ct.listarPorPaciente(p.getId()).size());
+        v.igual("motivos posibles de un odontologo general", List.of(TipoConsulta.values()), ct.motivosPosiblesDe(o.getId()));
+        v.lanza("motivos posibles de un odontologo inexistente", OdontologoNoEncontradoException.class,
+                () -> ct.motivosPosiblesDe(9999));
+        v.igual("horas de agenda: de 08:00 a 19:00 (12 franjas)", 12, ct.horasDeAgenda().size());
+        v.igual("horas de agenda: la primera", LocalTime.of(8, 0), ct.horasDeAgenda().get(0));
+        v.igual("horas de agenda: la ultima", LocalTime.of(19, 0), ct.horasDeAgenda().get(11));
+        v.lanza("el controlador rechaza un turno sin motivo", DatoInvalidoException.class,
+                () -> ct.registrarTurno(new SolicitudTurno(p.getId(), o.getId(), LocalDate.of(2026, 11, 3),
+                        LocalTime.of(9, 0), null)));
+        v.lanza("el controlador rechaza un motivo que el odontologo no atiende", DatoInvalidoException.class,
+                () -> ct.registrarTurno(new SolicitudTurno(p.getId(), o.getId(), LocalDate.of(2026, 11, 3),
+                        LocalTime.of(9, 0), TipoCirugia.IMPLANTE)));
+        v.verdadero("ControladorTurno ya no expone listarPacientes ni listarOdontologos",
+                java.util.Arrays.stream(ControladorTurno.class.getMethods())
+                        .noneMatch(m -> m.getName().equals("listarPacientes") || m.getName().equals("listarOdontologos")));
+    }
+
+    // la agenda muestra todo el horario de atencion y todos los turnos de cada franja
+    private static void agendaCompleta() throws Exception {
+        Clock reloj = Clock.fixed(Instant.parse("2026-11-01T10:00:00Z"), ZoneOffset.UTC); // domingo: la agenda muestra desde el lunes 2
+        RepositorioTurno repoTurnos = new RepositorioTurno();
+        ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente(), repoTurnos, reloj);
+        ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo(), repoTurnos);
+        ServicioTurno st = new ServicioTurno(repoTurnos, reloj);
+        ControladorTurno ct = new ControladorTurno(st, sp, so, reloj);
+        Paciente a = sp.registrarPaciente("Ana", "Alfaro", 66001, "a@x.com", null, false);
+        Paciente b = sp.registrarPaciente("Beto", "Bravo", 66002, "b@x.com", null, false);
+        Paciente c = sp.registrarPaciente("Cora", "Cruz", 66003, "c@x.com", null, false);
+        Paciente d = sp.registrarPaciente("Dario", "Duarte", 66004, "d@x.com", null, false);
+        Odontologo o1 = so.registrarOdontologo(new General(0L, "Uno", "Primero", 66101, TipoConsulta.CONTROL));
+        Odontologo o2 = so.registrarOdontologo(new General(0L, "Dos", "Segundo", 66102, TipoConsulta.CONTROL));
+        LocalDate lunes = LocalDate.of(2026, 11, 2);
+        st.registrarTurno(a, o1, lunes, LocalTime.of(9, 0), TipoConsulta.CONTROL);     // dos turnos en la franja de las 09
+        st.registrarTurno(b, o2, lunes, LocalTime.of(9, 0), TipoConsulta.CONTROL);     // mismo horario, otro odontologo
+        st.registrarTurno(c, o1, lunes, LocalTime.of(15, 0), TipoConsulta.CONTROL);    // fuera de las 08-14 de antes
+        st.registrarTurno(d, o1, lunes.plusDays(1), LocalTime.of(19, 30), TipoConsulta.CONTROL); // ultima franja, minuto 30
+
+        uiSwing.PanelAgenda panel = new uiSwing.PanelAgenda(ct, new uiSwing.PanelEstadistica());
+        panel.refrescar();
+        List<javax.swing.JLabel> etiquetas = componentes(panel, javax.swing.JLabel.class);
+        java.util.function.Predicate<String> hayEtiqueta = texto -> etiquetas.stream()
+                .anyMatch(l -> l.getText() != null && l.getText().contains(texto));
+        v.verdadero("se dibuja la franja de las 08:00", hayEtiqueta.test("08:00"));
+        v.verdadero("se dibuja la franja de las 19:00 (ultima antes del cierre)", hayEtiqueta.test("19:00"));
+        v.verdadero("no se dibuja la franja de las 20:00 (cierre)", !etiquetas.stream().anyMatch(l -> "20:00".equals(l.getText())));
+        v.verdadero("🔧 se ve el turno de las 15:00", hayEtiqueta.test("Cruz"));
+        v.verdadero("🔧 se ven los dos turnos de la misma franja (primero)", hayEtiqueta.test("Alfaro"));
+        v.verdadero("🔧 se ven los dos turnos de la misma franja (segundo)", hayEtiqueta.test("Bravo"));
+        v.verdadero("🔧 el turno de las 19:30 se ve y muestra su hora", hayEtiqueta.test("19:30 Duarte"));
+        v.verdadero("el turno en punto no repite la hora en el bloque", !hayEtiqueta.test("09:00 Alfaro"));
+        v.verdadero("la agenda se puede desplazar cuando hay muchas franjas",
+                !componentes(panel, javax.swing.JScrollPane.class).isEmpty());
+    }
+
     // ------------------------------------------------------------------ controladores (etapa 23)
 
     private static void controladores() throws Exception {
@@ -1035,11 +1204,11 @@ public class PruebasBase {
         LocalDate hoy = LocalDate.now(reloj);
         LocalDate manana = hoy.plusDays(1);
         Turno hoyTurno = ct.registrarTurno(new SolicitudTurno(
-                paciente.getId(), odontologo.getId(), hoy, LocalTime.of(11, 0), TipoConsulta.CONTROL));
+                paciente.getId(), odontologo.getId(), hoy, LocalTime.of(11, 0), TipoCirugia.IMPLANTE));
         Turno mananaUno = ct.registrarTurno(new SolicitudTurno(
-                paciente.getId(), odontologo.getId(), manana, LocalTime.of(9, 0), TipoConsulta.LIMPIEZA));
+                paciente.getId(), odontologo.getId(), manana, LocalTime.of(9, 0), TipoCirugia.CIRUGIA_ENCIA));
         Turno mananaDos = ct.registrarTurno(new SolicitudTurno(
-                paciente.getId(), odontologo.getId(), manana, LocalTime.of(10, 0), TipoConsulta.LIMPIEZA));
+                paciente.getId(), odontologo.getId(), manana, LocalTime.of(10, 0), TipoCirugia.EXTRACCION_MUELA));
         v.igual("solicitud DTO registra turno", EstadoTurno.PENDIENTE, hoyTurno.getEstado());
         v.igual("listar turnos de hoy", 1, ct.listarTurnosDeHoy().size());
         v.igual("semana calendario lunes-domingo", 2, ct.listarTurnosDeLaSemana(manana).size());
@@ -1492,7 +1661,7 @@ public class PruebasBase {
                 LocalTime.of(9, 0), TipoConsulta.CONTROL);
         Turno pendiente = servicioTurno.registrarTurno(paciente, odontologo, fecha,
                 LocalTime.of(10, 0), TipoConsulta.LIMPIEZA);
-        Turno sinTratamiento = servicioTurno.registrarTurno(paciente, odontologo, fecha,
+        Turno sinTratamiento = turnoSinMotivo(repoTurnos, servicioTurno, paciente, odontologo, fecha,
                 LocalTime.of(11, 0));
         Factura primeraFactura = servicioFactura.cobrarTurno(cobrado.getId(), new MercadoPago());
 
@@ -1556,6 +1725,15 @@ public class PruebasBase {
     }
 
     // mensaje de la excepcion que lanza la accion ("" si no lanza nada)
+    // reproduce un turno "viejo" (de un archivo anterior) que no tiene motivo: el servicio ya no deja crearlos
+    private static Turno turnoSinMotivo(RepositorioTurno repositorio, ServicioTurno servicio, Paciente paciente,
+                                        Odontologo odontologo, LocalDate fecha, LocalTime hora) throws Exception {
+        Turno creado = servicio.registrarTurno(paciente, odontologo, fecha, hora, odontologo.getMotivosPosibles().get(0));
+        Turno viejo = new Turno(creado.getId(), paciente, odontologo, fecha, hora, EstadoTurno.PENDIENTE, null);
+        repositorio.actualizar(viejo);
+        return viejo;
+    }
+
     private static String mensajeDe(Verificador.Ejecutable accion) {
         try {
             accion.ejecutar();

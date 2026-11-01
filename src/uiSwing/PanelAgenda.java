@@ -14,13 +14,14 @@ import java.util.List;
 public class PanelAgenda extends JPanel {
 
     private static final Color FONDO = new Color(248, 247, 244);
-    private static final String[] HORAS = {"08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00"};
+    private static final int ALTO_FILA = 46; // alto minimo de cada franja horaria (la agenda se desplaza si no entra)
     private static final String[] NOMBRES_DIA = {"Lun", "Mar", "Mie", "Jue", "Vie"};
     private static final DateTimeFormatter FORMATO_DIA = DateTimeFormatter.ofPattern("dd");
 
     private final ControladorTurno controlador;
     private final PanelEstadistica estadisticas;
     private JPanel grilla;
+    private JScrollPane desplazamiento;
     private LocalDate[] diasSemana; // lunes a viernes de la semana actual
 
     public PanelAgenda(ControladorTurno controlador, PanelEstadistica estadisticas) {
@@ -39,7 +40,7 @@ public class PanelAgenda extends JPanel {
     // si hoy es sabado o domingo, salta directamente a la semana siguiente (lunes a viernes proximos),
     // porque la semana actual ya termino y no tendria turnos visibles (no se permiten turnos en fechas pasadas)
     private void calcularSemanaActual() {
-        LocalDate hoy = LocalDate.now();
+        LocalDate hoy = controlador.hoy();
         LocalDate lunes = hoy.with(DayOfWeek.MONDAY);
 
         if (hoy.getDayOfWeek() == DayOfWeek.SATURDAY || hoy.getDayOfWeek() == DayOfWeek.SUNDAY) {
@@ -52,16 +53,16 @@ public class PanelAgenda extends JPanel {
         }
     }
 
-    // arma la grilla completa en base a diasSemana y a los turnos reales del controlador
+    // arma la grilla completa en base a diasSemana, al horario de atencion y a los turnos reales del controlador
     private void construirGrilla() {
-        if (grilla != null) {
-            remove(grilla);
+        if (desplazamiento != null) {
+            remove(desplazamiento);
         }
-
-        grilla = new JPanel(new GridLayout(HORAS.length + 1, diasSemana.length + 1));
+        List<LocalTime> horas = controlador.horasDeAgenda();
+        grilla = new JPanel(new GridLayout(horas.size() + 1, diasSemana.length + 1));
         grilla.setBackground(Color.WHITE);
         grilla.setBorder(BorderFactory.createLineBorder(new Color(226, 232, 240)));
-
+        grilla.setPreferredSize(new Dimension(0, (horas.size() + 1) * ALTO_FILA));
         List<Turno> turnos = controlador.listarTodos();
 
         // primera fila: encabezados de días (vacio + 5 dias con nombre y fecha)
@@ -72,9 +73,9 @@ public class PanelAgenda extends JPanel {
             grilla.add(crearEncabezado(texto));
         }
 
-        // filas de horas
-        for (String horaTexto : HORAS) {
-            JLabel lblHora = new JLabel(horaTexto, SwingConstants.CENTER);
+        // una fila por cada hora en punto del horario de atencion
+        for (LocalTime hora : horas) {
+            JLabel lblHora = new JLabel(hora.toString(), SwingConstants.CENTER);
             lblHora.setFont(new Font("Segoe UI", Font.PLAIN, 11));
             lblHora.setForeground(new Color(148, 163, 184));
             lblHora.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, new Color(226, 232, 240)));
@@ -82,33 +83,30 @@ public class PanelAgenda extends JPanel {
             lblHora.setBackground(new Color(248, 250, 252));
             grilla.add(lblHora);
 
-            LocalTime hora = LocalTime.parse(horaTexto);
-
             for (LocalDate dia : diasSemana) {
-                JPanel celda = new JPanel(new BorderLayout());
+                JPanel celda = new JPanel(new GridLayout(0, 1));
                 celda.setBackground(Color.WHITE);
                 celda.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 1, new Color(226, 232, 240)));
-
-                Turno turnoEnCelda = buscarTurno(turnos, dia, hora);
-                if (turnoEnCelda != null) {
-                    celda.add(crearBloque(turnoEnCelda));
+                // todos los turnos de esa franja (puede haber mas de uno: distintos odontologos o minutos)
+                for (Turno turno : buscarTurnos(turnos, dia, hora)) {
+                    celda.add(crearBloque(turno));
                 }
-
                 grilla.add(celda);
             }
         }
 
-        add(grilla, BorderLayout.CENTER);
+        desplazamiento = new JScrollPane(grilla);
+        desplazamiento.setBorder(BorderFactory.createEmptyBorder());
+        desplazamiento.getVerticalScrollBar().setUnitIncrement(16);
+        add(desplazamiento, BorderLayout.CENTER);
     }
 
-    // busca, entre los turnos cargados, el que coincide exactamente con esa fecha y hora
-    private Turno buscarTurno(List<Turno> turnos, LocalDate dia, LocalTime hora) {
-        for (Turno t : turnos) {
-            if (t.getFecha().equals(dia) && t.getHora().equals(hora)) {
-                return t;
-            }
-        }
-        return null;
+    // turnos de ese dia cuya hora cae dentro de la franja [hora, hora + 1h), ordenados por hora
+    private List<Turno> buscarTurnos(List<Turno> turnos, LocalDate dia, LocalTime franja) {
+        return turnos.stream()
+                .filter(t -> t.getFecha().equals(dia) && t.getHora().getHour() == franja.getHour())
+                .sorted(java.util.Comparator.comparing(Turno::getHora))
+                .toList();
     }
 
     private JLabel crearEncabezado(String texto) {
@@ -131,9 +129,11 @@ public class PanelAgenda extends JPanel {
         bloque.setBackground(fondo);
         bloque.setBorder(BorderFactory.createMatteBorder(0, 3, 0, 0, borde));
 
+        // si el turno no empieza en punto (ej. 19:30) se muestra la hora para distinguirlo dentro de la franja
+        String prefijoHora = turno.getHora().getMinute() == 0 ? "" : turno.getHora() + " ";
         String nombre = turno.getPaciente().getApellido();
 
-        JLabel lblNombre = new JLabel(" " + nombre);
+        JLabel lblNombre = new JLabel(" " + prefijoHora + nombre);
         lblNombre.setFont(new Font("Segoe UI", Font.BOLD, 11));
         lblNombre.setForeground(new Color(15, 23, 42));
 

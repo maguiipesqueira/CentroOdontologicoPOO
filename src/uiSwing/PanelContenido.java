@@ -29,7 +29,7 @@ public class PanelContenido extends JPanel {
         setLayout(cardLayout);
         setBackground(new Color(248, 247, 244));
 
-        panelTurnos = new PanelTurnos(controladorTurno);
+        panelTurnos = new PanelTurnos(controladorTurno, controladorPaciente, controladorOdontologo);
 
         JPanel panelAgendaContenedor = new JPanel(new BorderLayout());
         panelAgendaContenedor.setBackground(new Color(248, 247, 244));

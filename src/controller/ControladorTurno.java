@@ -4,8 +4,11 @@ import entity.MotivoConsulta;
 import entity.Odontologo;
 import entity.Paciente;
 import entity.Turno;
-import exception.ClinicaException;
 import exception.DatoInvalidoException;
+import exception.OdontologoNoEncontradoException;
+import exception.PacienteNoEncontradoException;
+import exception.TurnoNoEncontradoException;
+import exception.TurnoYaReservadoException;
 import service.ServicioOdontologo;
 import service.ServicioPaciente;
 import service.ServicioTurno;
@@ -44,28 +47,49 @@ public class ControladorTurno {
         this.clock = Objects.requireNonNull(clock);
     }
 
-    public Turno registrarTurno(SolicitudTurno solicitud) throws ClinicaException {
+    public Turno registrarTurno(SolicitudTurno solicitud)
+            throws PacienteNoEncontradoException, OdontologoNoEncontradoException,
+            DatoInvalidoException, TurnoYaReservadoException {
         if (solicitud == null) throw new DatoInvalidoException("Turno", "La solicitud de turno es obligatoria.");
         Paciente paciente = servicioPaciente.buscarPorId(solicitud.pacienteId());
         Odontologo odontologo = servicioOdontologo.buscarPorId(solicitud.odontologoId());
         return servicioTurno.registrarTurno(paciente, odontologo, solicitud.fecha(), solicitud.hora(), solicitud.motivoConsulta());
     }
 
-    public Turno registrarTurno(long pacienteId, long odontologoId, LocalDate fecha, LocalTime hora)
-            throws ClinicaException {
-        return registrarTurno(new SolicitudTurno(pacienteId, odontologoId, fecha, hora, null));
-    }
-
     public Turno registrarTurno(long pacienteId, long odontologoId, LocalDate fecha, LocalTime hora,
-                                MotivoConsulta motivoConsulta) throws ClinicaException {
+                                MotivoConsulta motivoConsulta)
+            throws PacienteNoEncontradoException, OdontologoNoEncontradoException,
+            DatoInvalidoException, TurnoYaReservadoException {
         return registrarTurno(new SolicitudTurno(pacienteId, odontologoId, fecha, hora, motivoConsulta));
     }
 
-    public Turno buscarPorId(long id) throws ClinicaException { return servicioTurno.buscarPorId(id); }
+    /** Motivos por los que se le puede pedir un turno a ese odontólogo (los que atiende su especialidad). */
+    public List<MotivoConsulta> motivosPosiblesDe(long odontologoId) throws OdontologoNoEncontradoException {
+        return servicioOdontologo.buscarPorId(odontologoId).getMotivosPosibles();
+    }
+
+    /** Fecha actual según el reloj inyectado. */
+    public LocalDate hoy() { return LocalDate.now(clock); }
+
+    /** Horas en punto que abarca el horario de atención (para dibujar la agenda). */
+    public List<LocalTime> horasDeAgenda() { return servicioTurno.getHorarioAtencion().horasEnPunto(); }
+
+    public Turno buscarPorId(long id) throws TurnoNoEncontradoException { return servicioTurno.buscarPorId(id); }
     public List<Turno> listarTodos() { return ordenar(servicioTurno.listarTodos()); }
-    public List<Turno> listarPorPaciente(long pacienteId) { return ordenar(servicioTurno.listarPorPaciente(pacienteId)); }
-    public List<Turno> listarPorOdontologo(long odontologoId) { return ordenar(servicioTurno.listarPorOdontologo(odontologoId)); }
-    public List<Turno> listarPorRangoFechas(LocalDate inicio, LocalDate fin) throws ClinicaException {
+
+    /** Turnos de un paciente; si el paciente no existe lanza la excepción (igual que buscarPorId). */
+    public List<Turno> listarPorPaciente(long pacienteId) throws PacienteNoEncontradoException {
+        servicioPaciente.buscarPorId(pacienteId);
+        return ordenar(servicioTurno.listarPorPaciente(pacienteId));
+    }
+
+    /** Turnos de un odontólogo; si el odontólogo no existe lanza la excepción. */
+    public List<Turno> listarPorOdontologo(long odontologoId) throws OdontologoNoEncontradoException {
+        servicioOdontologo.buscarPorId(odontologoId);
+        return ordenar(servicioTurno.listarPorOdontologo(odontologoId));
+    }
+
+    public List<Turno> listarPorRangoFechas(LocalDate inicio, LocalDate fin) throws DatoInvalidoException {
         return ordenar(servicioTurno.listarPorRangoFechas(inicio, fin));
     }
 
@@ -117,13 +141,11 @@ public class ControladorTurno {
                 .toList());
     }
 
-    public Turno confirmarTurno(long id) throws ClinicaException { return servicioTurno.confirmarTurno(id); }
-    public Turno cancelarTurno(long id) throws ClinicaException { return servicioTurno.cancelarTurno(id); }
-    public Turno completarTurno(long id) throws ClinicaException { return servicioTurno.completarTurno(id); }
-    public Turno marcarAusente(long id) throws ClinicaException { return servicioTurno.marcarAusente(id); }
-    public void eliminarTurno(long id) throws ClinicaException { servicioTurno.eliminarTurno(id); }
-    public List<Paciente> listarPacientes() { return servicioPaciente.listarTodos(); }
-    public List<Odontologo> listarOdontologos() { return servicioOdontologo.listarTodos(); }
+    public Turno confirmarTurno(long id) throws DatoInvalidoException { return servicioTurno.confirmarTurno(id); }
+    public Turno cancelarTurno(long id) throws DatoInvalidoException { return servicioTurno.cancelarTurno(id); }
+    public Turno completarTurno(long id) throws DatoInvalidoException { return servicioTurno.completarTurno(id); }
+    public Turno marcarAusente(long id) throws DatoInvalidoException { return servicioTurno.marcarAusente(id); }
+    public void eliminarTurno(long id) throws DatoInvalidoException { servicioTurno.eliminarTurno(id); }
 
     private List<Turno> ordenar(List<Turno> turnos) {
         return turnos.stream().sorted(ORDEN_AGENDA).toList();

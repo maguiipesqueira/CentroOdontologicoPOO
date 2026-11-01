@@ -1,5 +1,7 @@
 package uiSwing;
 
+import controller.ControladorOdontologo;
+import controller.ControladorPaciente;
 import controller.ControladorTurno;
 import controller.FiltroTurnos;
 import entity.EstadoTurno;
@@ -17,6 +19,8 @@ public class PanelTurnos extends JPanel {
 
     private static final Color FONDO = new Color(248, 247, 244);
     private final ControladorTurno controlador;
+    private final ControladorPaciente controladorPaciente;
+    private final ControladorOdontologo controladorOdontologo;
     private final TurnoTableModel modeloTabla = new TurnoTableModel();
     private JTable tabla;
     private JComboBox<OpcionFiltro<Paciente>> comboFiltroPaciente;
@@ -25,9 +29,14 @@ public class PanelTurnos extends JPanel {
     private JTextField txtFiltroDesde;
     private JTextField txtFiltroHasta;
 
-    public PanelTurnos(ControladorTurno controlador) {
-        if (controlador == null) throw new IllegalArgumentException("El controlador es obligatorio.");
+    public PanelTurnos(ControladorTurno controlador, ControladorPaciente controladorPaciente,
+                       ControladorOdontologo controladorOdontologo) {
+        if (controlador == null || controladorPaciente == null || controladorOdontologo == null) {
+            throw new IllegalArgumentException("Los controladores son obligatorios.");
+        }
         this.controlador = controlador;
+        this.controladorPaciente = controladorPaciente;
+        this.controladorOdontologo = controladorOdontologo;
         setLayout(new BorderLayout());
         setBackground(FONDO);
         add(crearPanelFiltros(), BorderLayout.NORTH);
@@ -130,10 +139,10 @@ public class PanelTurnos extends JPanel {
         Object estadoSeleccionado = comboFiltroEstado.getSelectedItem();
         comboFiltroPaciente.removeAllItems();
         comboFiltroPaciente.addItem(OpcionFiltro.todos("Todos los pacientes"));
-        controlador.listarPacientes().forEach(p -> comboFiltroPaciente.addItem(OpcionFiltro.de(p.getNombreCompleto(), p)));
+        controladorPaciente.listarTodos().forEach(p -> comboFiltroPaciente.addItem(OpcionFiltro.de(p.getNombreCompleto(), p)));
         comboFiltroOdontologo.removeAllItems();
         comboFiltroOdontologo.addItem(OpcionFiltro.todos("Todos los odontólogos"));
-        controlador.listarOdontologos().forEach(o -> comboFiltroOdontologo.addItem(OpcionFiltro.de(o.getNombreCompleto(), o)));
+        controladorOdontologo.listarTodos().forEach(o -> comboFiltroOdontologo.addItem(OpcionFiltro.de(o.getNombreCompleto(), o)));
         comboFiltroEstado.removeAllItems();
         comboFiltroEstado.addItem(OpcionFiltro.todos("Todos los estados"));
         for (EstadoTurno estado : EstadoTurno.values()) {
@@ -209,7 +218,7 @@ public class PanelTurnos extends JPanel {
     private void abrirDialogoNuevoTurno() {
         Window ventana = SwingUtilities.getWindowAncestor(this);
         JFrame padre = ventana instanceof JFrame ? (JFrame) ventana : null;
-        new DialogoNuevoTurno(padre, controlador, this::refrescarTabla).setVisible(true);
+        new DialogoNuevoTurno(padre, controlador, controladorPaciente, controladorOdontologo, this::refrescarTabla).setVisible(true);
     }
 
     private void mostrarError(String mensaje) {

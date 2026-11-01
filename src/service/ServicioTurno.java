@@ -45,10 +45,9 @@ public class ServicioTurno {
         this.horarioAtencion = Objects.requireNonNull(horarioAtencion, "El horario de atención no puede ser null.");
     }
 
-    public Turno registrarTurno(Paciente paciente, Odontologo odontologo,
-                                LocalDate fecha, LocalTime hora)
-            throws DatoInvalidoException, TurnoYaReservadoException {
-        return registrarTurno(paciente, odontologo, fecha, hora, null);
+    /** Horario de atención configurado (la agenda lo usa para saber qué horas dibujar). */
+    public HorarioAtencion getHorarioAtencion() {
+        return horarioAtencion;
     }
 
     public Turno registrarTurno(Paciente paciente, Odontologo odontologo,
@@ -58,9 +57,13 @@ public class ServicioTurno {
         validarOdontologo(odontologo);
         validarFecha(fecha);
         validarHora(fecha, hora);
+        validarMotivo(odontologo, motivoConsulta);
 
         if (existeTurnoSolapado(odontologo.getId(), fecha, hora)) {
             throw new TurnoYaReservadoException(odontologo.getNombreCompleto(), fecha, hora);
+        }
+        if (pacienteYaTieneTurno(paciente.getId(), fecha, hora)) {
+            throw new DatoInvalidoException("Paciente", "El paciente ya tiene un turno en ese horario.");
         }
 
         long id = generadorIds.siguienteId(() -> repositorio.listarTodos().stream()
@@ -78,6 +81,14 @@ public class ServicioTurno {
     private boolean existeTurnoSolapado(long odontologoId, LocalDate fecha, LocalTime hora) {
         return repositorio.buscarPorOdontologoYFecha(odontologoId, fecha).stream()
                 .anyMatch(turno -> turno.getHora().equals(hora)
+                        && turno.getEstado() != EstadoTurno.CANCELADO);
+    }
+
+    /** Un turno cancelado libera el horario del paciente; cualquier otro estado lo mantiene ocupado. */
+    private boolean pacienteYaTieneTurno(long pacienteId, LocalDate fecha, LocalTime hora) {
+        return repositorio.buscarPorPaciente(pacienteId).stream()
+                .anyMatch(turno -> turno.getFecha().equals(fecha)
+                        && turno.getHora().equals(hora)
                         && turno.getEstado() != EstadoTurno.CANCELADO);
     }
 
@@ -164,13 +175,24 @@ public class ServicioTurno {
         }
     }
 
+    // el motivo es obligatorio y tiene que ser uno de los que atiende la especialidad del odontólogo
+    private void validarMotivo(Odontologo odontologo, MotivoConsulta motivo) throws DatoInvalidoException {
+        if (motivo == null) {
+            throw new DatoInvalidoException("Motivo", "Debe indicar el motivo de la consulta.");
+        }
+        if (!odontologo.getMotivosPosibles().contains(motivo)) {
+            throw new DatoInvalidoException("Motivo", odontologo.getNombreCompleto() + " ("
+                    + odontologo.getEspecialidad().getNombre() + ") no atiende '" + motivo.getNombreLegible() + "'.");
+        }
+    }
+
     private void validarHora(LocalDate fecha, LocalTime hora) throws DatoInvalidoException {
         if (hora == null) {
             throw new DatoInvalidoException("Hora", "La hora no puede ser nula.");
         }
         if (!horarioAtencion.contiene(hora)) {
-            throw new DatoInvalidoException("Hora", "Los turnos solo se pueden registrar entre las "
-                    + horarioAtencion.apertura() + " y las " + horarioAtencion.cierre() + ".");
+            throw new DatoInvalidoException("Hora", "Los turnos solo se pueden registrar desde las "
+                    + horarioAtencion.apertura() + " y hasta antes de las " + horarioAtencion.cierre() + ".");
         }
         if (fecha.equals(LocalDate.now(clock)) && !hora.isAfter(LocalTime.now(clock))) {
             throw new DatoInvalidoException("Hora", "No se pueden registrar turnos en una hora que ya pasó.");

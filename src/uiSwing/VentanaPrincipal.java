@@ -76,11 +76,11 @@ public class VentanaPrincipal extends JFrame {
     }
 
     private void abrirNuevoTurno() {
-        BotonNuevoTurno dialogo = new BotonNuevoTurno(this, controladorTurno);
-        dialogo.setVisible(true);
-        contenido.getPanelAgenda().refrescar();
-        contenido.getPanelTurnos().refrescarTabla();
-        contenido.getPanelLateral().refrescar();
+        new DialogoNuevoTurno(this, controladorTurno, controladorPaciente, controladorOdontologo, () -> {
+            contenido.getPanelAgenda().refrescar();
+            contenido.getPanelTurnos().refrescarTabla();
+            contenido.getPanelLateral().refrescar();
+        }).setVisible(true);
     }
 
     private void confirmarCierre() {
