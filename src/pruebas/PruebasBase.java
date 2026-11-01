@@ -94,6 +94,7 @@ public class PruebasBase {
         v.seccion("Swing: piezas compartidas", PruebasBase::uiSwingCompartida);
         v.seccion("Swing: formularios de personas", PruebasBase::uiSwingPersonas);
         v.seccion("Swing: tabla y opciones polimórficas de turnos", PruebasBase::uiSwingTurnos);
+        v.seccion("Swing: facturación", PruebasBase::uiSwingFacturacion);
         boolean ok = v.resumen();
         System.exit(ok ? 0 : 1);
     }
@@ -1467,6 +1468,81 @@ public class PruebasBase {
         v.verdadero("OpcionMotivo conserva el motivo polimórfico", opcion.esSeleccionable()
                 && opcion.motivo() == TipoConsulta.values()[0]);
         v.igual("OpcionMotivo muestra el nombre legible", TipoConsulta.values()[0].getNombreLegible(), opcion.toString());
+    }
+
+    // ------------------------------------------------------------------ Swing: facturación (etapa 30)
+
+    private static void uiSwingFacturacion() throws Exception {
+        Clock reloj = Clock.fixed(Instant.parse("2026-11-01T10:00:00Z"), ZoneOffset.UTC);
+        RepositorioTurno repoTurnos = new RepositorioTurno();
+        ServicioPaciente servicioPaciente = new ServicioPaciente(new RepositorioPaciente(), repoTurnos, reloj);
+        ServicioOdontologo servicioOdontologo = new ServicioOdontologo(new RepositorioOdontologo(), repoTurnos);
+        ServicioTurno servicioTurno = new ServicioTurno(repoTurnos, reloj);
+        RepositorioFactura repoFacturas = new RepositorioFactura();
+        ServicioFactura servicioFactura = new ServicioFactura(repoFacturas, servicioTurno, new Tarifario(),
+                new CalculadorMonto(), List.of(new Efectivo(), new Tarjeta(), new MercadoPago()));
+        ControladorFactura controlador = new ControladorFactura(servicioFactura, reloj);
+
+        Paciente paciente = servicioPaciente.registrarPaciente("Ana", "Pérez", 99301,
+                "ana.facturacion@example.com", null, false);
+        Odontologo odontologo = servicioOdontologo.registrarOdontologo(
+                new General(0L, "Luis", "Gómez", 99302, TipoConsulta.CONTROL));
+        LocalDate fecha = LocalDate.of(2026, 11, 2);
+        Turno cobrado = servicioTurno.registrarTurno(paciente, odontologo, fecha,
+                LocalTime.of(9, 0), TipoConsulta.CONTROL);
+        Turno pendiente = servicioTurno.registrarTurno(paciente, odontologo, fecha,
+                LocalTime.of(10, 0), TipoConsulta.LIMPIEZA);
+        Turno sinTratamiento = servicioTurno.registrarTurno(paciente, odontologo, fecha,
+                LocalTime.of(11, 0));
+        Factura primeraFactura = servicioFactura.cobrarTurno(cobrado.getId(), new MercadoPago());
+
+        uiSwing.PanelFacturacion panel = new uiSwing.PanelFacturacion(controlador);
+        List<javax.swing.JTable> tablas = componentes(panel, javax.swing.JTable.class);
+        javax.swing.JTable tablaCobros = tablas.stream()
+                .filter(t -> t.getModel() instanceof uiSwing.TurnoCobroTableModel).findFirst().orElse(null);
+        javax.swing.JTable tablaFacturas = tablas.stream()
+                .filter(t -> t.getModel() instanceof uiSwing.FacturaTableModel).findFirst().orElse(null);
+        v.verdadero("PanelFacturacion construye ambas tablas", tablaCobros != null && tablaFacturas != null);
+
+        uiSwing.TurnoCobroTableModel modeloCobros = (uiSwing.TurnoCobroTableModel) tablaCobros.getModel();
+        v.igual("tabla por cobrar no muestra columna ID", "Turno", modeloCobros.getColumnName(0));
+        v.igual("tabla por cobrar tiene seis columnas visibles", 6, modeloCobros.getColumnCount());
+        v.igual("tabla por cobrar conserva los dos turnos pendientes", 2, modeloCobros.getRowCount());
+        v.igual("modelo por cobrar conserva el objeto Turno", pendiente, modeloCobros.getTurnoAt(0));
+        v.verdadero("modelo por cobrar conserva el error del turno sin tratamiento",
+                modeloCobros.getErrorAt(1) != null && modeloCobros.getErrorAt(1).contains("tratamiento"));
+
+        javax.swing.JComboBox<?> combo = componentes(panel, javax.swing.JComboBox.class).get(0);
+        v.igual("combo de medios contiene una opción inicial más tres medios", 4, combo.getItemCount());
+        v.verdadero("combo de medios no contiene elementos null",
+                java.util.stream.IntStream.range(0, combo.getItemCount()).allMatch(i -> combo.getItemAt(i) != null));
+        v.verdadero("opción inicial representa explícitamente ausencia de selección",
+                ((uiSwing.OpcionMedioPago) combo.getItemAt(0)).esSinSeleccion());
+        v.igual("opción inicial no contiene medio de pago",
+                Optional.empty(), ((uiSwing.OpcionMedioPago) combo.getItemAt(0)).medioPago());
+        v.lanza("OpcionMedioPago rechaza un medio nulo", NullPointerException.class,
+                () -> uiSwing.OpcionMedioPago.de(null));
+
+        uiSwing.FacturaTableModel modeloFacturas = (uiSwing.FacturaTableModel) tablaFacturas.getModel();
+        v.igual("tabla de facturas conserva las emitidas", 1, modeloFacturas.getRowCount());
+        v.igual("tabla de facturas tiene seis columnas", 6, modeloFacturas.getColumnCount());
+        v.igual("modelo de facturas conserva el objeto Factura", primeraFactura, modeloFacturas.getFacturaAt(0));
+        v.verdadero("ambas tablas usan ordenamiento de filas", tablaCobros.getRowSorter() != null
+                && tablaFacturas.getRowSorter() != null);
+
+        Factura facturaDos = factura(2, 2, paciente.getId(), paciente.getNombreCompleto(), "LIMPIEZA",
+                fecha, "TARJETA", 1000, 0, 0, 1000);
+        uiSwing.FacturaTableModel modeloOrdenable = new uiSwing.FacturaTableModel();
+        modeloOrdenable.setFacturas(List.of(primeraFactura, facturaDos),
+                Map.of("MERCADO_PAGO", "Mercado Pago", "TARJETA", "Tarjeta"));
+        javax.swing.JTable tablaOrdenable = new javax.swing.JTable(modeloOrdenable);
+        uiSwing.TablaSwing.configurar(tablaOrdenable);
+        tablaOrdenable.getRowSorter().toggleSortOrder(0);
+        tablaOrdenable.getRowSorter().toggleSortOrder(0);
+        int filaModelo = tablaOrdenable.convertRowIndexToModel(0);
+        v.igual("selección ordenada recupera la factura real y no la fila visual",
+                facturaDos, modeloOrdenable.getFacturaAt(filaModelo));
+        v.igual("helper compartido aplica altura estándar", 26, tablaOrdenable.getRowHeight());
     }
 
     // ------------------------------------------------------------------ utilidades de prueba

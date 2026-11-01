@@ -8,81 +8,62 @@ import exception.ClinicaException;
 import pago.MedioPago;
 
 import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
-// pantalla de facturacion con dos pestañas: turnos por cobrar (con el cobro) y facturas emitidas (con el cierre del dia)
+/** Pantalla de cobro y consulta de facturas emitidas. */
 public class PanelFacturacion extends JPanel {
 
     private static final Color FONDO = new Color(248, 247, 244);
-    private static final String[] COLUMNAS = {"ID", "Turno", "Paciente", "Tratamiento", "Precio", "Descuento", "Total"};
-    private static final String TEXTO_SIN_MEDIO = "Elegir medio de pago...";
-
     private final ControladorFactura controlador;
+    private final TurnoCobroTableModel modeloTabla = new TurnoCobroTableModel();
 
     private JTable tabla;
-    private DefaultTableModel modeloTabla;
-    private JComboBox<MedioPago> comboMedioPago;
+    private JComboBox<OpcionMedioPago> comboMedioPago;
     private JLabel lblTotalAPagar;
+    private JLabel lblEstado;
     private PanelFacturasEmitidas panelFacturasEmitidas;
 
-    // mensaje de error de cada fila (null si la fila esta bien), para mostrarlo como tooltip
-    private final List<String> erroresPorFila = new ArrayList<>();
-
     public PanelFacturacion(ControladorFactura controlador) {
+        if (controlador == null) throw new IllegalArgumentException("El controlador de facturación es obligatorio.");
         this.controlador = controlador;
-
         setLayout(new BorderLayout());
         setBackground(FONDO);
 
-        // pestaña 1: turnos por cobrar (titulo, tabla y franja de cobro)
         JPanel panelPorCobrar = new JPanel(new BorderLayout());
         panelPorCobrar.setBackground(FONDO);
         panelPorCobrar.add(crearPanelTitulo(), BorderLayout.NORTH);
         panelPorCobrar.add(crearPanelTablaPorCobrar(), BorderLayout.CENTER);
         panelPorCobrar.add(crearPanelCobro(), BorderLayout.SOUTH);
 
-        // pestaña 2: facturas emitidas y cierre del dia
         panelFacturasEmitidas = new PanelFacturasEmitidas(controlador);
-
         JTabbedPane pestanias = new JTabbedPane();
         pestanias.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         pestanias.addTab("Por cobrar", panelPorCobrar);
         pestanias.addTab("Facturas emitidas", panelFacturasEmitidas);
         add(pestanias, BorderLayout.CENTER);
 
-        // los listeners se agregan cuando ya estan armados todos los componentes
         tabla.getSelectionModel().addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                actualizarTotalAPagar();
-            }
+            if (!e.getValueIsAdjusting()) actualizarTotalAPagar();
         });
         comboMedioPago.addActionListener(e -> actualizarTotalAPagar());
-
         refrescar();
     }
-
-    // ---------- construccion de subpaneles ----------
 
     private JPanel crearPanelTitulo() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 12));
         panel.setBackground(Color.WHITE);
         panel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(226, 232, 240)));
-
         JLabel titulo = new JLabel("Turnos por cobrar");
         titulo.setFont(new Font("Segoe UI", Font.BOLD, 16));
         titulo.setForeground(new Color(15, 23, 42));
         panel.add(titulo);
-
         JLabel ayuda = new JLabel("El descuento de la tabla es el de obra social; el de efectivo se aplica al elegir el medio de pago.");
         ayuda.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         ayuda.setForeground(new Color(100, 116, 139));
         panel.add(ayuda);
-
         return panel;
     }
 
@@ -90,76 +71,32 @@ public class PanelFacturacion extends JPanel {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(FONDO);
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-
-        modeloTabla = new DefaultTableModel(COLUMNAS, 0) {
-            @Override
-            public boolean isCellEditable(int fila, int columna) {
-                return false; // la tabla es de solo lectura
-            }
-        };
-
-        // el tooltip de cada fila muestra por que no tiene precio (si corresponde)
         tabla = new JTable(modeloTabla) {
-            @Override
-            public String getToolTipText(MouseEvent e) {
-                int fila = rowAtPoint(e.getPoint());
-                if (fila >= 0 && fila < erroresPorFila.size()) {
-                    return erroresPorFila.get(fila);
-                }
-                return null;
+            @Override public String getToolTipText(MouseEvent evento) {
+                int filaVista = rowAtPoint(evento.getPoint());
+                if (filaVista < 0) return null;
+                int filaModelo = convertRowIndexToModel(filaVista);
+                return modeloTabla.getErrorAt(filaModelo);
             }
         };
-        tabla.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        tabla.setRowHeight(26);
-        tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        tabla.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 12));
-        tabla.getTableHeader().setBackground(new Color(248, 250, 252));
-        tabla.getTableHeader().setForeground(new Color(71, 85, 105));
-        tabla.setGridColor(new Color(226, 232, 240));
-
-        // precio, descuento y total alineados a la derecha
-        DefaultTableCellRenderer derecha = new DefaultTableCellRenderer();
-        derecha.setHorizontalAlignment(SwingConstants.RIGHT);
-        for (int columna = 4; columna <= 6; columna++) {
-            tabla.getColumnModel().getColumn(columna).setCellRenderer(derecha);
-        }
-
-        // oculta la columna ID visualmente pero la deja accesible (la usamos para cobrar)
-        tabla.getColumnModel().getColumn(0).setMinWidth(0);
-        tabla.getColumnModel().getColumn(0).setMaxWidth(0);
-        tabla.getColumnModel().getColumn(0).setWidth(0);
-
+        TablaSwing.configurar(tabla);
+        TablaSwing.alinearDerecha(tabla, 3, 4, 5);
         JScrollPane scroll = new JScrollPane(tabla);
         scroll.setBorder(BorderFactory.createLineBorder(new Color(226, 232, 240)));
-
         panel.add(scroll, BorderLayout.CENTER);
         return panel;
     }
 
-    // franja inferior: medio de pago, total a pagar con ese medio y boton cobrar
     private JPanel crearPanelCobro() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 10));
         panel.setBackground(Color.WHITE);
         panel.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(226, 232, 240)));
-
         panel.add(crearLabel("Medio de pago:"));
 
-        // el combo se llena con los medios que informa el controlador: un medio nuevo aparece solo
         comboMedioPago = new JComboBox<>();
         comboMedioPago.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        comboMedioPago.addItem(null); // primera opcion vacia: obliga a elegir un medio (CU6, flujo 5a)
-        for (MedioPago medio : controlador.listarMediosPago()) {
-            comboMedioPago.addItem(medio);
-        }
-        // se muestra getNombre() de la interfaz, asi el medio nuevo no necesita un toString propio
-        comboMedioPago.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> lista, Object valor, int indice,
-                                                          boolean seleccionado, boolean foco) {
-                String texto = (valor instanceof MedioPago) ? ((MedioPago) valor).getNombre() : TEXTO_SIN_MEDIO;
-                return super.getListCellRendererComponent(lista, texto, indice, seleccionado, foco);
-            }
-        });
+        comboMedioPago.addItem(OpcionMedioPago.sinSeleccion());
+        for (MedioPago medio : controlador.listarMediosPago()) comboMedioPago.addItem(OpcionMedioPago.de(medio));
         panel.add(comboMedioPago);
 
         lblTotalAPagar = new JLabel("Total a pagar: -");
@@ -177,12 +114,14 @@ public class PanelFacturacion extends JPanel {
         btnCobrar.addActionListener(e -> cobrarSeleccionado());
         panel.add(btnCobrar);
 
+        lblEstado = new JLabel(" ");
+        lblEstado.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblEstado.setForeground(new Color(100, 116, 139));
+        panel.add(lblEstado);
         return panel;
     }
 
-    // ---------- carga y refresco de datos ----------
-
-    // recarga las dos pestañas: los turnos que todavia se pueden cobrar y las facturas emitidas
+    /** Recarga turnos por cobrar y facturas emitidas. */
     public void refrescar() {
         cargarFilasPorCobrar(controlador.listarTurnosPorCobrar());
         actualizarTotalAPagar();
@@ -190,98 +129,87 @@ public class PanelFacturacion extends JPanel {
     }
 
     private void cargarFilasPorCobrar(List<Turno> turnos) {
-        modeloTabla.setRowCount(0);
-        erroresPorFila.clear();
-
-        for (Turno t : turnos) {
-            String turnoTexto = t.getFecha() + " " + t.getHora();
-            String paciente = t.getPaciente().getNombreCompleto();
-            String tratamiento = TextoMotivo.de(t);
-
+        modeloTabla.limpiar();
+        for (Turno turno : turnos) {
             try {
-                // sin medio de pago todavia: solo se ve el descuento de obra social
-                DesgloseMonto desglose = controlador.calcularVistaPrevia(t.getId());
-
-                modeloTabla.addRow(new Object[]{
-                        t.getId(), turnoTexto, paciente, tratamiento,
-                        plata(desglose.getMontoBase()),
-                        plata(desglose.getDescuentoObraSocial()),
-                        plata(desglose.getMontoTotal())
-                });
-                erroresPorFila.add(null);
-
-            } catch (ClinicaException e) {
-                // turno sin tratamiento o sin precio: se muestra igual, marcado, para que no desaparezca de la lista
-                modeloTabla.addRow(new Object[]{
-                        t.getId(), turnoTexto, paciente, tratamiento, "Sin precio", "-", "-"
-                });
-                erroresPorFila.add(e.getMessage());
+                DesgloseMonto desglose = controlador.calcularVistaPrevia(turno.getId());
+                modeloTabla.agregar(turno, desglose, null);
+            } catch (ClinicaException error) {
+                modeloTabla.agregar(turno, null, error.getMessage());
             }
         }
     }
 
-    // ---------- cobro ----------
-
-    // muestra cuanto pagaria el turno seleccionado con el medio elegido (sin guardar nada)
     private void actualizarTotalAPagar() {
-        int fila = tabla.getSelectedRow();
-        if (fila == -1) {
+        Turno turno = turnoSeleccionado();
+        if (turno == null) {
             lblTotalAPagar.setText("Total a pagar: -");
+            mostrarEstado("Seleccione un turno por cobrar.", false);
             return;
         }
-
-        long turnoId = (long) modeloTabla.getValueAt(fila, 0);
-        MedioPago medio = (MedioPago) comboMedioPago.getSelectedItem();
-
         try {
-            DesgloseMonto desglose = (medio == null)
-                    ? controlador.calcularVistaPrevia(turnoId)
-                    : controlador.calcularVistaPrevia(turnoId, medio);
-            lblTotalAPagar.setText("Total a pagar: " + plata(desglose.getMontoTotal()));
-        } catch (ClinicaException e) {
+            Optional<MedioPago> medio = medioSeleccionado();
+            DesgloseMonto desglose = medio.isPresent()
+                    ? controlador.calcularVistaPrevia(turno.getId(), medio.get())
+                    : controlador.calcularVistaPrevia(turno.getId());
+            lblTotalAPagar.setText("Total a pagar: " + FormatoPlata.formatear(desglose.getMontoTotalDecimal()));
+            mostrarEstado(medio.isEmpty() ? "Vista previa sin descuento por medio de pago." : "Vista previa actualizada.", false);
+        } catch (ClinicaException error) {
             lblTotalAPagar.setText("Total a pagar: -");
+            mostrarEstado(error.getMessage(), true);
         }
     }
 
-    // cobra el turno seleccionado con el medio elegido
     private void cobrarSeleccionado() {
-        int fila = tabla.getSelectedRow();
-
-        if (fila == -1) {
-            JOptionPane.showMessageDialog(this, "Seleccione un turno por cobrar primero.",
-                    "Sin seleccion", JOptionPane.WARNING_MESSAGE);
+        Turno turno = turnoSeleccionado();
+        if (turno == null) {
+            informarError("Seleccione un turno por cobrar primero.");
             return;
         }
-
-        long turnoId = (long) modeloTabla.getValueAt(fila, 0);
-        MedioPago medio = (MedioPago) comboMedioPago.getSelectedItem();
-
+        Optional<MedioPago> medio = medioSeleccionado();
+        if (medio.isEmpty()) {
+            informarError("Debe elegir un medio de pago antes de cobrar.");
+            comboMedioPago.requestFocusInWindow();
+            return;
+        }
         try {
-            // si el medio es null el servicio lanza DatoInvalidoException y no genera la factura
-            Factura factura = controlador.cobrarTurno(turnoId, medio);
-
-            // el comprobante muestra el desglose del cobro recien hecho
+            Factura factura = controlador.cobrarTurno(turno.getId(), medio.get());
             ComprobanteFactura.mostrar(this, factura, controlador.listarMediosPago());
-
-            // vuelve a pedir el medio en el proximo cobro, para no cobrar con uno elegido de antes
             comboMedioPago.setSelectedIndex(0);
+            tabla.clearSelection();
             refrescar();
-
-        } catch (ClinicaException e) {
-            JOptionPane.showMessageDialog(this, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            mostrarEstado("Factura #" + factura.getId() + " emitida correctamente.", false);
+        } catch (ClinicaException error) {
+            informarError(error.getMessage());
         }
     }
 
-    // ---------- helpers ----------
+    private Turno turnoSeleccionado() {
+        int filaVista = tabla.getSelectedRow();
+        if (filaVista < 0) return null;
+        return modeloTabla.getTurnoAt(tabla.convertRowIndexToModel(filaVista));
+    }
 
-    private String plata(double monto) {
-        return FormatoPlata.formatear(monto);
+    private Optional<MedioPago> medioSeleccionado() {
+        OpcionMedioPago opcion = (OpcionMedioPago) comboMedioPago.getSelectedItem();
+        return opcion == null ? Optional.empty() : opcion.medioPago();
+    }
+
+    private void informarError(String mensaje) {
+        mostrarEstado(mensaje, true);
+        JOptionPane.showMessageDialog(this, mensaje, "No se pudo completar el cobro", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private void mostrarEstado(String mensaje, boolean error) {
+        lblEstado.setText(mensaje == null || mensaje.isBlank() ? " " : mensaje);
+        lblEstado.setForeground(error ? new Color(185, 28, 28) : new Color(100, 116, 139));
+        lblEstado.setToolTipText(mensaje);
     }
 
     private JLabel crearLabel(String texto) {
-        JLabel lbl = new JLabel(texto);
-        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-        lbl.setForeground(new Color(71, 85, 105));
-        return lbl;
+        JLabel etiqueta = new JLabel(texto);
+        etiqueta.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        etiqueta.setForeground(new Color(71, 85, 105));
+        return etiqueta;
     }
 }
