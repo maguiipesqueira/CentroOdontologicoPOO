@@ -1,24 +1,19 @@
 package pago;
 
-/**
- * Contrato de un medio de pago.
- * Cada implementacion define su identificador estable, nombre visible y politica de descuento.
- */
-public interface MedioPago {
+import java.math.BigDecimal;
 
+/** Medio de pago con identificador estable y política de descuento propia. */
+public interface MedioPago extends PoliticaDescuento {
     String getCodigo();
-
     String getNombre();
 
-    /**
-     * Calcula el descuento que aplica este medio sobre el importe recibido.
-     */
+    /** API de compatibilidad con las pantallas y pruebas previas. */
     double calcularDescuento(double monto);
 
-    /**
-     * Devuelve el importe luego de aplicar el descuento propio del medio.
-     */
-    default double aplicarDescuento(double monto) {
-        return monto - calcularDescuento(monto);
+    @Override
+    default BigDecimal calcularDescuento(BigDecimal monto) {
+        return BigDecimal.valueOf(calcularDescuento(monto.doubleValue())).setScale(2, java.math.RoundingMode.HALF_UP);
     }
+
+    default double aplicarDescuento(double monto) { return monto - calcularDescuento(monto); }
 }

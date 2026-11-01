@@ -1,53 +1,59 @@
 package service;
 
+import entity.MotivoConsulta;
 import entity.TipoCirugia;
 import entity.TipoConsulta;
 import entity.TipoOrtodoncia;
 import exception.DatoInvalidoException;
 
+import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-// Lista de precios de la clinica: sabe cuanto cuesta cada tratamiento (Information Expert de los precios)
-public class Tarifario {
-
-    // clave: nombre del tratamiento (ej "LIMPIEZA"), valor: precio base en pesos
-    // se usa el nombre tecnico del motivo (name()) como clave; en la etapa 22 el precio pasa a buscarse por MotivoConsulta
-    private final Map<String, Double> precios = new HashMap<>();
+/** Catálogo único de precios de lista, indexado por el motivo tipado del turno. */
+public final class Tarifario {
+    private final Map<MotivoConsulta, BigDecimal> precios;
+    private final Map<String, BigDecimal> preciosLegados;
 
     public Tarifario() {
-        cargarPrecios();
+        Map<MotivoConsulta, BigDecimal> valores = new HashMap<>();
+        cargar(valores, TipoConsulta.CONTROL, "15000");
+        cargar(valores, TipoConsulta.LIMPIEZA, "25000");
+        cargar(valores, TipoConsulta.URGENCIA, "40000");
+        cargar(valores, TipoConsulta.BLANQUEAMIENTO, "90000");
+        cargar(valores, TipoCirugia.EXTRACCION_MUELA, "60000");
+        cargar(valores, TipoCirugia.CIRUGIA_ENCIA, "120000");
+        cargar(valores, TipoCirugia.IMPLANTE, "450000");
+        cargar(valores, TipoCirugia.CIRUGIA_MAXILOFACIAL, "600000");
+        cargar(valores, TipoOrtodoncia.BRACKETS_METALICOS, "150000");
+        cargar(valores, TipoOrtodoncia.BRACKETS_CERAMICOS, "250000");
+        precios = Collections.unmodifiableMap(valores);
+        Map<String, BigDecimal> legado = new HashMap<>();
+        valores.forEach((motivo, precio) -> legado.put(motivo.toString(), precio));
+        preciosLegados = Collections.unmodifiableMap(legado);
     }
 
-    // para agregar un tratamiento nuevo solo se agrega una linea aca
-    private void cargarPrecios() {
-        precios.put(TipoConsulta.CONTROL.name(), 15000.0);
-        precios.put(TipoConsulta.LIMPIEZA.name(), 25000.0);
-        precios.put(TipoConsulta.URGENCIA.name(), 40000.0);
-        precios.put(TipoConsulta.BLANQUEAMIENTO.name(), 90000.0);
-
-        precios.put(TipoCirugia.EXTRACCION_MUELA.name(), 60000.0);
-        precios.put(TipoCirugia.CIRUGIA_ENCIA.name(), 120000.0);
-        precios.put(TipoCirugia.IMPLANTE.name(), 450000.0);
-        precios.put(TipoCirugia.CIRUGIA_MAXILOFACIAL.name(), 600000.0);
-
-        precios.put(TipoOrtodoncia.BRACKETS_METALICOS.name(), 150000.0);
-        precios.put(TipoOrtodoncia.BRACKETS_CERAMICOS.name(), 250000.0);
+    private static void cargar(Map<MotivoConsulta, BigDecimal> destino, MotivoConsulta motivo, String precio) {
+        destino.put(motivo, new BigDecimal(precio).setScale(2));
     }
 
-    // devuelve el precio base del tratamiento, buscandolo por el nombre del motivo
-    public double precioDe(Object motivoConsulta) throws DatoInvalidoException {
-        if (motivoConsulta == null) {
-            throw new DatoInvalidoException("Tratamiento", "El turno no tiene un tratamiento cargado.");
-        }
-
-        String tratamiento = motivoConsulta.toString();
-        Double precio = precios.get(tratamiento);
-
-        if (precio == null) {
-            throw new DatoInvalidoException("Tratamiento", "No hay un precio cargado para '" + tratamiento + "'.");
-        }
-
+    public BigDecimal precioDecimalDe(MotivoConsulta motivo) throws DatoInvalidoException {
+        if (motivo == null) throw new DatoInvalidoException("Tratamiento", "El turno no tiene un tratamiento cargado.");
+        BigDecimal precio = precios.get(motivo);
+        if (precio == null) throw new DatoInvalidoException("Tratamiento", "No hay un precio cargado para '" + motivo + "'.");
         return precio;
+    }
+
+    /** API compatible: acepta el motivo tipado o el nombre técnico histórico. */
+    public double precioDe(Object motivo) throws DatoInvalidoException {
+        if (motivo instanceof MotivoConsulta tipado) return precioDecimalDe(tipado).doubleValue();
+        if (motivo instanceof String texto) {
+            BigDecimal precio = preciosLegados.get(texto);
+            if (precio != null) return precio.doubleValue();
+            throw new DatoInvalidoException("Tratamiento", "No hay un precio cargado para '" + texto + "'.");
+        }
+        throw new DatoInvalidoException("Tratamiento", motivo == null
+                ? "El turno no tiene un tratamiento cargado." : "Tipo de tratamiento no reconocido.");
     }
 }

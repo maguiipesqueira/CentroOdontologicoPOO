@@ -4,48 +4,47 @@ import entity.DesgloseMonto;
 import exception.DatoInvalidoException;
 import pago.MedioPago;
 
-// Calcula el desglose del cobro delegando el descuento propio al medio de pago.
-public class CalculadorMonto {
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 
-    private static final double DESCUENTO_OBRA_SOCIAL = 0.30;
-    private static final double SIN_DESCUENTO_MEDIO = 0.0;
+/** Calcula importes con aritmética decimal y una única regla de redondeo. */
+public final class CalculadorMonto {
+    private static final BigDecimal PORCENTAJE_OBRA_SOCIAL = new BigDecimal("0.30");
+    private static final BigDecimal CERO = new BigDecimal("0.00");
 
-    public DesgloseMonto calcular(double montoBase, boolean tieneObraSocial, MedioPago medioPago)
+    public DesgloseMonto calcular(BigDecimal base, boolean obraSocial, MedioPago medio)
             throws DatoInvalidoException {
-        if (medioPago == null) {
-            throw new DatoInvalidoException("Método de pago", "Debe elegir un método de pago.");
+        if (medio == null) throw new DatoInvalidoException("Método de pago", "Debe elegir un método de pago.");
+        validar(base);
+        BigDecimal descuentoOS = obraSocial ? redondear(base.multiply(PORCENTAJE_OBRA_SOCIAL)) : CERO;
+        BigDecimal despuesOS = redondear(base.subtract(descuentoOS));
+        BigDecimal descuentoMedio = redondear(medio.calcularDescuento(despuesOS));
+        if (descuentoMedio.signum() < 0 || descuentoMedio.compareTo(despuesOS) > 0) {
+            throw new DatoInvalidoException("Descuento", "El descuento del medio de pago no es válido.");
         }
-        validarMonto(montoBase);
-
-        double descuentoObraSocial = tieneObraSocial
-                ? redondear(montoBase * DESCUENTO_OBRA_SOCIAL)
-                : SIN_DESCUENTO_MEDIO;
-        double montoLuegoDeObraSocial = montoBase - descuentoObraSocial;
-        double montoTotal = redondear(medioPago.aplicarDescuento(montoLuegoDeObraSocial));
-        double descuentoMedioPago = redondear(montoLuegoDeObraSocial - montoTotal);
-
-        return new DesgloseMonto(montoBase, descuentoObraSocial, descuentoMedioPago, montoTotal);
+        BigDecimal total = redondear(despuesOS.subtract(descuentoMedio));
+        return new DesgloseMonto(base, descuentoOS, descuentoMedio, total);
     }
 
-    // Vista previa cuando todavía no se eligió un medio de pago.
-    public DesgloseMonto calcular(double montoBase, boolean tieneObraSocial) throws DatoInvalidoException {
-        validarMonto(montoBase);
-
-        double descuentoObraSocial = tieneObraSocial
-                ? redondear(montoBase * DESCUENTO_OBRA_SOCIAL)
-                : SIN_DESCUENTO_MEDIO;
-        double montoTotal = redondear(montoBase - descuentoObraSocial);
-
-        return new DesgloseMonto(montoBase, descuentoObraSocial, SIN_DESCUENTO_MEDIO, montoTotal);
+    public DesgloseMonto calcular(BigDecimal base, boolean obraSocial) throws DatoInvalidoException {
+        validar(base);
+        BigDecimal descuentoOS = obraSocial ? redondear(base.multiply(PORCENTAJE_OBRA_SOCIAL)) : CERO;
+        return new DesgloseMonto(base, descuentoOS, CERO, redondear(base.subtract(descuentoOS)));
     }
 
-    private void validarMonto(double montoBase) throws DatoInvalidoException {
-        if (montoBase <= SIN_DESCUENTO_MEDIO) {
+    public DesgloseMonto calcular(double base, boolean obraSocial, MedioPago medio) throws DatoInvalidoException {
+        return calcular(BigDecimal.valueOf(base), obraSocial, medio);
+    }
+    public DesgloseMonto calcular(double base, boolean obraSocial) throws DatoInvalidoException {
+        return calcular(BigDecimal.valueOf(base), obraSocial);
+    }
+
+    private void validar(BigDecimal base) throws DatoInvalidoException {
+        if (base == null || base.signum() <= 0)
             throw new DatoInvalidoException("Monto", "El monto base debe ser mayor a cero.");
-        }
     }
 
-    private double redondear(double valor) {
-        return Math.round(valor * 100.0) / 100.0;
+    public static BigDecimal redondear(BigDecimal valor) {
+        return valor.setScale(2, RoundingMode.HALF_UP);
     }
 }

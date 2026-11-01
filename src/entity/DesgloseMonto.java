@@ -1,40 +1,52 @@
 package entity;
 
-// Resultado de calcular un cobro: el precio de lista, cuanto se descuento por obra social y por el medio de pago y el total a pagar
-public class DesgloseMonto {
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Objects;
 
-    private final double montoBase;
-    private final double descuentoObraSocial;
-    private final double descuentoMedioPago;
-    private final double montoTotal;
+/** Valores monetarios de un cobro, almacenados con precisión decimal de dos posiciones. */
+public final class DesgloseMonto {
+    private final BigDecimal montoBase;
+    private final BigDecimal descuentoObraSocial;
+    private final BigDecimal descuentoMedioPago;
+    private final BigDecimal montoTotal;
 
-    // constructor con todos los importes
-    public DesgloseMonto(double montoBase, double descuentoObraSocial, double descuentoMedioPago, double montoTotal) {
-        this.montoBase = montoBase;
-        this.descuentoObraSocial = descuentoObraSocial;
-        this.descuentoMedioPago = descuentoMedioPago;
-        this.montoTotal = montoTotal;
+    public DesgloseMonto(BigDecimal montoBase, BigDecimal descuentoObraSocial,
+                         BigDecimal descuentoMedioPago, BigDecimal montoTotal) {
+        this.montoBase = dinero(montoBase);
+        this.descuentoObraSocial = dinero(descuentoObraSocial);
+        this.descuentoMedioPago = dinero(descuentoMedioPago);
+        this.montoTotal = dinero(montoTotal);
+        if (this.montoBase.signum() < 0 || this.descuentoObraSocial.signum() < 0
+                || this.descuentoMedioPago.signum() < 0 || this.montoTotal.signum() < 0) {
+            throw new IllegalArgumentException("Los importes no pueden ser negativos.");
+        }
     }
 
-    // devuelve el precio de lista
-    public double getMontoBase() { return montoBase; }
-    // devuelve lo descontado por obra social
-    public double getDescuentoObraSocial() { return descuentoObraSocial; }
-    // devuelve lo descontado por el medio de pago elegido
-    public double getDescuentoMedioPago() { return descuentoMedioPago; }
+    /** Compatibilidad con constructores existentes; los cálculos nuevos usan BigDecimal. */
+    public DesgloseMonto(double base, double descObraSocial, double descMedioPago, double total) {
+        this(BigDecimal.valueOf(base), BigDecimal.valueOf(descObraSocial),
+                BigDecimal.valueOf(descMedioPago), BigDecimal.valueOf(total));
+    }
 
-    /** @deprecated usar getDescuentoMedioPago(). */
-    @Deprecated
-    public double getDescuentoEfectivo() { return getDescuentoMedioPago(); }
-    // devuelve el total a pagar
-    public double getMontoTotal() { return montoTotal; }
+    private static BigDecimal dinero(BigDecimal valor) {
+        return Objects.requireNonNull(valor, "El importe no puede ser nulo.").setScale(2, RoundingMode.HALF_UP);
+    }
 
-    // texto con el desglose
-    @Override
-    public String toString() {
-        return "Base: $" + montoBase +
-                " | Desc. obra social: $" + descuentoObraSocial +
-                " | Desc. medio de pago: $" + descuentoMedioPago +
-                " | Total: $" + montoTotal;
+    public BigDecimal getMontoBaseDecimal() { return montoBase; }
+    public BigDecimal getDescuentoObraSocialDecimal() { return descuentoObraSocial; }
+    public BigDecimal getDescuentoMedioPagoDecimal() { return descuentoMedioPago; }
+    public BigDecimal getMontoTotalDecimal() { return montoTotal; }
+
+    // Getters double conservados para las vistas y clientes existentes.
+    public double getMontoBase() { return montoBase.doubleValue(); }
+    public double getDescuentoObraSocial() { return descuentoObraSocial.doubleValue(); }
+    public double getDescuentoMedioPago() { return descuentoMedioPago.doubleValue(); }
+    @Deprecated public double getDescuentoEfectivo() { return getDescuentoMedioPago(); }
+    public double getMontoTotal() { return montoTotal.doubleValue(); }
+
+    @Override public String toString() {
+        return "Base: $" + montoBase + " | Desc. obra social: $" + descuentoObraSocial
+                + " | Desc. medio de pago: $" + descuentoMedioPago + " | Total: $" + montoTotal;
     }
 }

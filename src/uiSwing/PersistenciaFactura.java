@@ -6,6 +6,7 @@ import service.ServicioFactura;
 
 import java.io.*;
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.List;
 
 public class PersistenciaFactura {
@@ -28,10 +29,10 @@ public class PersistenciaFactura {
                         limpiar(f.getConcepto()) + "," +
                         f.getFecha() + "," +
                         limpiar(f.getMetodoPagoCodigo()) + "," +
-                        f.getMontoBase() + "," +
-                        f.getDescuentoObraSocial() + "," +
-                        f.getDescuentoMedioPago() + "," +
-                        f.getMontoTotal();
+                        f.getMontoBaseDecimal().toPlainString() + "," +
+                        f.getDescuentoObraSocialDecimal().toPlainString() + "," +
+                        f.getDescuentoMedioPagoDecimal().toPlainString() + "," +
+                        f.getMontoTotalDecimal().toPlainString();
 
                 writer.println(linea);
             }
@@ -65,10 +66,10 @@ public class PersistenciaFactura {
                     String concepto = partes[4];
                     LocalDate fecha = LocalDate.parse(partes[5]);
                     String metodoPago = servicio.codigoMedioPago(partes[6]);
-                    double montoBase = Double.parseDouble(partes[7]);
-                    double descuentoObraSocial = Double.parseDouble(partes[8]);
-                    double descuentoMedioPago = Double.parseDouble(partes[9]);
-                    double montoTotal = Double.parseDouble(partes[10]);
+                    BigDecimal montoBase = new BigDecimal(partes[7]);
+                    BigDecimal descuentoObraSocial = new BigDecimal(partes[8]);
+                    BigDecimal descuentoMedioPago = new BigDecimal(partes[9]);
+                    BigDecimal montoTotal = new BigDecimal(partes[10]);
 
                     Factura f = Factura.builder()
                             .id(id)

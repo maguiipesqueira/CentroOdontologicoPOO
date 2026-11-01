@@ -1,6 +1,7 @@
 package entity;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.Objects;
 
 /**
@@ -65,6 +66,10 @@ public class Factura {
     public DesgloseMonto getDesglose() { return desglose; }
 
     // atajos al desglose (asi quien muestra la factura no tiene que encadenar llamadas)
+    public BigDecimal getMontoBaseDecimal() { return desglose.getMontoBaseDecimal(); }
+    public BigDecimal getDescuentoObraSocialDecimal() { return desglose.getDescuentoObraSocialDecimal(); }
+    public BigDecimal getDescuentoMedioPagoDecimal() { return desglose.getDescuentoMedioPagoDecimal(); }
+    public BigDecimal getMontoTotalDecimal() { return desglose.getMontoTotalDecimal(); }
     public double getMontoBase() { return desglose.getMontoBase(); }
     public double getDescuentoObraSocial() { return desglose.getDescuentoObraSocial(); }
     public double getDescuentoMedioPago() { return desglose.getDescuentoMedioPago(); }

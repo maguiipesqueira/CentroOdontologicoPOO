@@ -30,6 +30,7 @@ import uiSwing.PersistenciaTurno;
 import uiSwing.TextoMotivo;
 
 import java.io.ByteArrayOutputStream;
+import java.math.BigDecimal;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
@@ -757,6 +758,8 @@ public class PruebasBase {
         v.casi("acepta el nombre en texto (asi queda el motivo al recargar)", 25000, t.precioDe("LIMPIEZA"));
         v.lanza("motivo nulo", DatoInvalidoException.class, () -> t.precioDe(null));
         v.lanza("motivo sin precio ('Consulta')", DatoInvalidoException.class, () -> t.precioDe("Consulta"));
+        v.igual("precio tipado conserva precisión decimal", new BigDecimal("450000.00"),
+                t.precioDecimalDe(TipoCirugia.IMPLANTE));
     }
 
     // ------------------------------------------------------------------ medios de pago
@@ -838,6 +841,12 @@ public class PruebasBase {
         v.lanza("base en cero", DatoInvalidoException.class, () -> calc.calcular(0, false, new Efectivo()));
         v.lanza("base negativa", DatoInvalidoException.class, () -> calc.calcular(-5, false));
         v.lanza("medio de pago nulo", DatoInvalidoException.class, () -> calc.calcular(1000, false, null));
+        DesgloseMonto decimal = calc.calcular(new BigDecimal("0.05"), true, new Efectivo());
+        v.igual("desglose conserva dos decimales exactos", new BigDecimal("0.05"), decimal.getMontoBaseDecimal());
+        v.igual("redondeo decimal HALF_UP", new BigDecimal("0.02"),
+                CalculadorMonto.redondear(new BigDecimal("0.015")));
+        v.igual("descuento calculado en decimal", new BigDecimal("0.01"),
+                new Efectivo().calcularDescuento(new BigDecimal("0.05")));
     }
 
     // ------------------------------------------------------------------ facturacion

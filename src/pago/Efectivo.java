@@ -1,5 +1,8 @@
 package pago;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 /** Pago en efectivo, con un descuento configurable (10 % por defecto). */
 public class Efectivo implements MedioPago {
 
@@ -34,6 +37,12 @@ public class Efectivo implements MedioPago {
     @Override
     public double calcularDescuento(double monto) {
         return redondear(monto * porcentajeDescuento);
+    }
+
+    @Override
+    public BigDecimal calcularDescuento(BigDecimal monto) {
+        return monto.multiply(BigDecimal.valueOf(porcentajeDescuento))
+                .setScale(2, RoundingMode.HALF_UP);
     }
 
     private double redondear(double valor) {

@@ -11,6 +11,7 @@ import repository.GeneradorIds;
 import repository.RepositorioFactura;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -128,32 +129,14 @@ public class ServicioFactura {
 
         List<Factura> facturasDelDia = repositorio.listarPorFecha(fecha);
 
-        // arranca con todos los medios en cero para que el detalle los muestre aunque no hayan cobrado nada
-        Map<String, Double> totalPorMedio = new LinkedHashMap<>();
-        for (MedioPago medio : mediosPago) {
-            totalPorMedio.put(medio.getNombre(), 0.0);
-        }
-
-        double total = 0.0;
-        for (Factura f : facturasDelDia) {
-            total += f.getMontoTotal();
-            String nombreMedio = nombreMedioPago(f.getMetodoPagoCodigo());
-            totalPorMedio.merge(nombreMedio, f.getMontoTotal(), Double::sum);
-        }
-
-        totalPorMedio.replaceAll((medio, monto) -> redondear(monto));
-
-        return new CierreDelDia(fecha, facturasDelDia.size(), redondear(total), totalPorMedio);
+        Map<String, String> nombresPorCodigo = new LinkedHashMap<>();
+        for (MedioPago medio : mediosPago) nombresPorCodigo.put(medio.getCodigo(), medio.getNombre());
+        return CierreDelDia.calcular(fecha, facturasDelDia, nombresPorCodigo);
     }
 
     // expone el repositorio para la persistencia
     public RepositorioFactura getRepositorio() {
         return repositorio;
-    }
-
-    // redondea a 2 decimales para que las sumas de double no arrastren ruido
-    private double redondear(double valor) {
-        return Math.round(valor * 100.0) / 100.0;
     }
 
     // busca el turno y comprueba que se pueda cobrar (existe, no esta cancelado y no tiene factura)
@@ -173,8 +156,8 @@ public class ServicioFactura {
     }
 
     // precio de lista del tratamiento del turno
-    private double precioDe(Turno turno) throws DatoInvalidoException {
-        return tarifario.precioDe(motivoDe(turno));
+    private BigDecimal precioDe(Turno turno) throws DatoInvalidoException {
+        return tarifario.precioDecimalDe(motivoDe(turno));
     }
 
     // motivo del turno; si se registro sin motivo no hay nada que cobrar
