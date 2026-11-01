@@ -2,56 +2,35 @@ package repository;
 
 import entity.Paciente;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
-public class RepositorioPaciente implements IRepositorio<Paciente> {
+/** Repositorio de pacientes con indice secundario por DNI. */
+public class RepositorioPaciente extends RepositorioEnMemoriaMutable<Paciente> {
 
-    private final Map<Long, Paciente> almacenamiento = new HashMap<>();
+    private final Map<Integer, Long> idsPorDni = new HashMap<>();
 
-    // guarda el paciente con su id como clave
     @Override
-    public void guardar(Paciente paciente) {
-        almacenamiento.put(paciente.getId(), paciente);
+    protected long idDe(Paciente paciente) {
+        return paciente.getId();
     }
 
-    // trae el paciente o null
     @Override
-    public Paciente buscarPorId(Long id) {
-        return almacenamiento.get(id);
+    protected void alGuardar(Paciente paciente) {
+        idsPorDni.put(paciente.getDni(), paciente.getId());
     }
 
-    // copia de todos en una lista
     @Override
-    public List<Paciente> listarTodos() {
-        return new ArrayList<>(almacenamiento.values());
-    }
-
-    // pisa solo si el id ya estaba
-    @Override
-    public void actualizar(Paciente paciente) {
-        if (almacenamiento.containsKey(paciente.getId())) {
-            almacenamiento.put(paciente.getId(), paciente);
+    protected void alEliminar(Paciente paciente) {
+        Long idIndexado = idsPorDni.get(paciente.getDni());
+        if (idIndexado != null && idIndexado == paciente.getId()) {
+            idsPorDni.remove(paciente.getDni());
         }
     }
 
-    // borra por id
-    @Override
-    public void eliminar(Long id) {
-        almacenamiento.remove(id);
-    }
-
-    // busca el dni a mano porque el mapa es por id
-    public Paciente buscarPorDni(int dni) {
-        for (Paciente p : almacenamiento.values()) {
-            if (p.getDni() == dni) {
-                return p;
-            }
-        }
-        return null;
-    }
-
-    // true si ya hay alguien con ese dni
-    public boolean existeDni(int dni) {
-        return buscarPorDni(dni) != null;
+    public Optional<Paciente> buscarPorDni(int dni) {
+        Long id = idsPorDni.get(dni);
+        return id == null ? Optional.empty() : buscarPorId(id);
     }
 }

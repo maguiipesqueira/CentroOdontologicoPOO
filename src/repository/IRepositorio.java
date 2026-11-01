@@ -1,21 +1,17 @@
 package repository;
 
 import java.util.List;
+import java.util.Optional;
 
+/**
+ * Contrato minimo de acceso a entidades almacenadas.
+ * No obliga a los repositorios de solo lectura a implementar modificacion o borrado.
+ */
 public interface IRepositorio<T> {
 
-    // guarda o pisa en el mapa
     void guardar(T entidad);
 
-    // busca por id, si no hay devuelve null
-    T buscarPorId(Long id);
+    Optional<T> buscarPorId(long id);
 
-    // devuelve todo en una lista
     List<T> listarTodos();
-
-    // actualiza si ya existía el id
-    void actualizar(T entidad);
-
-    // saca del mapa por id
-    void eliminar(Long id);
 }

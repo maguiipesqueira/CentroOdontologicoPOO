@@ -5,9 +5,9 @@ import entity.MotivoConsulta;
 import entity.Odontologo;
 import entity.Paciente;
 import entity.Turno;
-import exception.ClinicaException;
 import exception.DatoInvalidoException;
 import exception.TurnoYaReservadoException;
+import repository.GeneradorIds;
 import repository.RepositorioTurno;
 
 import java.time.LocalDate;
@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 public class ServicioTurno {
 
     private final RepositorioTurno repositorio;
+    private final GeneradorIds generadorIds = new GeneradorIds();
 
     // guarda el repo de turnos
     public ServicioTurno(RepositorioTurno repositorio) {
@@ -44,17 +45,14 @@ public class ServicioTurno {
         validarFecha(fecha);
         validarHora(hora);
 
-
-
-        boolean existeTurnoSolapado = repositorio.listarTodos().stream()
-                .anyMatch(t -> t.getOdontologo().getId() == odontologo.getId()
-                        && t.getFecha().equals(fecha) && t.getHora().equals(hora));
-
-        if (existeTurnoSolapado) {
-            throw new TurnoYaReservadoException(odontologo.getNombreCompleto(),fecha,hora);
+        if (existeTurnoSolapado(odontologo.getId(), fecha, hora)) {
+            throw new TurnoYaReservadoException(odontologo.getNombreCompleto(), fecha, hora);
         }
 
-        long id = repositorio.siguienteId();
+        long id = generadorIds.siguienteId(() -> repositorio.listarTodos().stream()
+                .mapToLong(Turno::getId)
+                .max()
+                .orElse(0L));
 
         Turno turno = new Turno(id, paciente, odontologo, fecha, hora, EstadoTurno.PENDIENTE, motivoConsulta);
         repositorio.guardar(turno);
@@ -62,9 +60,16 @@ public class ServicioTurno {
         return turno;
     }
 
+    private boolean existeTurnoSolapado(long odontologoId, LocalDate fecha, LocalTime hora) {
+        return repositorio.listarTodos().stream()
+                .anyMatch(turno -> turno.getOdontologo().getId() == odontologoId
+                        && turno.getFecha().equals(fecha)
+                        && turno.getHora().equals(hora));
+    }
+
     // busca por id
     public Turno buscarPorId(long id) throws DatoInvalidoException {
-        Turno turno = repositorio.buscarPorId(id);
+        Turno turno = repositorio.buscarPorId(id).orElse(null);
 
         if (turno == null) {
             throw new DatoInvalidoException("Turno", "No existe un turno con el id " + id);

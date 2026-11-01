@@ -2,56 +2,35 @@ package repository;
 
 import entity.Odontologo;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
-public class RepositorioOdontologo implements IRepositorio<Odontologo> {
+/** Repositorio de odontologos con indice secundario por matricula. */
+public class RepositorioOdontologo extends RepositorioEnMemoriaMutable<Odontologo> {
 
-    private final Map<Long, Odontologo> almacenamiento = new HashMap<>();
+    private final Map<Integer, Long> idsPorMatricula = new HashMap<>();
 
-    // guarda por id (cualquier subclase)
     @Override
-    public void guardar(Odontologo odontologo) {
-        almacenamiento.put(odontologo.getId(), odontologo);
+    protected long idDe(Odontologo odontologo) {
+        return odontologo.getId();
     }
 
-    // trae o null
     @Override
-    public Odontologo buscarPorId(Long id) {
-        return almacenamiento.get(id);
+    protected void alGuardar(Odontologo odontologo) {
+        idsPorMatricula.put(odontologo.getMatricula(), odontologo.getId());
     }
 
-    // todos en lista
     @Override
-    public List<Odontologo> listarTodos() {
-        return new ArrayList<>(almacenamiento.values());
-    }
-
-    // actualiza si existía
-    @Override
-    public void actualizar(Odontologo odontologo) {
-        if (almacenamiento.containsKey(odontologo.getId())) {
-            almacenamiento.put(odontologo.getId(), odontologo);
+    protected void alEliminar(Odontologo odontologo) {
+        Long idIndexado = idsPorMatricula.get(odontologo.getMatricula());
+        if (idIndexado != null && idIndexado == odontologo.getId()) {
+            idsPorMatricula.remove(odontologo.getMatricula());
         }
     }
 
-    // borra
-    @Override
-    public void eliminar(Long id) {
-        almacenamiento.remove(id);
-    }
-
-    // busca matrícula recorriendo porque la clave es el id
-    public Odontologo buscarPorMatricula(int matricula) {
-        for (Odontologo o : almacenamiento.values()) {
-            if (o.getMatricula() == matricula) {
-                return o;
-            }
-        }
-        return null;
-    }
-
-    // true si esa matrícula ya está
-    public boolean existeMatricula(int matricula) {
-        return buscarPorMatricula(matricula) != null;
+    public Optional<Odontologo> buscarPorMatricula(int matricula) {
+        Long id = idsPorMatricula.get(matricula);
+        return id == null ? Optional.empty() : buscarPorId(id);
     }
 }

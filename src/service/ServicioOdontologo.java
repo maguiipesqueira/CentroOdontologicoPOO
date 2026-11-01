@@ -3,6 +3,7 @@ package service;
 import entity.Odontologo;
 import exception.DatoInvalidoException;
 import exception.OdontologoNoEncontradoException;
+import repository.GeneradorIds;
 import repository.RepositorioOdontologo;
 
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.List;
 public class ServicioOdontologo {
 
     private final RepositorioOdontologo repositorio;
+    private final GeneradorIds generadorIds = new GeneradorIds();
 
     public ServicioOdontologo(RepositorioOdontologo repositorio) {
         this.repositorio = repositorio;
@@ -23,27 +25,24 @@ public class ServicioOdontologo {
         validarNombreApellido(odontologo.getNombre(), odontologo.getApellido());
         validarMatricula(odontologo.getMatricula());
 
-        if (repositorio.existeMatricula(odontologo.getMatricula())) {
+        if (repositorio.buscarPorMatricula(odontologo.getMatricula()).isPresent()) {
             throw new DatoInvalidoException("Matrícula", "Ya existe un odontólogo con esa matrícula.");
         }
 
-        // NUEVO: Calculamos el ID automáticamente buscando el mayor en la lista
-        long maxId = 0;
-        for (Odontologo o : repositorio.listarTodos()) {
-            if (o.getId() > maxId) {
-                maxId = o.getId();
-            }
-        }
+        long nuevoId = generadorIds.siguienteId(() -> repositorio.listarTodos().stream()
+                .mapToLong(Odontologo::getId)
+                .max()
+                .orElse(0L));
 
         // el id se asigna sobre una copia: el objeto que llega de afuera no se modifica
-        Odontologo guardado = odontologo.conId(maxId + 1);
+        Odontologo guardado = odontologo.conId(nuevoId);
 
         repositorio.guardar(guardado);
         return guardado;
     }
 
     public Odontologo buscarPorId(long id) throws OdontologoNoEncontradoException {
-        Odontologo odontologo = repositorio.buscarPorId(id);
+        Odontologo odontologo = repositorio.buscarPorId(id).orElse(null);
         if (odontologo == null) {
             throw new OdontologoNoEncontradoException(id);
         }
@@ -53,7 +52,7 @@ public class ServicioOdontologo {
     public Odontologo buscarPorMatricula(int matricula) throws OdontologoNoEncontradoException, DatoInvalidoException {
         validarMatricula(matricula);
 
-        Odontologo odontologo = repositorio.buscarPorMatricula(matricula);
+        Odontologo odontologo = repositorio.buscarPorMatricula(matricula).orElse(null);
         if (odontologo == null) {
             throw new OdontologoNoEncontradoException(matricula);
         }

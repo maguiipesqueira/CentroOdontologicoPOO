@@ -7,6 +7,7 @@ import entity.Paciente;
 import entity.Turno;
 import exception.DatoInvalidoException;
 import pago.MedioPago;
+import repository.GeneradorIds;
 import repository.RepositorioFactura;
 
 import java.time.LocalDate;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 public class ServicioFactura {
 
     private final RepositorioFactura repositorio;
+    private final GeneradorIds generadorIds = new GeneradorIds();
     private final ServicioTurno servicioTurno;
     private final Tarifario tarifario;
     private final CalculadorMonto calculador;
@@ -94,7 +96,10 @@ public class ServicioFactura {
         Paciente paciente = turno.getPaciente();
 
         Factura factura = Factura.builder()
-                .id(repositorio.siguienteId())
+                .id(generadorIds.siguienteId(() -> repositorio.listarTodos().stream()
+                        .mapToLong(Factura::getId)
+                        .max()
+                        .orElse(0L)))
                 .turnoId(turno.getId())
                 .pacienteId(paciente.getId())
                 .pacienteNombre(paciente.getNombreCompleto())

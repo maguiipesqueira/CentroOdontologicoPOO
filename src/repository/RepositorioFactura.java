@@ -3,77 +3,41 @@ package repository;
 import entity.Factura;
 
 import java.time.LocalDate;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
-public class RepositorioFactura implements IRepositorio<Factura> {
+/** Repositorio de facturas: se pueden emitir y consultar, pero no editar ni borrar. */
+public class RepositorioFactura extends RepositorioEnMemoria<Factura> {
 
-    private final Map<Long, Factura> almacenamiento = new HashMap<>();
+    private final Map<Long, Long> idsPorTurno = new HashMap<>();
 
-    // guarda la factura con su id como clave
     @Override
-    public void guardar(Factura factura) {
-        almacenamiento.put(factura.getId(), factura);
+    protected long idDe(Factura factura) {
+        return factura.getId();
     }
 
-    // trae la factura o null
     @Override
-    public Factura buscarPorId(Long id) {
-        return almacenamiento.get(id);
+    protected void alGuardar(Factura factura) {
+        idsPorTurno.put(factura.getTurnoId(), factura.getId());
     }
 
-    // copia de todas en una lista
     @Override
-    public List<Factura> listarTodos() {
-        return new ArrayList<>(almacenamiento.values());
-    }
-
-    // pisa solo si el id ya estaba
-    @Override
-    public void actualizar(Factura factura) {
-        if (almacenamiento.containsKey(factura.getId())) {
-            almacenamiento.put(factura.getId(), factura);
+    protected void alEliminar(Factura factura) {
+        Long idIndexado = idsPorTurno.get(factura.getTurnoId());
+        if (idIndexado != null && idIndexado == factura.getId()) {
+            idsPorTurno.remove(factura.getTurnoId());
         }
     }
 
-    // borra por id
-    @Override
-    public void eliminar(Long id) {
-        almacenamiento.remove(id);
-    }
-
-    // true si ese turno ya tiene factura (un turno se cobra una sola vez)
     public boolean existePorTurno(long turnoId) {
-        for (Factura f : almacenamiento.values()) {
-            if (f.getTurnoId() == turnoId) {
-                return true;
-            }
-        }
-        return false;
+        return idsPorTurno.containsKey(turnoId);
     }
 
-    // facturas emitidas en una fecha (para el cierre del dia)
     public List<Factura> listarPorFecha(LocalDate fecha) {
-        List<Factura> resultado = new ArrayList<>();
-
-        for (Factura f : almacenamiento.values()) {
-            if (f.getFecha().equals(fecha)) {
-                resultado.add(f);
-            }
-        }
-
-        return resultado;
-    }
-
-    // el proximo numero de factura es el maximo + 1
-    public long siguienteId() {
-        long max = 0L;
-
-        for (Long id : almacenamiento.keySet()) {
-            if (id > max) {
-                max = id;
-            }
-        }
-
-        return max + 1;
+        return listarTodos().stream()
+                .filter(factura -> factura.getFecha().equals(fecha))
+                .collect(Collectors.toList());
     }
 }

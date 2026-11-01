@@ -9,6 +9,8 @@ import pago.Efectivo;
 import pago.MedioPago;
 import pago.MercadoPago;
 import pago.Tarjeta;
+import repository.GeneradorIds;
+import repository.IRepositorio;
 import repository.RepositorioFactura;
 import repository.RepositorioOdontologo;
 import repository.RepositorioPaciente;
@@ -867,46 +869,82 @@ public class PruebasBase {
 
     private static void repositorios() throws Exception {
         RepositorioPaciente rp = new RepositorioPaciente();
-        v.verdadero("buscarPorId inexistente devuelve null", rp.buscarPorId(1L) == null);
-        v.verdadero("buscarPorDni inexistente devuelve null", rp.buscarPorDni(5) == null);
+        v.verdadero("buscarPorId inexistente devuelve Optional.empty", rp.buscarPorId(1L).isEmpty());
+        v.verdadero("buscarPorDni inexistente devuelve Optional.empty", rp.buscarPorDni(5).isEmpty());
         Paciente p = new Paciente(1L, "A", "B", 5, "a@b.com", LocalDate.now(), null, false);
         rp.guardar(p);
-        v.verdadero("buscarPorId", rp.buscarPorId(1L) == p);
-        v.verdadero("buscarPorDni", rp.buscarPorDni(5) == p);
-        v.verdadero("existeDni", rp.existeDni(5));
-        v.verdadero("no existeDni", !rp.existeDni(6));
+        v.igual("buscarPorId devuelve Optional con paciente", p, rp.buscarPorId(1L).orElse(null));
+        v.igual("buscarPorDni usa el indice", p, rp.buscarPorDni(5).orElse(null));
+        v.igual("listarTodos devuelve una copia", 1, rp.listarTodos().size());
+
+        Paciente actualizado = new Paciente(1L, "A", "B", 6, "a@b.com", LocalDate.now(), null, false);
+        rp.actualizar(actualizado);
+        v.verdadero("actualizar libera el DNI anterior del indice", rp.buscarPorDni(5).isEmpty());
+        v.igual("actualizar registra el DNI nuevo en el indice", actualizado, rp.buscarPorDni(6).orElse(null));
         rp.actualizar(new Paciente(77L, "Z", "Z", 9, "z@z.com", LocalDate.now(), null, false));
         v.igual("actualizar un id inexistente no agrega nada", 1, rp.listarTodos().size());
         rp.eliminar(1L);
-        v.igual("eliminar", 0, rp.listarTodos().size());
+        v.igual("eliminar quita el registro", 0, rp.listarTodos().size());
+        v.verdadero("eliminar libera el DNI del indice", rp.buscarPorDni(6).isEmpty());
+
+        RepositorioOdontologo ro = new RepositorioOdontologo();
+        Odontologo odontologo = new General(4L, "O", "D", 44, TipoConsulta.CONTROL);
+        ro.guardar(odontologo);
+        v.igual("buscarPorMatricula usa el indice", odontologo, ro.buscarPorMatricula(44).orElse(null));
+        v.verdadero("matricula inexistente devuelve Optional.empty", ro.buscarPorMatricula(99).isEmpty());
+        Odontologo odontologoActualizado = new General(4L, "O", "D", 45, TipoConsulta.CONTROL);
+        ro.actualizar(odontologoActualizado);
+        v.verdadero("actualizar libera la matricula anterior", ro.buscarPorMatricula(44).isEmpty());
+        v.igual("actualizar registra la matricula nueva", odontologoActualizado,
+                ro.buscarPorMatricula(45).orElse(null));
+        ro.eliminar(4L);
+        v.verdadero("eliminar libera la matricula", ro.buscarPorMatricula(45).isEmpty());
 
         RepositorioTurno rt = new RepositorioTurno();
-        v.igual("siguienteId de turnos vacio", 1L, rt.siguienteId());
         Paciente pac = new Paciente(1L, "A", "B", 5, "a@b.com", LocalDate.now(), null, false);
         Odontologo od = new General(4L, "O", "D", 44, TipoConsulta.CONTROL);
         LocalDate dia = LocalDate.now().plusDays(1);
-        Turno t = new Turno(7L, pac, od, dia, LocalTime.of(9, 0), EstadoTurno.PENDIENTE, TipoConsulta.CONTROL);
-        rt.guardar(t);
-        v.igual("siguienteId de turnos = maximo + 1", 8L, rt.siguienteId());
-        v.verdadero("existeTurnoSolapado", rt.existeTurnoSolapado(4L, dia, LocalTime.of(9, 0)));
-        v.verdadero("no hay solapado en otro horario", !rt.existeTurnoSolapado(4L, dia, LocalTime.of(10, 0)));
-        v.verdadero("no hay solapado con otro odontologo", !rt.existeTurnoSolapado(5L, dia, LocalTime.of(9, 0)));
-        t.cancelar();
-        v.verdadero("el repositorio ignora los cancelados al buscar solapados", !rt.existeTurnoSolapado(4L, dia, LocalTime.of(9, 0)));
+        Turno turno = new Turno(7L, pac, od, dia, LocalTime.of(9, 0), EstadoTurno.PENDIENTE,
+                TipoConsulta.CONTROL);
+        rt.guardar(turno);
         v.igual("buscarPorPaciente", 1, rt.buscarPorPaciente(1L).size());
         v.igual("buscarPorOdontologo", 1, rt.buscarPorOdontologo(4L).size());
+        v.verdadero("turno encontrado por Optional", rt.buscarPorId(7L).isPresent());
 
         RepositorioFactura rf = new RepositorioFactura();
-        v.igual("siguienteId de facturas vacio", 1L, rf.siguienteId());
         LocalDate hoy = LocalDate.now();
-        rf.guardar(factura(1L, 10L, 1L, "A B", "LIMPIEZA", hoy, "Efectivo", 100, 0, 10, 90));
-        rf.guardar(factura(2L, 11L, 1L, "A B", "CONTROL", hoy.minusDays(1), "Tarjeta", 100, 0, 0, 100));
-        v.igual("siguienteId de facturas", 3L, rf.siguienteId());
-        v.verdadero("existePorTurno", rf.existePorTurno(10L));
+        Factura f1 = factura(1L, 10L, 1L, "A B", "LIMPIEZA", hoy, "EFECTIVO", 100, 0, 10, 90);
+        Factura f2 = factura(2L, 11L, 1L, "A B", "CONTROL", hoy.minusDays(1), "TARJETA", 100, 0, 0, 100);
+        rf.guardar(f1);
+        rf.guardar(f2);
+        v.verdadero("existePorTurno usa el indice", rf.existePorTurno(10L));
         v.verdadero("no existePorTurno", !rf.existePorTurno(99L));
         v.igual("listarPorFecha hoy", 1, rf.listarPorFecha(hoy).size());
         v.igual("listarPorFecha ayer", 1, rf.listarPorFecha(hoy.minusDays(1)).size());
         v.igual("listarPorFecha sin facturas", 0, rf.listarPorFecha(hoy.plusDays(3)).size());
+        v.verdadero("repositorio de facturas implementa el contrato base",
+                IRepositorio.class.isAssignableFrom(RepositorioFactura.class));
+        v.verdadero("el contrato de busqueda devuelve Optional",
+                IRepositorio.class.getMethod("buscarPorId", long.class).getReturnType().equals(Optional.class));
+        v.verdadero("RepositorioFactura no expone actualizar", !tieneMetodoPublico(RepositorioFactura.class, "actualizar"));
+        v.verdadero("RepositorioFactura no expone eliminar", !tieneMetodoPublico(RepositorioFactura.class, "eliminar"));
+
+        GeneradorIds generador = new GeneradorIds();
+        v.igual("generador inicia en 1", 1L, generador.siguienteId(() -> 0L));
+        v.igual("generador toma el maximo actual mas uno", 2L, generador.siguienteId(() -> 1L));
+        v.igual("generador contempla ids cargados despues de su creacion", 9L,
+                generador.siguienteId(() -> 8L));
+        v.igual("generador refleja eliminaciones segun la politica actual", 4L,
+                generador.siguienteId(() -> 3L));
+    }
+
+    private static boolean tieneMetodoPublico(Class<?> tipo, String nombre) {
+        for (java.lang.reflect.Method metodo : tipo.getMethods()) {
+            if (metodo.getName().equals(nombre)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------ persistencia
@@ -1081,8 +1119,9 @@ public class PruebasBase {
         java.nio.file.Files.writeString(Path.of("facturas.txt"), "esto,no,es,una,factura\n",
                 java.nio.file.StandardOpenOption.APPEND);
 
+        ServicioTurno turnosDestino = new ServicioTurno(new RepositorioTurno());
         ServicioFactura destino = new ServicioFactura(new RepositorioFactura(),
-                new ServicioTurno(new RepositorioTurno()), new Tarifario(), new CalculadorMonto(),
+                turnosDestino, new Tarifario(), new CalculadorMonto(),
                 List.of(new MercadoPago(), new Tarjeta(), new Efectivo()));
         String salida = capturarSalida(() -> PersistenciaFactura.cargar(destino));
         List<Factura> cargadas = destino.listarTodos();
@@ -1105,7 +1144,14 @@ public class PruebasBase {
         v.casi("factura 1: desc. medio de pago", 1750, f1.getDescuentoMedioPago());
         v.casi("factura 1: total", 15750, f1.getMontoTotal());
         v.igual("la coma del nombre se reemplaza por un espacio (actual)", "Barea  Tomas", cargadas.get(1).getPacienteNombre());
-        v.igual("el proximo numero de factura sigue al maximo", 3L, destino.getRepositorio().siguienteId());
+
+        Paciente pacienteNuevo = new Paciente(1L, "Nuevo", "Paciente", 777, "nuevo@x.com",
+                LocalDate.now(), null, false);
+        Odontologo odontologoNuevo = new General(1L, "Nuevo", "Odontologo", 778, TipoConsulta.LIMPIEZA);
+        Turno turnoNuevo = turnosDestino.registrarTurno(pacienteNuevo, odontologoNuevo,
+                LocalDate.now().plusDays(1), LocalTime.of(9, 0), TipoConsulta.LIMPIEZA);
+        Factura tercera = destino.cobrarTurno(turnoNuevo.getId(), new Tarjeta());
+        v.igual("el generador de facturas contempla las facturas cargadas", 3L, tercera.getId());
     }
 
     // ------------------------------------------------------------------ utilidades de prueba

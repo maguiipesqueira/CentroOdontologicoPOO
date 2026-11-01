@@ -4,6 +4,7 @@ import entity.Domicilio;
 import entity.Paciente;
 import exception.DatoInvalidoException;
 import exception.PacienteNoEncontradoException;
+import repository.GeneradorIds;
 import repository.RepositorioPaciente;
 
 import java.time.LocalDate;
@@ -13,6 +14,7 @@ import java.util.stream.Collectors;
 public class ServicioPaciente {
 
     private final RepositorioPaciente repositorio;
+    private final GeneradorIds generadorIds = new GeneradorIds();
 
     // constructor guarda el repositorio
     public ServicioPaciente(RepositorioPaciente repositorio) {
@@ -28,18 +30,14 @@ public class ServicioPaciente {
         validarEmail(email);
 
         // rompe si el DNI ya existe en el mapa
-        if (repositorio.existeDni(dni)) {
+        if (repositorio.buscarPorDni(dni).isPresent()) {
             throw new DatoInvalidoException("DNI", "El documento ingresado ya se encuentra registrado.");
         }
 
-        // NUEVO: Buscamos el ID más alto que exista actualmente para no pisar a nadie
-        long maxId = 0;
-        for (Paciente p : repositorio.listarTodos()) {
-            if (p.getId() > maxId) {
-                maxId = p.getId();
-            }
-        }
-        long nuevoId = maxId + 1;
+        long nuevoId = generadorIds.siguienteId(() -> repositorio.listarTodos().stream()
+                .mapToLong(Paciente::getId)
+                .max()
+                .orElse(0L));
 
         Paciente nuevo = new Paciente(nuevoId, nombre, apellido, dni, email,
                 LocalDate.now(), domicilio, tieneObraSocial);
@@ -50,7 +48,7 @@ public class ServicioPaciente {
 
     // busca por id y tira excepcion si da null
     public Paciente buscarPorId(long id) throws PacienteNoEncontradoException {
-        Paciente paciente = repositorio.buscarPorId(id);
+        Paciente paciente = repositorio.buscarPorId(id).orElse(null);
         if (paciente == null) {
             throw new PacienteNoEncontradoException(id);
         }
@@ -61,7 +59,7 @@ public class ServicioPaciente {
     public Paciente buscarPorDni(int dni) throws PacienteNoEncontradoException, DatoInvalidoException {
         validarDni(dni);
 
-        Paciente paciente = repositorio.buscarPorDni(dni);
+        Paciente paciente = repositorio.buscarPorDni(dni).orElse(null);
         if (paciente == null) {
             throw new PacienteNoEncontradoException(dni);
         }
