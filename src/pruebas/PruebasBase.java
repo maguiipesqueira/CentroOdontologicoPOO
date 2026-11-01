@@ -90,6 +90,7 @@ public class PruebasBase {
         v.seccion("Persistencia integrada y rutas configurables", PruebasBase::persistenciaIntegrada);
         v.seccion("UI consola: lecturas y comandos", PruebasBase::uiConsola);
         v.seccion("Swing: piezas compartidas", PruebasBase::uiSwingCompartida);
+        v.seccion("Swing: formularios de personas", PruebasBase::uiSwingPersonas);
         boolean ok = v.resumen();
         System.exit(ok ? 0 : 1);
     }
@@ -997,12 +998,30 @@ public class PruebasBase {
         v.igual("DTO actualización normaliza nombre", "Ana María", actualizado.getNombre());
         v.igual("DTO actualización normaliza email", "ana2@example.com", actualizado.getEmail());
         v.lanza("DTO paciente nulo", DatoInvalidoException.class, () -> cp.registrarPaciente(null));
+        DatosDomicilio datosDomicilio = new DatosDomicilio("  San Martín ", 123, "  Quilmes ",
+                "  Buenos Aires ", TipoHogar.CASA);
+        Paciente conDomicilio = cp.registrarPaciente(new DatosPaciente(
+                "Marta", "Suárez", 88004, "marta@example.com", datosDomicilio, false));
+        v.igual("DTO domicilio normaliza calle", "San Martín", conDomicilio.getDomicilio().getCalle());
+        v.igual("DTO domicilio normaliza localidad", "Quilmes", conDomicilio.getDomicilio().getLocalidad());
+        Paciente sinDomicilio = cp.actualizarPaciente(conDomicilio.getId(),
+                new DatosPacienteActualizacion("Marta", "Suárez", "marta@example.com", null, false, true));
+        v.igual("DTO permite quitar explícitamente el domicilio", null, sinDomicilio.getDomicilio());
+        v.lanza("controlador rechaza domicilio incompleto", DatoInvalidoException.class,
+                () -> cp.registrarPaciente(new DatosPaciente("Nora", "Díaz", 88005,
+                        "nora@example.com", new DatosDomicilio("Calle", 0, "", "BA", TipoHogar.CASA), false)));
 
         Odontologo odontologo = co.registrarOdontologo(new DatosOdontologo(
                 "  Luis ", "  Gómez ", 88002, Especialidad.GENERAL, TipoConsulta.LIMPIEZA));
         v.igual("controlador crea odontólogo por especialidad", Especialidad.GENERAL, odontologo.getEspecialidad());
         v.igual("controlador normaliza nombre odontólogo", "Luis", odontologo.getNombre());
         v.igual("controlador aplica subespecialidad solicitada", TipoConsulta.LIMPIEZA, odontologo.getSubespecialidad());
+        Odontologo actualizadoOdontologo = co.actualizarOdontologo(odontologo.getId(),
+                new DatosOdontologo("Luis Alberto", "Gómez", 88006, Especialidad.CIRUJANO, TipoCirugia.IMPLANTE));
+        v.igual("actualización DTO cambia nombre", "Luis Alberto", actualizadoOdontologo.getNombre());
+        v.igual("actualización DTO cambia matrícula", 88006, actualizadoOdontologo.getMatricula());
+        v.igual("actualización DTO cambia especialidad", Especialidad.CIRUJANO, actualizadoOdontologo.getEspecialidad());
+        v.igual("actualización DTO cambia subespecialidad", TipoCirugia.IMPLANTE, actualizadoOdontologo.getSubespecialidad());
         v.lanza("controlador exige especialidad", DatoInvalidoException.class,
                 () -> co.registrarOdontologo(new DatosOdontologo("A", "B", 88003, null, null)));
         v.lanza("controlador rechaza subespecialidad incompatible", DatoInvalidoException.class,
@@ -1356,6 +1375,70 @@ public class PruebasBase {
         v.verdadero("armado de comprobante incluye paciente", comprobante.contains("Paciente: Ana Pérez"));
         v.verdadero("armado de comprobante incluye medio legible", comprobante.contains("Medio de pago: Efectivo"));
         v.verdadero("armado de comprobante incluye total", comprobante.contains(FormatoPlata.formatear(13500)));
+    }
+
+    // ------------------------------------------------------------------ Swing: formularios de personas (etapa 28)
+
+    private static void uiSwingPersonas() throws Exception {
+        Clock reloj = Clock.fixed(Instant.parse("2026-11-01T10:00:00Z"), ZoneOffset.UTC);
+        RepositorioTurno repositorioTurnos = new RepositorioTurno();
+        ControladorPaciente controladorPaciente = new ControladorPaciente(
+                new ServicioPaciente(new RepositorioPaciente(), repositorioTurnos, reloj));
+        ControladorOdontologo controladorOdontologo = new ControladorOdontologo(
+                new ServicioOdontologo(new RepositorioOdontologo(), repositorioTurnos));
+        Paciente paciente = controladorPaciente.registrarPaciente(new DatosPaciente(
+                "Ana", "Pérez", 99101, "ana.swing@example.com",
+                new DatosDomicilio("Belgrano", 456, "Quilmes", "Buenos Aires", TipoHogar.DEPARTAMENTO), true));
+        Odontologo odontologo = controladorOdontologo.registrarOdontologo(new DatosOdontologo(
+                "Luis", "Gómez", 99102, Especialidad.CIRUJANO, TipoCirugia.IMPLANTE));
+
+        uiSwing.PanelPaciente panelPaciente = new uiSwing.PanelPaciente(controladorPaciente);
+        javax.swing.JTable tablaPacientes = primerComponente(panelPaciente, javax.swing.JTable.class);
+        v.igual("PanelPaciente muestra los pacientes del controlador", 1,
+                tablaPacientes.getModel().getRowCount());
+        tablaPacientes.setRowSelectionInterval(0, 0);
+        List<javax.swing.JTextField> camposPaciente = componentes(panelPaciente, javax.swing.JTextField.class);
+        v.verdadero("ListSelectionListener carga el email del paciente",
+                camposPaciente.stream().anyMatch(c -> c.getText().equals("ana.swing@example.com")));
+        v.verdadero("PanelPaciente cambia explícitamente al modo edición",
+                componentes(panelPaciente, javax.swing.JButton.class).stream()
+                        .anyMatch(b -> b.getText().equals("Actualizar paciente")));
+        v.verdadero("DNI queda protegido durante la edición",
+                camposPaciente.stream().filter(c -> c.getText().equals("99101")).allMatch(c -> !c.isEditable()));
+
+        uiSwing.PanelOdontologo panelOdontologo = new uiSwing.PanelOdontologo(controladorOdontologo);
+        javax.swing.JTable tablaOdontologos = primerComponente(panelOdontologo, javax.swing.JTable.class);
+        v.igual("PanelOdontologo muestra los odontólogos del controlador", 1,
+                tablaOdontologos.getModel().getRowCount());
+        tablaOdontologos.setRowSelectionInterval(0, 0);
+        v.verdadero("ListSelectionListener carga la matrícula del odontólogo",
+                componentes(panelOdontologo, javax.swing.JTextField.class).stream()
+                        .anyMatch(c -> c.getText().equals("99102")));
+        v.verdadero("PanelOdontologo permite editar todos los datos",
+                componentes(panelOdontologo, javax.swing.JButton.class).stream()
+                        .anyMatch(b -> b.getText().equals("Actualizar odontólogo")));
+        v.igual("tabla de odontólogos incluye subespecialidad", 6,
+                tablaOdontologos.getColumnModel().getColumnCount());
+    }
+
+    private static <T extends java.awt.Component> T primerComponente(java.awt.Container contenedor, Class<T> tipo) {
+        for (java.awt.Component componente : contenedor.getComponents()) {
+            if (tipo.isInstance(componente)) return tipo.cast(componente);
+            if (componente instanceof java.awt.Container hijo) {
+                T encontrado = primerComponente(hijo, tipo);
+                if (encontrado != null) return encontrado;
+            }
+        }
+        return null;
+    }
+
+    private static <T extends java.awt.Component> List<T> componentes(java.awt.Container contenedor, Class<T> tipo) {
+        List<T> encontrados = new ArrayList<>();
+        for (java.awt.Component componente : contenedor.getComponents()) {
+            if (tipo.isInstance(componente)) encontrados.add(tipo.cast(componente));
+            if (componente instanceof java.awt.Container hijo) encontrados.addAll(componentes(hijo, tipo));
+        }
+        return encontrados;
     }
 
     // ------------------------------------------------------------------ utilidades de prueba

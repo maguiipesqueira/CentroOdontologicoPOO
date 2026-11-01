@@ -1,9 +1,9 @@
 package ui;
 
 import controller.ControladorPaciente;
+import controller.DatosDomicilio;
 import controller.DatosPaciente;
 import controller.DatosPacienteActualizacion;
-import entity.Domicilio;
 import entity.Paciente;
 import entity.TipoHogar;
 import exception.DatoInvalidoException;
@@ -49,7 +49,7 @@ public class VistaPaciente {
         String localidad = lector.leerTexto("Localidad: ");
         String provincia = lector.leerTexto("Provincia: ");
         TipoHogar tipoHogar = leerTipoHogar();
-        Domicilio domicilio = new Domicilio(calle, numero, localidad, provincia, tipoHogar);
+        DatosDomicilio domicilio = new DatosDomicilio(calle, numero, localidad, provincia, tipoHogar);
         boolean obraSocial = lector.leerSiNo("¿Tiene obra social? (S/N): ");
         try {
             Paciente paciente = controlador.registrarPaciente(

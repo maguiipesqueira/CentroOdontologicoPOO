@@ -1,24 +1,29 @@
 package uiSwing;
 
 import controller.ControladorPaciente;
+import controller.DatosDomicilio;
 import controller.DatosPaciente;
 import controller.DatosPacienteActualizacion;
-import entity.Domicilio;
 import entity.Paciente;
 import entity.TipoHogar;
+import exception.DatoInvalidoException;
+import exception.PacienteNoEncontradoException;
 
 import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.util.List;
+import java.util.Objects;
 
+/** Pantalla de pacientes: captura datos y delega validación y construcción al controlador. */
 public class PanelPaciente extends JPanel {
 
-    private ControladorPaciente controlador;
+    private static final Color FONDO = new Color(248, 247, 244);
 
+    private final ControladorPaciente controlador;
     private JTable tabla;
     private DefaultTableModel modeloTabla;
-
     private JTextField campNombre;
     private JTextField campApellido;
     private JTextField campDni;
@@ -29,271 +34,243 @@ public class PanelPaciente extends JPanel {
     private JTextField campProvincia;
     private JComboBox<TipoHogar> combTipoHogar;
     private JCheckBox chkObraSocial;
-
+    private JButton btnGuardar;
+    private JButton btnEliminar;
     private long idSeleccionado = -1;
+    private ModoFormulario modo = ModoFormulario.ALTA;
 
     public PanelPaciente(ControladorPaciente controlador) {
-        this.controlador = controlador;
-        setLayout(new BorderLayout());
-        setBackground(new Color(248, 247, 244));
-
+        this.controlador = Objects.requireNonNull(controlador, "El controlador de pacientes es obligatorio.");
+        setLayout(new BorderLayout(8, 8));
+        setBackground(FONDO);
         add(crearPanelTabla(), BorderLayout.CENTER);
         add(crearPanelFormulario(), BorderLayout.SOUTH);
-
+        cambiarModo(ModoFormulario.ALTA);
         refrescarTabla();
     }
 
     private JPanel crearPanelTabla() {
         JPanel panel = new JPanel(new BorderLayout());
-        panel.setBackground(new Color(248, 247, 244));
-
+        panel.setBackground(FONDO);
         String[] columnas = {"ID", "Nombre", "Apellido", "DNI", "Email", "Obra social"};
         modeloTabla = new DefaultTableModel(columnas, 0) {
-            public boolean isCellEditable(int row, int col) { return false; }
+            @Override public boolean isCellEditable(int fila, int columna) { return false; }
         };
-
         tabla = new JTable(modeloTabla);
         tabla.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        tabla.getSelectionModel().addListSelectionListener(this::alSeleccionarPaciente);
 
-        JPanel panelBusqueda = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        panelBusqueda.setBackground(new Color(248, 247, 244));
+        JPanel busqueda = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        busqueda.setBackground(FONDO);
+        JTextField dniBusqueda = new JTextField(10);
+        JButton buscar = new JButton("Buscar por DNI");
+        JButton todos = new JButton("Mostrar todos");
+        busqueda.add(new JLabel("DNI:"));
+        busqueda.add(dniBusqueda);
+        busqueda.add(buscar);
+        busqueda.add(todos);
+        buscar.addActionListener(e -> buscarPorDni(dniBusqueda.getText()));
+        todos.addActionListener(e -> refrescarTabla());
 
-        JTextField campBusquedaDni = new JTextField(10);
-        JButton btnBuscar = new JButton("Buscar por DNI");
-        JButton btnMostrarTodos = new JButton("Mostrar todos");
-
-        panelBusqueda.add(new JLabel("DNI:"));
-        panelBusqueda.add(campBusquedaDni);
-        panelBusqueda.add(btnBuscar);
-        panelBusqueda.add(btnMostrarTodos);
-
-        btnBuscar.addActionListener(e -> {
-            try {
-                int dni = Integer.parseInt(campBusquedaDni.getText());
-                Paciente encontrado = controlador.buscarPorDni(dni);
-                modeloTabla.setRowCount(0);
-                modeloTabla.addRow(crearFila(encontrado));
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(null, "Ingresá un DNI válido");
-            } catch (exception.PacienteNoEncontradoException ex) {
-                JOptionPane.showMessageDialog(null, "No se encontró ningún paciente con ese DNI");
-            } catch (exception.DatoInvalidoException ex) {
-                JOptionPane.showMessageDialog(null, ex.getMessage());
-            }
-        });
-
-        btnMostrarTodos.addActionListener(e -> refrescarTabla());
-
-        panel.add(panelBusqueda, BorderLayout.NORTH);
+        panel.add(busqueda, BorderLayout.NORTH);
         panel.add(new JScrollPane(tabla), BorderLayout.CENTER);
-
-        tabla.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent e) {
-                int fila = tabla.getSelectedRow();
-                if (fila != -1) {
-                    idSeleccionado = (long) modeloTabla.getValueAt(fila, 0);
-                    campNombre.setText((String) modeloTabla.getValueAt(fila, 1));
-                    campApellido.setText((String) modeloTabla.getValueAt(fila, 2));
-                    campDni.setText(String.valueOf(modeloTabla.getValueAt(fila, 3)));
-                    campEmail.setText((String) modeloTabla.getValueAt(fila, 4));
-
-                    try {
-                        Paciente p = controlador.buscarPorId(idSeleccionado);
-                        chkObraSocial.setSelected(p.tieneObraSocial());
-                        if (p.tieneDomicilio()) {
-                            campCalle.setText(p.getDomicilio().getCalle());
-                            campNumero.setText(String.valueOf(p.getDomicilio().getNumero()));
-                            campLocalidad.setText(p.getDomicilio().getLocalidad());
-                            campProvincia.setText(p.getDomicilio().getProvincia());
-                            combTipoHogar.setSelectedItem(p.getDomicilio().getHogar());
-                        }
-                    } catch (exception.PacienteNoEncontradoException ex) {
-                        JOptionPane.showMessageDialog(null, "Error al cargar paciente");
-                    }
-                }
-            }
-        });
-
         return panel;
-    } // <-- ACA CIERRA crearPanelTabla(), todo bien hasta aca
+    }
 
     private JPanel crearPanelFormulario() {
         JPanel panel = new JPanel(new GridLayout(0, 4, 5, 5));
         panel.setBorder(BorderFactory.createTitledBorder("Datos del paciente"));
-        panel.setBackground(new Color(248, 247, 244));
-
-        campNombre    = new JTextField();
-        campApellido  = new JTextField();
-        campDni       = new JTextField();
-        campEmail     = new JTextField();
-        campCalle     = new JTextField();
-        campNumero    = new JTextField();
+        panel.setBackground(FONDO);
+        campNombre = new JTextField();
+        campApellido = new JTextField();
+        campDni = new JTextField();
+        campEmail = new JTextField();
+        campCalle = new JTextField();
+        campNumero = new JTextField();
         campLocalidad = new JTextField();
         campProvincia = new JTextField();
         combTipoHogar = new JComboBox<>(TipoHogar.values());
-        chkObraSocial = new JCheckBox("Tiene obra social (30% de descuento)");
-        chkObraSocial.setBackground(new Color(248, 247, 244));
+        chkObraSocial = new JCheckBox("Tiene obra social");
+        chkObraSocial.setBackground(FONDO);
 
-        panel.add(new JLabel("Nombre:"));    panel.add(campNombre);
-        panel.add(new JLabel("Apellido:"));  panel.add(campApellido);
-        panel.add(new JLabel("DNI:"));       panel.add(campDni);
-        panel.add(new JLabel("Email:"));     panel.add(campEmail);
-        panel.add(new JLabel("Calle:"));     panel.add(campCalle);
-        panel.add(new JLabel("Número:"));    panel.add(campNumero);
-        panel.add(new JLabel("Localidad:")); panel.add(campLocalidad);
-        panel.add(new JLabel("Provincia:")); panel.add(campProvincia);
-        panel.add(new JLabel("Tipo Hogar:")); panel.add(combTipoHogar);
-        panel.add(new JLabel("Obra social:")); panel.add(chkObraSocial);
+        agregarCampo(panel, "Nombre:", campNombre);
+        agregarCampo(panel, "Apellido:", campApellido);
+        agregarCampo(panel, "DNI:", campDni);
+        agregarCampo(panel, "Email:", campEmail);
+        agregarCampo(panel, "Calle:", campCalle);
+        agregarCampo(panel, "Número:", campNumero);
+        agregarCampo(panel, "Localidad:", campLocalidad);
+        agregarCampo(panel, "Provincia:", campProvincia);
+        agregarCampo(panel, "Tipo hogar:", combTipoHogar);
+        agregarCampo(panel, "Obra social:", chkObraSocial);
 
-        JButton btnGuardar  = new JButton("Guardar");
-        JButton btnEliminar = new JButton("Eliminar");
-        JButton btnLimpiar  = new JButton("Limpiar");
-
+        btnGuardar = new JButton();
+        btnEliminar = new JButton("Eliminar");
+        JButton limpiar = new JButton("Limpiar / nueva alta");
         panel.add(btnGuardar);
         panel.add(btnEliminar);
-        panel.add(btnLimpiar);
-
-        btnLimpiar.addActionListener(e -> limpiarFormulario());
-
-        btnGuardar.addActionListener(e -> {
-            if (!validarCampos()) return;
-            try {
-                Domicilio domicilio = new Domicilio(
-                        campCalle.getText(),
-                        Integer.parseInt(campNumero.getText()),
-                        campLocalidad.getText(),
-                        campProvincia.getText(),
-                        (TipoHogar) combTipoHogar.getSelectedItem()
-                );
-
-                if (idSeleccionado == -1) {
-                    controlador.registrarPaciente(new DatosPaciente(
-                            campNombre.getText(), campApellido.getText(),
-                            Integer.parseInt(campDni.getText()), campEmail.getText(),
-                            domicilio, chkObraSocial.isSelected()));
-                    JOptionPane.showMessageDialog(null, "Paciente guardado correctamente");
-                } else {
-                    controlador.actualizarPaciente(idSeleccionado, new DatosPacienteActualizacion(
-                            campNombre.getText(), campApellido.getText(), campEmail.getText(),
-                            domicilio, chkObraSocial.isSelected()));
-                    JOptionPane.showMessageDialog(null, "Paciente actualizado correctamente");
-                }
-
-                limpiarFormulario();
-                refrescarTabla();
-
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(null, "DNI y número de calle deben ser números");
-            } catch (exception.DatoInvalidoException ex) {
-                JOptionPane.showMessageDialog(null, ex.getMessage());
-            } catch (exception.PacienteNoEncontradoException ex) {
-                JOptionPane.showMessageDialog(null, ex.getMessage());
-            }
-        });
-
-        btnEliminar.addActionListener(e -> {
-            if (idSeleccionado == -1) {
-                JOptionPane.showMessageDialog(null, "Seleccioná un paciente de la tabla primero");
-                return;
-            }
-            try {
-                controlador.eliminarPaciente(idSeleccionado);
-                JOptionPane.showMessageDialog(null, "Paciente eliminado");
-                limpiarFormulario();
-                refrescarTabla();
-            } catch (exception.DatoInvalidoException ex) {
-                JOptionPane.showMessageDialog(null, ex.getMessage());
-            } catch (exception.PacienteNoEncontradoException ex) {
-                JOptionPane.showMessageDialog(null, ex.getMessage());
-            }
-        });
-
+        panel.add(limpiar);
+        btnGuardar.addActionListener(e -> guardar());
+        btnEliminar.addActionListener(e -> eliminar());
+        limpiar.addActionListener(e -> limpiarFormulario());
         return panel;
-    } // <-- ACA CIERRA crearPanelFormulario(), todo bien hasta aca
-
-    // ESTE METODO ESTABA MAL PUESTO ADENTRO DE crearPanelFormulario()
-    // AHORA ESTA AFUERA, AL MISMO NIVEL QUE LOS OTROS METODOS
-    private boolean validarCampos() {
-        boolean valido = true;
-
-        javax.swing.border.Border bordeNormal = new JTextField().getBorder();
-        javax.swing.border.Border bordeRojo = BorderFactory.createLineBorder(Color.RED, 2);
-
-        if (campNombre.getText().isBlank()) {
-            campNombre.setBorder(bordeRojo);
-            valido = false;
-        } else {
-            campNombre.setBorder(bordeNormal);
-        }
-
-        if (campApellido.getText().isBlank()) {
-            campApellido.setBorder(bordeRojo);
-            valido = false;
-        } else {
-            campApellido.setBorder(bordeNormal);
-        }
-
-        try {
-            int dni = Integer.parseInt(campDni.getText());
-            if (dni <= 0) throw new NumberFormatException();
-            campDni.setBorder(bordeNormal);
-        } catch (NumberFormatException e) {
-            campDni.setBorder(bordeRojo);
-            valido = false;
-        }
-
-        if (campEmail.getText().isBlank() || !campEmail.getText().contains("@")) {
-            campEmail.setBorder(bordeRojo);
-            valido = false;
-        } else {
-            campEmail.setBorder(bordeNormal);
-        }
-
-        if (campCalle.getText().isBlank()) {
-            campCalle.setBorder(bordeRojo);
-            valido = false;
-        } else {
-            campCalle.setBorder(bordeNormal);
-        }
-
-        try {
-            Integer.parseInt(campNumero.getText());
-            campNumero.setBorder(bordeNormal);
-        } catch (NumberFormatException e) {
-            campNumero.setBorder(bordeRojo);
-            valido = false;
-        }
-
-        return valido;
     }
 
-    public void refrescarTabla() {
-        modeloTabla.setRowCount(0);
-        List<Paciente> lista = controlador.listarTodos();
-        for (Paciente p : lista) {
-            modeloTabla.addRow(crearFila(p));
+    private void agregarCampo(JPanel panel, String etiqueta, JComponent campo) {
+        panel.add(new JLabel(etiqueta));
+        panel.add(campo);
+    }
+
+    private void alSeleccionarPaciente(ListSelectionEvent evento) {
+        if (evento.getValueIsAdjusting()) return;
+        int filaVista = tabla.getSelectedRow();
+        if (filaVista < 0) {
+            if (modo == ModoFormulario.EDICION) limpiarFormulario();
+            return;
+        }
+        int fila = tabla.convertRowIndexToModel(filaVista);
+        long id = ((Number) modeloTabla.getValueAt(fila, 0)).longValue();
+        try {
+            cargarPaciente(controlador.buscarPorId(id));
+        } catch (PacienteNoEncontradoException ex) {
+            informarError(ex.getMessage());
+            limpiarFormulario();
         }
     }
 
-    // arma la fila de la tabla para un paciente (la usan refrescarTabla y la busqueda por DNI)
-    private Object[] crearFila(Paciente p) {
-        return new Object[]{
-                p.getId(), p.getNombre(), p.getApellido(), p.getDni(), p.getEmail(),
-                p.tieneObraSocial() ? "Sí" : "No"
-        };
+    private void cargarPaciente(Paciente paciente) {
+        idSeleccionado = paciente.getId();
+        campNombre.setText(paciente.getNombre());
+        campApellido.setText(paciente.getApellido());
+        campDni.setText(String.valueOf(paciente.getDni()));
+        campEmail.setText(paciente.getEmail());
+        chkObraSocial.setSelected(paciente.tieneObraSocial());
+        limpiarCamposDomicilio();
+        if (paciente.tieneDomicilio()) {
+            var domicilio = paciente.getDomicilio();
+            campCalle.setText(domicilio.getCalle());
+            campNumero.setText(String.valueOf(domicilio.getNumero()));
+            campLocalidad.setText(domicilio.getLocalidad());
+            campProvincia.setText(domicilio.getProvincia());
+            combTipoHogar.setSelectedItem(domicilio.getHogar());
+        }
+        cambiarModo(ModoFormulario.EDICION);
+    }
+
+    private void buscarPorDni(String texto) {
+        try {
+            int dni = Integer.parseInt(texto.trim());
+            Paciente paciente = controlador.buscarPorDni(dni);
+            int fila = buscarFilaPorId(paciente.getId());
+            if (fila >= 0) tabla.setRowSelectionInterval(fila, fila);
+            else {
+                modeloTabla.setRowCount(0);
+                modeloTabla.addRow(crearFila(paciente));
+                tabla.setRowSelectionInterval(0, 0);
+            }
+        } catch (NumberFormatException ex) {
+            informarError("Ingresá un DNI numérico válido.");
+        } catch (PacienteNoEncontradoException | DatoInvalidoException ex) {
+            informarError(ex.getMessage());
+        }
+    }
+
+    private int buscarFilaPorId(long id) {
+        for (int fila = 0; fila < modeloTabla.getRowCount(); fila++) {
+            if (((Number) modeloTabla.getValueAt(fila, 0)).longValue() == id) return fila;
+        }
+        return -1;
+    }
+
+    private void guardar() {
+        try {
+            int dni = Integer.parseInt(campDni.getText().trim());
+            DatosDomicilio domicilio = leerDomicilio();
+            if (modo == ModoFormulario.ALTA) {
+                controlador.registrarPaciente(new DatosPaciente(campNombre.getText(), campApellido.getText(),
+                        dni, campEmail.getText(), domicilio, chkObraSocial.isSelected()));
+                informar("Paciente registrado correctamente.");
+            } else {
+                controlador.actualizarPaciente(idSeleccionado, new DatosPacienteActualizacion(
+                        campNombre.getText(), campApellido.getText(), campEmail.getText(),
+                        domicilio, chkObraSocial.isSelected(), true));
+                informar("Paciente actualizado correctamente.");
+            }
+            limpiarFormulario();
+            refrescarTabla();
+        } catch (NumberFormatException ex) {
+            informarError("El DNI y el número de calle deben ser números.");
+        } catch (DatoInvalidoException | PacienteNoEncontradoException ex) {
+            informarError(ex.getMessage());
+        }
+    }
+
+    private DatosDomicilio leerDomicilio() {
+        String calle = campCalle.getText();
+        String numeroTexto = campNumero.getText().trim();
+        String localidad = campLocalidad.getText();
+        String provincia = campProvincia.getText();
+        boolean vacio = calle.isBlank() && numeroTexto.isBlank() && localidad.isBlank() && provincia.isBlank();
+        if (vacio) return null;
+        int numero = Integer.parseInt(numeroTexto);
+        return new DatosDomicilio(calle, numero, localidad, provincia, (TipoHogar) combTipoHogar.getSelectedItem());
+    }
+
+    private void eliminar() {
+        if (modo != ModoFormulario.EDICION) {
+            informarError("Seleccioná un paciente de la tabla primero.");
+            return;
+        }
+        try {
+            controlador.eliminarPaciente(idSeleccionado);
+            limpiarFormulario();
+            refrescarTabla();
+            informar("Paciente eliminado correctamente.");
+        } catch (DatoInvalidoException | PacienteNoEncontradoException ex) {
+            informarError(ex.getMessage());
+        }
+    }
+
+    private void cambiarModo(ModoFormulario nuevoModo) {
+        modo = nuevoModo;
+        boolean alta = modo == ModoFormulario.ALTA;
+        btnGuardar.setText(alta ? "Registrar paciente" : "Actualizar paciente");
+        btnEliminar.setEnabled(!alta);
+        campDni.setEditable(alta);
     }
 
     private void limpiarFormulario() {
         idSeleccionado = -1;
+        cambiarModo(ModoFormulario.ALTA);
+        tabla.clearSelection();
         campNombre.setText("");
         campApellido.setText("");
         campDni.setText("");
         campEmail.setText("");
+        limpiarCamposDomicilio();
+        chkObraSocial.setSelected(false);
+        cambiarModo(ModoFormulario.ALTA);
+    }
+
+    private void limpiarCamposDomicilio() {
         campCalle.setText("");
         campNumero.setText("");
         campLocalidad.setText("");
         campProvincia.setText("");
         combTipoHogar.setSelectedIndex(0);
-        chkObraSocial.setSelected(false);
     }
+
+    public void refrescarTabla() {
+        modeloTabla.setRowCount(0);
+        List<Paciente> pacientes = controlador.listarTodos();
+        for (Paciente paciente : pacientes) modeloTabla.addRow(crearFila(paciente));
+    }
+
+    private Object[] crearFila(Paciente paciente) {
+        return new Object[]{paciente.getId(), paciente.getNombre(), paciente.getApellido(), paciente.getDni(),
+                paciente.getEmail(), paciente.tieneObraSocial() ? "Sí" : "No"};
+    }
+
+    private void informar(String mensaje) { JOptionPane.showMessageDialog(this, mensaje); }
+    private void informarError(String mensaje) { JOptionPane.showMessageDialog(this, mensaje, "Pacientes", JOptionPane.ERROR_MESSAGE); }
 }

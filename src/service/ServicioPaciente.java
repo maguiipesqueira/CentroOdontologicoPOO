@@ -71,6 +71,14 @@ public class ServicioPaciente {
     public Paciente actualizarPaciente(long id, String nombre, String apellido,
                                        String email, Domicilio domicilio, boolean tieneObraSocial)
             throws PacienteNoEncontradoException, DatoInvalidoException {
+        return actualizarPaciente(id, nombre, apellido, email, domicilio, tieneObraSocial, domicilio != null);
+    }
+
+    /** Permite distinguir entre conservar el domicilio y reemplazarlo explícitamente por null. */
+    public Paciente actualizarPaciente(long id, String nombre, String apellido,
+                                       String email, Domicilio domicilio, boolean tieneObraSocial,
+                                       boolean reemplazarDomicilio)
+            throws PacienteNoEncontradoException, DatoInvalidoException {
         Paciente paciente = buscarPorId(id);
         ValidadorPersona.validarNombreApellido(nombre, apellido);
         validarEmail(email);
@@ -79,7 +87,7 @@ public class ServicioPaciente {
         paciente.setApellido(apellido);
         paciente.setEmail(email);
         paciente.setTieneObraSocial(tieneObraSocial);
-        if (domicilio != null) {
+        if (reemplazarDomicilio) {
             paciente.setDomicilio(domicilio);
         }
         repositorio.actualizar(paciente);

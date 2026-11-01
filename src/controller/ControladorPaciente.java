@@ -20,14 +20,15 @@ public class ControladorPaciente {
     public Paciente registrarPaciente(DatosPaciente datos) throws DatoInvalidoException {
         DatosPaciente entrada = requerirDatos(datos);
         return servicio.registrarPaciente(entrada.nombre(), entrada.apellido(), entrada.dni(),
-                entrada.email(), entrada.domicilio(), entrada.tieneObraSocial());
+                entrada.email(), convertirDomicilio(entrada.domicilio()), entrada.tieneObraSocial());
     }
 
     /** Puente de compatibilidad para llamadas anteriores a la introducción del DTO. */
     public Paciente registrarPaciente(String nombre, String apellido, int dni, String email,
                                       entity.Domicilio domicilio, boolean tieneObraSocial)
             throws DatoInvalidoException {
-        return registrarPaciente(new DatosPaciente(nombre, apellido, dni, email, domicilio, tieneObraSocial));
+        return registrarPaciente(new DatosPaciente(nombre, apellido, dni, email,
+                desdeDomicilio(domicilio), tieneObraSocial));
     }
 
     public Paciente buscarPorId(long id) throws PacienteNoEncontradoException {
@@ -50,18 +51,39 @@ public class ControladorPaciente {
             throws PacienteNoEncontradoException, DatoInvalidoException {
         if (datos == null) throw new DatoInvalidoException("Paciente", "Los datos de actualización son obligatorios.");
         return servicio.actualizarPaciente(id, datos.nombre(), datos.apellido(),
-                datos.email(), datos.domicilio(), datos.tieneObraSocial());
+                datos.email(), convertirDomicilio(datos.domicilio()), datos.tieneObraSocial(),
+                datos.reemplazarDomicilio());
     }
 
     /** Puente de compatibilidad para llamadas anteriores a la introducción del DTO. */
     public Paciente actualizarPaciente(long id, String nombre, String apellido, String email,
                                        entity.Domicilio domicilio, boolean tieneObraSocial)
             throws PacienteNoEncontradoException, DatoInvalidoException {
-        return actualizarPaciente(id, new DatosPacienteActualizacion(nombre, apellido, email, domicilio, tieneObraSocial));
+        return actualizarPaciente(id, new DatosPacienteActualizacion(nombre, apellido, email,
+                desdeDomicilio(domicilio), tieneObraSocial));
     }
 
     public void eliminarPaciente(long id) throws PacienteNoEncontradoException, DatoInvalidoException {
         servicio.eliminarPaciente(id);
+    }
+
+    private entity.Domicilio convertirDomicilio(DatosDomicilio datos) throws DatoInvalidoException {
+        if (datos == null) return null;
+        if (datos.calle() == null || datos.calle().isBlank()
+                || datos.localidad() == null || datos.localidad().isBlank()
+                || datos.provincia() == null || datos.provincia().isBlank()
+                || datos.numero() <= 0 || datos.tipoHogar() == null) {
+            throw new DatoInvalidoException("Domicilio",
+                    "Para cargar un domicilio completá calle, número positivo, localidad, provincia y tipo de hogar.");
+        }
+        return new entity.Domicilio(datos.calle(), datos.numero(), datos.localidad(),
+                datos.provincia(), datos.tipoHogar());
+    }
+
+    private DatosDomicilio desdeDomicilio(entity.Domicilio domicilio) {
+        if (domicilio == null) return null;
+        return new DatosDomicilio(domicilio.getCalle(), domicilio.getNumero(), domicilio.getLocalidad(),
+                domicilio.getProvincia(), domicilio.getHogar());
     }
 
     private DatosPaciente requerirDatos(DatosPaciente datos) throws DatoInvalidoException {

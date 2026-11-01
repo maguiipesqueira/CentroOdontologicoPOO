@@ -1,14 +1,12 @@
 package controller;
 
-import entity.Domicilio;
-
-/** Datos de entrada para registrar o actualizar un paciente desde cualquier interfaz. */
+/** Datos de entrada para registrar un paciente desde cualquier interfaz. */
 public record DatosPaciente(
         String nombre,
         String apellido,
         int dni,
         String email,
-        Domicilio domicilio,
+        DatosDomicilio domicilio,
         boolean tieneObraSocial) {
 
     public DatosPaciente {
