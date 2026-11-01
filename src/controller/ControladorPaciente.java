@@ -47,7 +47,7 @@ public class ControladorPaciente {
     }
 
     // elimina dejando pasar el error si el id no existe
-    public void eliminarPaciente(long id) throws PacienteNoEncontradoException {
+    public void eliminarPaciente(long id) throws PacienteNoEncontradoException, DatoInvalidoException {
         servicio.eliminarPaciente(id);
     }
 }

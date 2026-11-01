@@ -34,6 +34,9 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
@@ -458,8 +461,8 @@ public class PruebasBase {
                 java.util.Arrays.stream(Factura.class.getMethods()).noneMatch(m -> m.getName().startsWith("set")));
 
         // ---- Facturacion con turnos ausentes y sin motivo
-        ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente());
-        ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo());
+        ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
+        ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
         ServicioTurno stFac = new ServicioTurno(new RepositorioTurno());
         ServicioFactura sf = new ServicioFactura(new RepositorioFactura(), stFac, new Tarifario(), new CalculadorMonto(),
                 List.of(new Efectivo()));
@@ -490,12 +493,14 @@ public class PruebasBase {
     // ------------------------------------------------------------------ pacientes
 
     private static void pacientes() throws Exception {
-        ServicioPaciente s = new ServicioPaciente(new RepositorioPaciente());
+        RepositorioTurno repositorioTurnos = new RepositorioTurno();
+        Clock relojFijo = Clock.fixed(Instant.parse("2026-06-15T12:00:00Z"), ZoneOffset.UTC);
+        ServicioPaciente s = new ServicioPaciente(new RepositorioPaciente(), repositorioTurnos, relojFijo);
         Domicilio d = new Domicilio("Necochea", 581, "Lobos", "Buenos Aires", TipoHogar.CASA);
 
         Paciente persi = s.registrarPaciente("Fatima", "Persi", 46113226, "fatimap@gmail.com", d, true);
         v.igual("el primer paciente tiene id 1", 1L, persi.getId());
-        v.igual("la fecha de alta es hoy", LocalDate.now(), persi.getFechaAlta());
+        v.igual("la fecha de alta usa el Clock inyectado", LocalDate.of(2026, 6, 15), persi.getFechaAlta());
         v.verdadero("guarda la obra social", persi.tieneObraSocial());
 
         Paciente barea = s.registrarPaciente("Tomas", "Barea", 46443494, "tomy@gmail.com", null, false);
@@ -547,12 +552,26 @@ public class PruebasBase {
         // el id nuevo sigue al maximo existente
         Paciente nuevo = s.registrarPaciente("Maria", "Garcia", 38221456, "m@g.com", null, true);
         v.igual("id nuevo = maximo + 1", 2L, nuevo.getId());
+
+        // integridad referencial: no se elimina una persona con turnos asociados
+        ServicioOdontologo odontologosConTurnos = new ServicioOdontologo(new RepositorioOdontologo(), repositorioTurnos);
+        Paciente pacienteConTurno = s.registrarPaciente("Laura", "Diaz", 38221457, "l@x.com", null, false);
+        Odontologo odontologoConTurno = odontologosConTurnos.registrarOdontologo(
+                new General(0L, "Sofia", "Luna", 7788, TipoConsulta.CONTROL));
+        ServicioTurno turnosServicio = new ServicioTurno(repositorioTurnos);
+        turnosServicio.registrarTurno(pacienteConTurno, odontologoConTurno,
+                LocalDate.now().plusDays(2), LocalTime.of(9, 0), TipoConsulta.CONTROL);
+        v.lanza("no elimina paciente con turnos asociados", DatoInvalidoException.class,
+                () -> s.eliminarPaciente(pacienteConTurno.getId()));
+        v.lanza("no elimina odontologo con turnos asociados", DatoInvalidoException.class,
+                () -> odontologosConTurnos.eliminarOdontologo(odontologoConTurno.getId()));
+
     }
 
     // ------------------------------------------------------------------ odontologos
 
     private static void odontologos() throws Exception {
-        ServicioOdontologo s = new ServicioOdontologo(new RepositorioOdontologo());
+        ServicioOdontologo s = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
 
         Odontologo magali = new General(99L, "Magali", "Pesqueira", 1131, TipoConsulta.LIMPIEZA);
         Odontologo registrado = s.registrarOdontologo(magali);
@@ -580,10 +599,21 @@ public class PruebasBase {
                 () -> s.buscarPorMatricula(9999));
         v.lanza("buscarPorId inexistente", OdontologoNoEncontradoException.class, () -> s.buscarPorId(50));
 
-        Odontologo act = s.actualizarOdontologo(1, "Magali B", "Pesqueira");
+        Odontologo act = s.actualizarOdontologo(1, "Magali B", "Pesqueira",
+                1144, Especialidad.CIRUJANO, TipoCirugia.IMPLANTE);
         v.igual("actualiza el nombre", "Magali B", act.getNombre());
+        v.igual("actualiza la matrícula", 1144, act.getMatricula());
+        v.igual("actualiza la especialidad", Especialidad.CIRUJANO, act.getEspecialidad());
+        v.igual("actualiza la subespecialidad", TipoCirugia.IMPLANTE, act.getSubespecialidad());
+        v.lanza("no permite matrícula duplicada al actualizar", DatoInvalidoException.class,
+                () -> s.actualizarOdontologo(1, "Magali", "Pesqueira", 3367,
+                        Especialidad.GENERAL, TipoConsulta.CONTROL));
+        v.lanza("no permite subespecialidad ajena a la especialidad", DatoInvalidoException.class,
+                () -> s.actualizarOdontologo(1, "Magali", "Pesqueira", 1144,
+                        Especialidad.GENERAL, TipoCirugia.IMPLANTE));
         v.lanza("actualizar con apellido vacio", DatoInvalidoException.class,
-                () -> s.actualizarOdontologo(1, "Magali", ""));
+                () -> s.actualizarOdontologo(1, "Magali", "", 1144,
+                        Especialidad.GENERAL, TipoConsulta.CONTROL));
 
         s.eliminarOdontologo(2);
         v.igual("eliminar", 1, s.listarTodos().size());
@@ -593,8 +623,8 @@ public class PruebasBase {
     // ------------------------------------------------------------------ turnos
 
     private static void turnos() throws Exception {
-        ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente());
-        ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo());
+        ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
+        ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
         ServicioTurno st = new ServicioTurno(new RepositorioTurno());
         Paciente p1 = sp.registrarPaciente("Fatima", "Persi", 1001, "f@x.com", null, true);
         Paciente p2 = sp.registrarPaciente("Tomas", "Barea", 1002, "t@x.com", null, false);
@@ -777,8 +807,8 @@ public class PruebasBase {
     // ------------------------------------------------------------------ facturacion
 
     private static void facturacion() throws Exception {
-        ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente());
-        ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo());
+        ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
+        ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
         ServicioTurno st = new ServicioTurno(new RepositorioTurno());
         MedioPago mp = new MercadoPago();
         MedioPago tj = new Tarjeta();
@@ -950,7 +980,7 @@ public class PruebasBase {
     // ------------------------------------------------------------------ persistencia
 
     private static void persistenciaPacientes() throws Exception {
-        ServicioPaciente origen = new ServicioPaciente(new RepositorioPaciente());
+        ServicioPaciente origen = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
         Domicilio dom = new Domicilio("Necochea", 581, "Lobos", "Buenos Aires", TipoHogar.CASA);
         Domicilio dom2 = new Domicilio("San Martin", 1200, "Moron", "Buenos Aires", TipoHogar.DEPARTAMENTO);
         origen.registrarPaciente("Fatima", "Persi", 100, "f@x.com", dom, true);
@@ -959,7 +989,7 @@ public class PruebasBase {
 
         PersistenciaPaciente.guardar(origen.listarTodos());
 
-        ServicioPaciente destino = new ServicioPaciente(new RepositorioPaciente());
+        ServicioPaciente destino = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
         PersistenciaPaciente.cargar(destino);
         v.igual("se cargan los 3 pacientes", 3, destino.listarTodos().size());
         for (Paciente esperado : origen.listarTodos()) {
@@ -986,7 +1016,7 @@ public class PruebasBase {
                 "1,Ana,Lopez,111,a@x.com,2024-01-01",
                 "2,Luis,Perez,222,l@x.com,2024-02-02,Belgrano,430,San Justo,Buenos Aires,CASA",
                 "esto,no,es,un,paciente");
-        ServicioPaciente viejo = new ServicioPaciente(new RepositorioPaciente());
+        ServicioPaciente viejo = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
         String salida = capturarSalida(() -> PersistenciaPaciente.cargar(viejo));
         v.igual("formato viejo: se cargan las 2 lineas validas", 2, viejo.listarTodos().size());
         v.verdadero("formato viejo: obra social en false", !viejo.buscarPorId(1).tieneObraSocial());
@@ -995,20 +1025,20 @@ public class PruebasBase {
         v.verdadero("la linea rota se informa", salida.contains("Linea corrupta ignorada"));
 
         borrar("pacientes.txt");
-        ServicioPaciente sinArchivo = new ServicioPaciente(new RepositorioPaciente());
+        ServicioPaciente sinArchivo = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
         PersistenciaPaciente.cargar(sinArchivo);
         v.igual("sin archivo no carga nada ni falla", 0, sinArchivo.listarTodos().size());
     }
 
     private static void persistenciaOdontologos() throws Exception {
-        ServicioOdontologo origen = new ServicioOdontologo(new RepositorioOdontologo());
+        ServicioOdontologo origen = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
         origen.registrarOdontologo(new General(0L, "Magali", "Pesqueira", 1131, TipoConsulta.LIMPIEZA));
         origen.registrarOdontologo(new Ortodoncista(0L, "Nahuel", "Torres", 2245, TipoOrtodoncia.BRACKETS_METALICOS));
         origen.registrarOdontologo(new Cirujano(0L, "Blas", "Pesce", 3367, TipoCirugia.EXTRACCION_MUELA));
 
         PersistenciaOdontologo.guardar(origen.listarTodos());
 
-        ServicioOdontologo destino = new ServicioOdontologo(new RepositorioOdontologo());
+        ServicioOdontologo destino = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
         PersistenciaOdontologo.cargar(destino);
         v.igual("se cargan los 3 odontologos", 3, destino.listarTodos().size());
 
@@ -1030,7 +1060,7 @@ public class PruebasBase {
                 "1,General,Ana,Paz,10,LIMPIEZA",
                 "2,Odontologo,Base,Vieja,20,",
                 "3,Cirujano,Luis,Gil,30,IMPLANTE");
-        ServicioOdontologo viejo = new ServicioOdontologo(new RepositorioOdontologo());
+        ServicioOdontologo viejo = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
         PersistenciaOdontologo.cargar(viejo);
         v.igual("un tipo desconocido se saltea y se cargan los demas (actual)", 2, viejo.listarTodos().size());
         v.verdadero("la linea de Cirujano se carga con su motivo",
@@ -1044,8 +1074,8 @@ public class PruebasBase {
     }
 
     private static void persistenciaTurnos() throws Exception {
-        ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente());
-        ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo());
+        ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente(), new RepositorioTurno());
+        ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo(), new RepositorioTurno());
         ServicioTurno st = new ServicioTurno(new RepositorioTurno());
         Paciente p = sp.registrarPaciente("Fatima", "Persi", 100, "f@x.com", null, true);
         Odontologo o = so.registrarOdontologo(new General(0L, "Magali", "Pesqueira", 1131, TipoConsulta.LIMPIEZA));

@@ -174,7 +174,7 @@ public class VistaPaciente {
         try {
             controlador.eliminarPaciente(id);
             System.out.println("Paciente eliminado correctamente.");
-        } catch (exception.PacienteNoEncontradoException e) {
+        } catch (exception.PacienteNoEncontradoException | exception.DatoInvalidoException e) {
             System.out.println("Error: " + e.getMessage());
         }
     }

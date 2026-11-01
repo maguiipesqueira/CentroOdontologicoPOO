@@ -1,4 +1,3 @@
-
 package controller;
 
 import entity.Odontologo;
@@ -42,7 +41,7 @@ public class ControladorOdontologo {
     }
 
     // Ahora declara throws para propagar el error de no encontrado
-    public void eliminarOdontologo(long id) throws OdontologoNoEncontradoException {
+    public void eliminarOdontologo(long id) throws OdontologoNoEncontradoException, DatoInvalidoException {
         servicio.eliminarOdontologo(id);
     }
 }

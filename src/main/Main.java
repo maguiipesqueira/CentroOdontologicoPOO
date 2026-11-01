@@ -44,8 +44,8 @@ public class Main {
         RepositorioTurno repoTurno = new RepositorioTurno();
         RepositorioFactura repoFactura = new RepositorioFactura();
 
-        ServicioPaciente servPaciente = new ServicioPaciente(repoPaciente);
-        ServicioOdontologo servOdontologo = new ServicioOdontologo(repoOdontologo);
+        ServicioPaciente servPaciente = new ServicioPaciente(repoPaciente, repoTurno);
+        ServicioOdontologo servOdontologo = new ServicioOdontologo(repoOdontologo, repoTurno);
         ServicioTurno servTurno = new ServicioTurno(repoTurno);
 
         // modulo de facturacion: los medios de pago se arman aca, un medio nuevo es una clase nueva y una entrada en esta lista

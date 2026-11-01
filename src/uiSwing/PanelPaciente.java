@@ -208,6 +208,8 @@ public class PanelPaciente extends JPanel {
                 JOptionPane.showMessageDialog(null, "Paciente eliminado");
                 limpiarFormulario();
                 refrescarTabla();
+            } catch (exception.DatoInvalidoException ex) {
+                JOptionPane.showMessageDialog(null, ex.getMessage());
             } catch (exception.PacienteNoEncontradoException ex) {
                 JOptionPane.showMessageDialog(null, ex.getMessage());
             }

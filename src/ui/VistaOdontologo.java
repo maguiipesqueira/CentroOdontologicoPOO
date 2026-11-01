@@ -142,7 +142,7 @@ public class VistaOdontologo {
         try {
             controlador.eliminarOdontologo(id);
             System.out.println("Eliminado correctamente.");
-        } catch (OdontologoNoEncontradoException e) {
+        } catch (OdontologoNoEncontradoException | DatoInvalidoException e) {
             System.out.println("Error: " + e.getMessage());
         }
     }

@@ -6,133 +6,112 @@ import exception.DatoInvalidoException;
 import exception.PacienteNoEncontradoException;
 import repository.GeneradorIds;
 import repository.RepositorioPaciente;
+import repository.RepositorioTurno;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class ServicioPaciente {
 
     private final RepositorioPaciente repositorio;
-    private final GeneradorIds generadorIds = new GeneradorIds();
+    private final RepositorioTurno repositorioTurnos;
+    private final GeneradorIds generadorIds;
+    private final Clock clock;
 
-    // constructor guarda el repositorio
-    public ServicioPaciente(RepositorioPaciente repositorio) {
-        this.repositorio = repositorio;
+    public ServicioPaciente(RepositorioPaciente repositorio, RepositorioTurno repositorioTurnos) {
+        this(repositorio, repositorioTurnos, Clock.systemDefaultZone());
     }
 
-    // registra un paciente tirando error si los datos fallan o el DNI ya existe
+    public ServicioPaciente(RepositorioPaciente repositorio, RepositorioTurno repositorioTurnos, Clock clock) {
+        this.repositorio = java.util.Objects.requireNonNull(repositorio, "El repositorio de pacientes es obligatorio.");
+        this.repositorioTurnos = java.util.Objects.requireNonNull(repositorioTurnos, "El repositorio de turnos es obligatorio.");
+        this.clock = java.util.Objects.requireNonNull(clock, "El reloj es obligatorio.");
+        this.generadorIds = new GeneradorIds();
+    }
+
     public Paciente registrarPaciente(String nombre, String apellido, int dni, String email,
                                       Domicilio domicilio, boolean tieneObraSocial) throws DatoInvalidoException {
-
-        validarNombreApellido(nombre, apellido);
+        ValidadorPersona.validarNombreApellido(nombre, apellido);
         validarDni(dni);
         validarEmail(email);
 
-        // rompe si el DNI ya existe en el mapa
         if (repositorio.buscarPorDni(dni).isPresent()) {
             throw new DatoInvalidoException("DNI", "El documento ingresado ya se encuentra registrado.");
         }
 
         long nuevoId = generadorIds.siguienteId(() -> repositorio.listarTodos().stream()
-                .mapToLong(Paciente::getId)
-                .max()
-                .orElse(0L));
+                .mapToLong(Paciente::getId).max().orElse(0L));
 
         Paciente nuevo = new Paciente(nuevoId, nombre, apellido, dni, email,
-                LocalDate.now(), domicilio, tieneObraSocial);
-
+                LocalDate.now(clock), domicilio, tieneObraSocial);
         repositorio.guardar(nuevo);
         return nuevo;
     }
 
-    // busca por id y tira excepcion si da null
     public Paciente buscarPorId(long id) throws PacienteNoEncontradoException {
-        Paciente paciente = repositorio.buscarPorId(id).orElse(null);
-        if (paciente == null) {
-            throw new PacienteNoEncontradoException(id);
-        }
-        return paciente;
+        return repositorio.buscarPorId(id).orElseThrow(() -> new PacienteNoEncontradoException(id));
     }
 
-    // busca por dni validando que sea positivo
     public Paciente buscarPorDni(int dni) throws PacienteNoEncontradoException, DatoInvalidoException {
         validarDni(dni);
-
-        Paciente paciente = repositorio.buscarPorDni(dni).orElse(null);
-        if (paciente == null) {
-            throw new PacienteNoEncontradoException(dni);
-        }
-        return paciente;
+        return repositorio.buscarPorDni(dni).orElseThrow(() -> new PacienteNoEncontradoException(dni));
     }
 
-    // devuelve todos los pacientes sin orden
     public List<Paciente> listarTodos() {
         return repositorio.listarTodos();
     }
 
-    // REQUERIMIENTO STREAMS: devuelve la lista ordenada alfabéticamente por apellido
     public List<Paciente> listarPacientesOrdenadosPorApellido() {
         return repositorio.listarTodos().stream()
-                .sorted((p1, p2) -> p1.getApellido().compareToIgnoreCase(p2.getApellido()))
-                .collect(Collectors.toList());
+                .sorted((a, b) -> a.getApellido().compareToIgnoreCase(b.getApellido()))
+                .toList();
     }
 
-    // actualiza los datos si encuentra el id o tira error
     public Paciente actualizarPaciente(long id, String nombre, String apellido,
                                        String email, Domicilio domicilio, boolean tieneObraSocial)
             throws PacienteNoEncontradoException, DatoInvalidoException {
-
         Paciente paciente = buscarPorId(id);
-
-        validarNombreApellido(nombre, apellido);
+        ValidadorPersona.validarNombreApellido(nombre, apellido);
         validarEmail(email);
 
         paciente.setNombre(nombre);
         paciente.setApellido(apellido);
         paciente.setEmail(email);
         paciente.setTieneObraSocial(tieneObraSocial);
-
         if (domicilio != null) {
             paciente.setDomicilio(domicilio);
         }
-
         repositorio.actualizar(paciente);
         return paciente;
     }
 
-    // elimina por id comprobando que exista antes
-    public void eliminarPaciente(long id) throws PacienteNoEncontradoException {
+    public void eliminarPaciente(long id) throws PacienteNoEncontradoException, DatoInvalidoException {
         buscarPorId(id);
+        if (!repositorioTurnos.buscarPorPaciente(id).isEmpty()) {
+            throw new DatoInvalidoException("Paciente",
+                    "No se puede eliminar porque tiene turnos asociados.");
+        }
         repositorio.eliminar(id);
     }
 
-    // error si el nombre o el apellido estan vacios o nulos
-    private void validarNombreApellido(String nombre, String apellido) throws DatoInvalidoException {
-        if (nombre == null || nombre.isBlank()) {
-            throw new DatoInvalidoException("Nombre", "El valor del campo es requerido.");
-        }
-        if (apellido == null || apellido.isBlank()) {
-            throw new DatoInvalidoException("Apellido", "El valor del campo es requerido.");
-        }
+    /**
+     * Punto de entrada controlado para reconstruir datos desde la persistencia.
+     * Se mantiene hasta que la etapa 24 introduzca el repositorio CSV.
+     */
+    public void guardarDesdePersistencia(Paciente paciente) {
+        repositorio.guardar(java.util.Objects.requireNonNull(paciente));
     }
 
-    // error si el dni es cero o negativo
     private void validarDni(int dni) throws DatoInvalidoException {
         if (dni <= 0) {
             throw new DatoInvalidoException("DNI", "Debe ser un número entero positivo.");
         }
     }
 
-    // error si el email no contiene el @
     private void validarEmail(String email) throws DatoInvalidoException {
         if (email == null || email.isBlank() || !email.contains("@")) {
             throw new DatoInvalidoException("Email", "El formato ingresado no corresponde a una dirección válida.");
         }
-    }
-
-    // expone el repositorio para la persistencia
-    public RepositorioPaciente getRepositorio() {
-        return repositorio;
     }
 }

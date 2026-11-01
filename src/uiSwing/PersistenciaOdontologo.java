@@ -43,7 +43,7 @@ public class PersistenciaOdontologo {
                 if (especialidad.isPresent()) {
                     Especialidad e = especialidad.get();
                     Odontologo o = e.crear(id, nombre, apellido, mat, e.subespecialidadPorNombre(p[5]));
-                    servicio.getRepositorio().guardar(o);
+                    servicio.guardarDesdePersistencia(o);
                 }
             }
         } catch (Exception e) {

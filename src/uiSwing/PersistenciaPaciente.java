@@ -85,7 +85,7 @@ public class PersistenciaPaciente {
                     }
 
                     Paciente p = new Paciente(id, nombre, apellido, dni, email, fechaAlta, domicilio, tieneObraSocial);
-                    servicio.getRepositorio().guardar(p);
+                    servicio.guardarDesdePersistencia(p);
 
                 } catch (Exception e) {
                     // si una linea esta corrupta la saltea y sigue
