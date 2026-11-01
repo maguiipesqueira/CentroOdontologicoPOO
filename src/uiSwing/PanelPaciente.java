@@ -1,6 +1,8 @@
 package uiSwing;
 
 import controller.ControladorPaciente;
+import controller.DatosPaciente;
+import controller.DatosPacienteActualizacion;
 import entity.Domicilio;
 import entity.Paciente;
 import entity.TipoHogar;
@@ -165,24 +167,15 @@ public class PanelPaciente extends JPanel {
                 );
 
                 if (idSeleccionado == -1) {
-                    controlador.registrarPaciente(
-                            campNombre.getText(),
-                            campApellido.getText(),
-                            Integer.parseInt(campDni.getText()),
-                            campEmail.getText(),
-                            domicilio,
-                            chkObraSocial.isSelected()
-                    );
+                    controlador.registrarPaciente(new DatosPaciente(
+                            campNombre.getText(), campApellido.getText(),
+                            Integer.parseInt(campDni.getText()), campEmail.getText(),
+                            domicilio, chkObraSocial.isSelected()));
                     JOptionPane.showMessageDialog(null, "Paciente guardado correctamente");
                 } else {
-                    controlador.actualizarPaciente(
-                            idSeleccionado,
-                            campNombre.getText(),
-                            campApellido.getText(),
-                            campEmail.getText(),
-                            domicilio,
-                            chkObraSocial.isSelected()
-                    );
+                    controlador.actualizarPaciente(idSeleccionado, new DatosPacienteActualizacion(
+                            campNombre.getText(), campApellido.getText(), campEmail.getText(),
+                            domicilio, chkObraSocial.isSelected()));
                     JOptionPane.showMessageDialog(null, "Paciente actualizado correctamente");
                 }
 

@@ -1,10 +1,12 @@
 package pruebas;
 
 import entity.*;
+import controller.*;
 import exception.DatoInvalidoException;
 import exception.OdontologoNoEncontradoException;
 import exception.PacienteNoEncontradoException;
 import exception.TurnoYaReservadoException;
+import exception.TurnoNoEncontradoException;
 import pago.Efectivo;
 import pago.MedioPago;
 import pago.MercadoPago;
@@ -41,6 +43,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.DayOfWeek;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -76,6 +79,7 @@ public class PruebasBase {
             v.seccion("Medios de pago", PruebasBase::mediosDePago);
             v.seccion("CalculadorMonto", PruebasBase::calculador);
             v.seccion("Facturacion (servicio)", PruebasBase::facturacion);
+            v.seccion("Controladores y DTO", PruebasBase::controladores);
             v.seccion("Repositorios", PruebasBase::repositorios);
             v.seccion("Persistencia de pacientes", PruebasBase::persistenciaPacientes);
             v.seccion("Persistencia de odontologos", PruebasBase::persistenciaOdontologos);
@@ -938,6 +942,84 @@ public class PruebasBase {
         List<Factura> todas = sf.listarTodos();
         v.igual("listarTodos ordenadas por numero (1ra)", 1L, todas.get(0).getId());
         v.igual("listarTodos ordenadas por numero (2da)", 2L, todas.get(1).getId());
+    }
+
+    // ------------------------------------------------------------------ controladores (etapa 23)
+
+    private static void controladores() throws Exception {
+        Clock reloj = Clock.fixed(Instant.parse("2026-11-01T10:00:00Z"), ZoneOffset.UTC);
+        RepositorioTurno repoTurnos = new RepositorioTurno();
+        ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente(), repoTurnos, reloj);
+        ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo(), repoTurnos);
+        ServicioTurno st = new ServicioTurno(repoTurnos, reloj);
+        ControladorPaciente cp = new ControladorPaciente(sp);
+        ControladorOdontologo co = new ControladorOdontologo(so);
+        ControladorTurno ct = new ControladorTurno(st, sp, so, reloj);
+
+        Paciente paciente = cp.registrarPaciente(new DatosPaciente(
+                "  Ana  ", "  Pérez ", 88001, " ana@example.com  ", null, true));
+        v.igual("DTO paciente normaliza nombre", "Ana", paciente.getNombre());
+        v.igual("DTO paciente normaliza apellido", "Pérez", paciente.getApellido());
+        v.igual("DTO paciente normaliza email", "ana@example.com", paciente.getEmail());
+        Paciente actualizado = cp.actualizarPaciente(paciente.getId(),
+                new DatosPacienteActualizacion(" Ana María ", " Pérez ", " ana2@example.com ", null, false));
+        v.igual("DTO actualización normaliza nombre", "Ana María", actualizado.getNombre());
+        v.igual("DTO actualización normaliza email", "ana2@example.com", actualizado.getEmail());
+        v.lanza("DTO paciente nulo", DatoInvalidoException.class, () -> cp.registrarPaciente(null));
+
+        Odontologo odontologo = co.registrarOdontologo(new DatosOdontologo(
+                "  Luis ", "  Gómez ", 88002, Especialidad.GENERAL, TipoConsulta.LIMPIEZA));
+        v.igual("controlador crea odontólogo por especialidad", Especialidad.GENERAL, odontologo.getEspecialidad());
+        v.igual("controlador normaliza nombre odontólogo", "Luis", odontologo.getNombre());
+        v.igual("controlador aplica subespecialidad solicitada", TipoConsulta.LIMPIEZA, odontologo.getSubespecialidad());
+        v.lanza("controlador exige especialidad", DatoInvalidoException.class,
+                () -> co.registrarOdontologo(new DatosOdontologo("A", "B", 88003, null, null)));
+        v.lanza("controlador rechaza subespecialidad incompatible", DatoInvalidoException.class,
+                () -> co.registrarOdontologo(new DatosOdontologo("A", "B", 88003,
+                        Especialidad.GENERAL, TipoCirugia.IMPLANTE)));
+
+        LocalDate hoy = LocalDate.now(reloj);
+        LocalDate manana = hoy.plusDays(1);
+        Turno hoyTurno = ct.registrarTurno(new SolicitudTurno(
+                paciente.getId(), odontologo.getId(), hoy, LocalTime.of(11, 0), TipoConsulta.CONTROL));
+        Turno mananaUno = ct.registrarTurno(new SolicitudTurno(
+                paciente.getId(), odontologo.getId(), manana, LocalTime.of(9, 0), TipoConsulta.LIMPIEZA));
+        Turno mananaDos = ct.registrarTurno(new SolicitudTurno(
+                paciente.getId(), odontologo.getId(), manana, LocalTime.of(10, 0), TipoConsulta.LIMPIEZA));
+        v.igual("solicitud DTO registra turno", EstadoTurno.PENDIENTE, hoyTurno.getEstado());
+        v.igual("listar turnos de hoy", 1, ct.listarTurnosDeHoy().size());
+        v.igual("semana calendario lunes-domingo", 2, ct.listarTurnosDeLaSemana(manana).size());
+        ResumenSemanalTurnos resumen = ct.obtenerResumenSemanal(manana);
+        v.igual("resumen semanal total", 2, resumen.total());
+        v.igual("resumen semanal pendientes", 2, resumen.pendientes());
+        v.igual("resumen semanal desde lunes", DayOfWeek.MONDAY,
+                resumen.desde().getDayOfWeek());
+        v.igual("resumen semanal hasta domingo", DayOfWeek.SUNDAY,
+                resumen.hasta().getDayOfWeek());
+        v.igual("filtro combinado por paciente y odontólogo", 3,
+                ct.filtrar(new FiltroTurnos(paciente.getId(), odontologo.getId(), null, null, null)).size());
+        v.igual("filtro combinado por fecha y estado", 2,
+                ct.filtrar(new FiltroTurnos(null, null, manana, manana, EstadoTurno.PENDIENTE)).size());
+        ct.confirmarTurno(mananaUno.getId());
+        v.igual("filtro combinado detecta estado confirmado", 1,
+                ct.filtrar(new FiltroTurnos(paciente.getId(), odontologo.getId(), manana, manana,
+                        EstadoTurno.CONFIRMADO)).size());
+        v.igual("filtro desde una fecha incluye fechas posteriores", 3,
+                ct.filtrar(new FiltroTurnos(null, null, hoy, null, null)).size());
+        v.igual("agenda ordenada por fecha y hora", mananaUno.getId(),
+                ct.listarTodos().get(1).getId());
+        v.lanza("filtro rechaza rango invertido", IllegalArgumentException.class,
+                () -> new FiltroTurnos(null, null, manana, hoy, null));
+        v.lanza("resumen semanal requiere fecha", DatoInvalidoException.class,
+                () -> ct.obtenerResumenSemanal(null));
+        v.lanza("turno inexistente usa excepción específica", TurnoNoEncontradoException.class,
+                () -> ct.buscarPorId(99999));
+        try {
+            ct.buscarPorId(99999);
+        } catch (TurnoNoEncontradoException ex) {
+            v.igual("excepción específica de turno tiene código propio", 105, ex.getCodigoError());
+        }
+        v.lanza("solicitud turno nula", DatoInvalidoException.class, () -> ct.registrarTurno(null));
     }
 
     // ------------------------------------------------------------------ repositorios

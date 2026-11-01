@@ -8,58 +8,48 @@ import pago.MedioPago;
 import service.CierreDelDia;
 import service.ServicioFactura;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
+/** Coordina la vista previa, el cobro y las consultas de facturación. */
 public class ControladorFactura {
 
     private final ServicioFactura servicio;
+    private final Clock clock;
 
-    // constructor guarda el servicio
     public ControladorFactura(ServicioFactura servicio) {
-        this.servicio = servicio;
+        this(servicio, Clock.systemDefaultZone());
     }
 
-    // lista los turnos que todavia se pueden cobrar
-    public List<Turno> listarTurnosPorCobrar() {
-        return servicio.listarTurnosPorCobrar();
+    public ControladorFactura(ServicioFactura servicio, Clock clock) {
+        this.servicio = Objects.requireNonNull(servicio, "El servicio de facturación es obligatorio.");
+        this.clock = Objects.requireNonNull(clock, "El reloj es obligatorio.");
     }
 
-    // lista los medios de pago disponibles
-    public List<MedioPago> listarMediosPago() {
-        return servicio.listarMediosPago();
-    }
+    public List<Turno> listarTurnosPorCobrar() { return servicio.listarTurnosPorCobrar(); }
+    public List<MedioPago> listarMediosPago() { return servicio.listarMediosPago(); }
+    public String nombreMedioPago(String codigo) { return servicio.nombreMedioPago(codigo == null ? null : codigo.trim()); }
 
-    public String nombreMedioPago(String codigo) {
-        return servicio.nombreMedioPago(codigo);
-    }
-
-    // calcula el monto sin elegir medio de pago, dejando pasar el error de datos
     public DesgloseMonto calcularVistaPrevia(long turnoId) throws DatoInvalidoException {
         return servicio.calcularVistaPrevia(turnoId);
     }
 
-    // calcula el monto con el medio elegido, dejando pasar el error de datos
     public DesgloseMonto calcularVistaPrevia(long turnoId, MedioPago medioPago) throws DatoInvalidoException {
         return servicio.calcularVistaPrevia(turnoId, medioPago);
     }
 
-    // cobra el turno dejando pasar el error de datos
     public Factura cobrarTurno(long turnoId, MedioPago medioPago) throws DatoInvalidoException {
         return servicio.cobrarTurno(turnoId, medioPago);
     }
 
-    // lista todas las facturas emitidas
-    public List<Factura> listarTodos() {
-        return servicio.listarTodos();
-    }
+    public List<Factura> listarTodos() { return servicio.listarTodos(); }
 
-    // cierre del dia de hoy
     public CierreDelDia cerrarDia() throws DatoInvalidoException {
-        return servicio.cerrarDia(LocalDate.now());
+        return servicio.cerrarDia(LocalDate.now(clock));
     }
 
-    // cierre del dia de una fecha cualquiera
     public CierreDelDia cerrarDia(LocalDate fecha) throws DatoInvalidoException {
         return servicio.cerrarDia(fecha);
     }

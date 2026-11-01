@@ -1,6 +1,8 @@
 package ui;
 
 import controller.ControladorPaciente;
+import controller.DatosPaciente;
+import controller.DatosPacienteActualizacion;
 import entity.Domicilio;
 import entity.Paciente;
 import entity.TipoHogar;
@@ -83,7 +85,7 @@ public class VistaPaciente {
 
         // captura errores de formato o dni duplicado
         try {
-            Paciente paciente = controlador.registrarPaciente(nombre, apellido, dni, email, domicilio, tieneObraSocial);
+            Paciente paciente = controlador.registrarPaciente(new DatosPaciente(nombre, apellido, dni, email, domicilio, tieneObraSocial));
 
             if (paciente != null) {
                 System.out.println("Paciente registrado: " + paciente);
@@ -153,7 +155,7 @@ public class VistaPaciente {
 
         // captura errores de id inexistente o datos incorrectos
         try {
-            Paciente paciente = controlador.actualizarPaciente(id, nombre, apellido, email, null, tieneObraSocial);
+            Paciente paciente = controlador.actualizarPaciente(id, new DatosPacienteActualizacion(nombre, apellido, email, null, tieneObraSocial));
 
             if (paciente != null) {
                 System.out.println("Paciente actualizado: " + paciente);

@@ -7,6 +7,7 @@ import entity.Paciente;
 import entity.Turno;
 import exception.DatoInvalidoException;
 import exception.TurnoYaReservadoException;
+import exception.TurnoNoEncontradoException;
 import repository.GeneradorIds;
 import repository.RepositorioTurno;
 
@@ -80,9 +81,8 @@ public class ServicioTurno {
                         && turno.getEstado() != EstadoTurno.CANCELADO);
     }
 
-    public Turno buscarPorId(long id) throws DatoInvalidoException {
-        return repositorio.buscarPorId(id)
-                .orElseThrow(() -> new DatoInvalidoException("Turno", "No existe un turno con el id " + id));
+    public Turno buscarPorId(long id) throws TurnoNoEncontradoException {
+        return repositorio.buscarPorId(id).orElseThrow(() -> new TurnoNoEncontradoException(id));
     }
 
     public List<Turno> listarTodos() {

@@ -1,6 +1,7 @@
 package ui;
 
 import controller.ControladorTurno;
+import controller.SolicitudTurno;
 import entity.Turno;
 
 import java.time.LocalDate;
@@ -78,7 +79,7 @@ public class VistaTurno {
         if (hora == null) return;
 
         try {
-            Turno turno = controlador.registrarTurno(pacienteId, odontologoId, fecha, hora);
+            Turno turno = controlador.registrarTurno(new SolicitudTurno(pacienteId, odontologoId, fecha, hora, null));
             System.out.println("Turno registrado: " + turno);
         } catch (ClinicaException e) {
             System.out.println(e);

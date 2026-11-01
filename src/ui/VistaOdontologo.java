@@ -1,6 +1,7 @@
 package ui;
 
 import controller.ControladorOdontologo;
+import controller.DatosOdontologo;
 import entity.Especialidad;
 import entity.Odontologo;
 import exception.DatoInvalidoException;
@@ -60,11 +61,8 @@ public class VistaOdontologo {
 
         Especialidad especialidad = leerEspecialidad();
 
-        Odontologo odontologo = especialidad.crearConSubespecialidadPorDefecto(0L, nombre, apellido, matricula);
-
-        // Ahora rodeamos con try-catch la llamada al controlador para capturar la excepción
         try {
-            controlador.registrarOdontologo(odontologo);
+            controlador.registrarOdontologo(new DatosOdontologo(nombre, apellido, matricula, especialidad, null));
             System.out.println("Odontólogo registrado correctamente.");
         } catch (DatoInvalidoException e) {
             System.out.println("Error al registrar: " + e.getMessage());

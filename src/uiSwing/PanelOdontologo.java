@@ -1,6 +1,7 @@
 package uiSwing;
 
 import controller.ControladorOdontologo;
+import controller.DatosOdontologo;
 import entity.*;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -70,10 +71,8 @@ public class PanelOdontologo extends JPanel {
 
             if (idSeleccionado == -1) {
                 Especialidad especialidad = (Especialidad) combTipo.getSelectedItem();
-                Odontologo o = especialidad.crearConSubespecialidadPorDefecto(
-                        0, campNombre.getText(), campApellido.getText(), mat);
-
-                controlador.registrarOdontologo(o);
+                controlador.registrarOdontologo(new DatosOdontologo(
+                        campNombre.getText(), campApellido.getText(), mat, especialidad, null));
                 JOptionPane.showMessageDialog(this, "Odontólogo guardado correctamente");
             } else {
                 controlador.actualizarOdontologo(idSeleccionado, campNombre.getText(), campApellido.getText());

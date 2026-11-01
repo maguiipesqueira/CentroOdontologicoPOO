@@ -1,53 +1,71 @@
 package controller;
 
-import entity.Domicilio;
 import entity.Paciente;
-import service.ServicioPaciente;
-import java.util.List;
 import exception.DatoInvalidoException;
 import exception.PacienteNoEncontradoException;
+import service.ServicioPaciente;
 
+import java.util.List;
+import java.util.Objects;
+
+/** Coordina los casos de uso de pacientes y normaliza los datos recibidos de la UI. */
 public class ControladorPaciente {
 
     private final ServicioPaciente servicio;
 
-    // constructor guarda el servicio
     public ControladorPaciente(ServicioPaciente servicio) {
-        this.servicio = servicio;
+        this.servicio = Objects.requireNonNull(servicio, "El servicio de pacientes es obligatorio.");
     }
 
-    // registra dejando pasar el error de datos
-    public Paciente registrarPaciente(String nombre, String apellido, int dni, String email, Domicilio domicilio, boolean tieneObraSocial) throws DatoInvalidoException {
-        return servicio.registrarPaciente(nombre, apellido, dni, email, domicilio, tieneObraSocial);
+    public Paciente registrarPaciente(DatosPaciente datos) throws DatoInvalidoException {
+        DatosPaciente entrada = requerirDatos(datos);
+        return servicio.registrarPaciente(entrada.nombre(), entrada.apellido(), entrada.dni(),
+                entrada.email(), entrada.domicilio(), entrada.tieneObraSocial());
     }
 
-    // busca dejando pasar el error si no existe id
+    /** Puente de compatibilidad para llamadas anteriores a la introducción del DTO. */
+    public Paciente registrarPaciente(String nombre, String apellido, int dni, String email,
+                                      entity.Domicilio domicilio, boolean tieneObraSocial)
+            throws DatoInvalidoException {
+        return registrarPaciente(new DatosPaciente(nombre, apellido, dni, email, domicilio, tieneObraSocial));
+    }
+
     public Paciente buscarPorId(long id) throws PacienteNoEncontradoException {
         return servicio.buscarPorId(id);
     }
 
-    // busca dejando pasar el error si no existe dni o es negativo
     public Paciente buscarPorDni(int dni) throws PacienteNoEncontradoException, DatoInvalidoException {
         return servicio.buscarPorDni(dni);
     }
 
-    // lista todos los pacientes comunes
     public List<Paciente> listarTodos() {
         return servicio.listarTodos();
     }
 
-    // pide tu lista de pacientes ordenados por apellido con streams
     public List<Paciente> listarPacientesOrdenadosPorApellido() {
         return servicio.listarPacientesOrdenadosPorApellido();
     }
 
-    // actualiza dejando pasar los errores de no encontrado o dato malo
-    public Paciente actualizarPaciente(long id, String nombre, String apellido, String email, Domicilio domicilio, boolean tieneObraSocial) throws PacienteNoEncontradoException, DatoInvalidoException {
-        return servicio.actualizarPaciente(id, nombre, apellido, email, domicilio, tieneObraSocial);
+    public Paciente actualizarPaciente(long id, DatosPacienteActualizacion datos)
+            throws PacienteNoEncontradoException, DatoInvalidoException {
+        if (datos == null) throw new DatoInvalidoException("Paciente", "Los datos de actualización son obligatorios.");
+        return servicio.actualizarPaciente(id, datos.nombre(), datos.apellido(),
+                datos.email(), datos.domicilio(), datos.tieneObraSocial());
     }
 
-    // elimina dejando pasar el error si el id no existe
+    /** Puente de compatibilidad para llamadas anteriores a la introducción del DTO. */
+    public Paciente actualizarPaciente(long id, String nombre, String apellido, String email,
+                                       entity.Domicilio domicilio, boolean tieneObraSocial)
+            throws PacienteNoEncontradoException, DatoInvalidoException {
+        return actualizarPaciente(id, new DatosPacienteActualizacion(nombre, apellido, email, domicilio, tieneObraSocial));
+    }
+
     public void eliminarPaciente(long id) throws PacienteNoEncontradoException, DatoInvalidoException {
         servicio.eliminarPaciente(id);
+    }
+
+    private DatosPaciente requerirDatos(DatosPaciente datos) throws DatoInvalidoException {
+        if (datos == null) throw new DatoInvalidoException("Paciente", "Los datos del paciente son obligatorios.");
+        return datos;
     }
 }
