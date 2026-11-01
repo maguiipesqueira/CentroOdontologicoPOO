@@ -30,6 +30,8 @@ import uiSwing.TextoMotivo;
 import uiSwing.FormatoPlata;
 import uiSwing.PaletaEstadoTurno;
 import uiSwing.ComprobanteFactura;
+import uiSwing.TurnoTableModel;
+import uiSwing.OpcionMotivo;
 import uiSwing.SeccionContenido;
 import uiSwing.Sidebar;
 import ui.LectorConsola;
@@ -91,6 +93,7 @@ public class PruebasBase {
         v.seccion("UI consola: lecturas y comandos", PruebasBase::uiConsola);
         v.seccion("Swing: piezas compartidas", PruebasBase::uiSwingCompartida);
         v.seccion("Swing: formularios de personas", PruebasBase::uiSwingPersonas);
+        v.seccion("Swing: tabla y opciones polimórficas de turnos", PruebasBase::uiSwingTurnos);
         boolean ok = v.resumen();
         System.exit(ok ? 0 : 1);
     }
@@ -1439,6 +1442,31 @@ public class PruebasBase {
             if (componente instanceof java.awt.Container hijo) encontrados.addAll(componentes(hijo, tipo));
         }
         return encontrados;
+    }
+
+    private static void uiSwingTurnos() {
+        TurnoTableModel modelo = new TurnoTableModel();
+        v.igual("TurnoTableModel expone seis columnas visibles", 6, modelo.getColumnCount());
+        v.igual("TurnoTableModel no expone columna ID", "Paciente", modelo.getColumnName(0));
+        v.igual("TurnoTableModel nombra la columna de estado", "Estado", modelo.getColumnName(5));
+        v.igual("TurnoTableModel inicia sin filas", 0, modelo.getRowCount());
+        v.verdadero("TurnoTableModel es de solo lectura", !modelo.isCellEditable(0, 0));
+        Paciente paciente = new Paciente(81L, "Ana", "Pérez", 12345678, "ana@x.com", LocalDate.of(2026, 1, 1), null, false);
+        Odontologo odontologo = new General(82L, "Luis", "Gómez", 8765, TipoConsulta.CONTROL);
+        Turno turno = new Turno(83L, paciente, odontologo, LocalDate.of(2026, 2, 3),
+                LocalTime.of(10, 30), EstadoTurno.PENDIENTE, TipoConsulta.CONTROL);
+        modelo.setTurnos(List.of(turno));
+        v.igual("TurnoTableModel conserva una fila", 1, modelo.getRowCount());
+        v.igual("TurnoTableModel permite recuperar el turno real sin columna ID", turno, modelo.getTurnoAt(0));
+        v.igual("TurnoTableModel muestra el paciente", "Ana Pérez", modelo.getValueAt(0, 0));
+        v.igual("TurnoTableModel muestra el estado", "PENDIENTE", modelo.getValueAt(0, 5));
+
+        OpcionMotivo inicial = OpcionMotivo.inicial();
+        v.verdadero("OpcionMotivo inicial no representa un motivo seleccionable", !inicial.esSeleccionable());
+        OpcionMotivo opcion = OpcionMotivo.de(TipoConsulta.values()[0]);
+        v.verdadero("OpcionMotivo conserva el motivo polimórfico", opcion.esSeleccionable()
+                && opcion.motivo() == TipoConsulta.values()[0]);
+        v.igual("OpcionMotivo muestra el nombre legible", TipoConsulta.values()[0].getNombreLegible(), opcion.toString());
     }
 
     // ------------------------------------------------------------------ utilidades de prueba

@@ -21,7 +21,7 @@ public class DialogoNuevoTurno extends JDialog {
 
     private JComboBox<Paciente> comboPaciente;
     private JComboBox<Odontologo> comboOdontologo;
-    private JComboBox<Object> comboMotivo;
+    private JComboBox<OpcionMotivo> comboMotivo;
     private JTextField txtFecha;
     private JTextField txtHora;
     private final ControladorTurno controlador;
@@ -59,6 +59,7 @@ public class DialogoNuevoTurno extends JDialog {
         form.add(crearLabel("Tipo de consulta:"));
         comboMotivo = new JComboBox<>();
         comboMotivo.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        comboMotivo.addItem(OpcionMotivo.inicial());
         form.add(comboMotivo);
 
         form.add(crearLabel("Fecha:"));
@@ -124,14 +125,14 @@ public class DialogoNuevoTurno extends JDialog {
     private void actualizarComboMotivo() {
         comboMotivo.removeAllItems();
 
-        // primera opcion siempre visible, asi el combo no arranca mostrando un tipo concreto
-        comboMotivo.addItem("Tipo");
+        // la opción inicial es un objeto tipado y no se confunde con un motivo real
+        comboMotivo.addItem(OpcionMotivo.inicial());
 
         Odontologo odontologo = (Odontologo) comboOdontologo.getSelectedItem();
 
         if (odontologo != null) {
             for (MotivoConsulta motivo : odontologo.getMotivosPosibles()) {
-                comboMotivo.addItem(motivo);
+                comboMotivo.addItem(OpcionMotivo.de(motivo));
             }
         }
         // si no hay odontologo seleccionado, solo queda la opcion "Tipo"
@@ -140,7 +141,7 @@ public class DialogoNuevoTurno extends JDialog {
     private void guardarTurno() {
         Paciente paciente = (Paciente) comboPaciente.getSelectedItem();
         Odontologo odontologo = (Odontologo) comboOdontologo.getSelectedItem();
-        Object motivo = comboMotivo.getSelectedItem();
+        OpcionMotivo opcionMotivo = (OpcionMotivo) comboMotivo.getSelectedItem();
 
         if (paciente == null || odontologo == null) {
             JOptionPane.showMessageDialog(this, "Debe haber al menos un paciente y un odontologo registrados.",
@@ -148,8 +149,8 @@ public class DialogoNuevoTurno extends JDialog {
             return;
         }
 
-        // si el usuario dejo la opcion por defecto "Tipo", todavia no eligio un motivo real
-        if (motivo == null || motivo.equals("Tipo")) {
+        // si el usuario dejó la indicación inicial, todavía no eligió un motivo real
+        if (opcionMotivo == null || !opcionMotivo.esSeleccionable()) {
             JOptionPane.showMessageDialog(this, "Debe seleccionar un tipo de consulta.",
                     "Error", JOptionPane.ERROR_MESSAGE);
             return;
@@ -159,7 +160,7 @@ public class DialogoNuevoTurno extends JDialog {
             LocalDate fecha = LocalDate.parse(txtFecha.getText().trim());
             LocalTime hora = LocalTime.parse(txtHora.getText().trim());
 
-            controlador.registrarTurno(new SolicitudTurno(paciente.getId(), odontologo.getId(), fecha, hora, (MotivoConsulta) motivo));
+            controlador.registrarTurno(new SolicitudTurno(paciente.getId(), odontologo.getId(), fecha, hora, opcionMotivo.motivo()));
 
             JOptionPane.showMessageDialog(this, "Turno registrado correctamente!");
 
