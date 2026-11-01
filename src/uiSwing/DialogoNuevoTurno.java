@@ -158,7 +158,7 @@ public class DialogoNuevoTurno extends JDialog {
             LocalDate fecha = LocalDate.parse(txtFecha.getText().trim());
             LocalTime hora = LocalTime.parse(txtHora.getText().trim());
 
-            controlador.registrarTurno(paciente.getId(), odontologo.getId(), fecha, hora, motivo);
+            controlador.registrarTurno(paciente.getId(), odontologo.getId(), fecha, hora, (MotivoConsulta) motivo);
 
             JOptionPane.showMessageDialog(this, "Turno registrado correctamente!");
 

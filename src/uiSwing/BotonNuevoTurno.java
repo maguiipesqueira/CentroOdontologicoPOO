@@ -1,6 +1,7 @@
 package uiSwing;
 
 import controller.ControladorTurno;
+import entity.MotivoConsulta;
 import entity.Paciente;
 import entity.TipoCirugia;
 import entity.TipoConsulta;
@@ -126,7 +127,7 @@ public class BotonNuevoTurno extends JDialog {
             LocalDate fecha = LocalDate.parse(txtFecha.getText().trim(), formatter);
             LocalTime hora = LocalTime.parse(txtHora.getText().trim());
 
-            controlador.registrarTurno(pacienteId, odontologoId, fecha, hora, motivo);
+            controlador.registrarTurno(pacienteId, odontologoId, fecha, hora, (MotivoConsulta) motivo);
 
             JOptionPane.showMessageDialog(this, "Turno registrado correctamente!");
             dispose();

@@ -199,7 +199,7 @@ public class PanelTurnos extends JPanel {
                     t.getId(),
                     t.getPaciente().getNombreCompleto(),
                     t.getOdontologo().getNombreCompleto(),
-                    t.getMotivoConsultaTexto(),
+                    TextoMotivo.de(t),
                     t.getFecha().toString(),
                     t.getHora().toString(),
                     t.getEstado().name()

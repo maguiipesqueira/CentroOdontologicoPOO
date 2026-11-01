@@ -1,7 +1,8 @@
 package service;
 
-import entity.EstadoTurno;
+import entity.DesgloseMonto;
 import entity.Factura;
+import entity.MotivoConsulta;
 import entity.Paciente;
 import entity.Turno;
 import exception.DatoInvalidoException;
@@ -39,7 +40,7 @@ public class ServicioFactura {
     // turnos que se pueden cobrar: no cancelados y sin factura, ordenados por fecha y hora
     public List<Turno> listarTurnosPorCobrar() {
         return servicioTurno.listarTodos().stream()
-                .filter(t -> t.getEstado() != EstadoTurno.CANCELADO)
+                .filter(t -> t.getEstado().esCobrable())
                 .filter(t -> !repositorio.existePorTurno(t.getId()))
                 .sorted(Comparator.comparing(Turno::getFecha).thenComparing(Turno::getHora))
                 .collect(Collectors.toList());
@@ -72,19 +73,16 @@ public class ServicioFactura {
         DesgloseMonto desglose = calculador.calcular(precioDe(turno), tieneObraSocial(turno), medioPago);
         Paciente paciente = turno.getPaciente();
 
-        Factura factura = new Factura(
-                repositorio.siguienteId(),
-                turno.getId(),
-                paciente.getId(),
-                paciente.getNombreCompleto(),
-                turno.getMotivoConsultaTexto(),
-                LocalDate.now(),
-                medioPago.getNombre(),
-                desglose.getMontoBase(),
-                desglose.getDescuentoObraSocial(),
-                desglose.getDescuentoEfectivo(),
-                desglose.getMontoTotal()
-        );
+        Factura factura = Factura.builder()
+                .id(repositorio.siguienteId())
+                .turnoId(turno.getId())
+                .pacienteId(paciente.getId())
+                .pacienteNombre(paciente.getNombreCompleto())
+                .concepto(motivoDe(turno).name())
+                .fecha(LocalDate.now())
+                .metodoPago(medioPago.getNombre())
+                .desglose(desglose)
+                .build();
 
         repositorio.guardar(factura);
         return factura;
@@ -136,8 +134,9 @@ public class ServicioFactura {
     private Turno buscarTurnoCobrable(long turnoId) throws DatoInvalidoException {
         Turno turno = servicioTurno.buscarPorId(turnoId);
 
-        if (turno.getEstado() == EstadoTurno.CANCELADO) {
-            throw new DatoInvalidoException("Turno", "No se puede cobrar un turno cancelado.");
+        if (!turno.getEstado().esCobrable()) {
+            throw new DatoInvalidoException("Turno",
+                    "No se puede cobrar un turno " + turno.getEstado().getNombreLegible().toLowerCase() + ".");
         }
 
         if (repositorio.existePorTurno(turnoId)) {
@@ -149,7 +148,13 @@ public class ServicioFactura {
 
     // precio de lista del tratamiento del turno
     private double precioDe(Turno turno) throws DatoInvalidoException {
-        return tarifario.precioDe(turno.getMotivoConsulta());
+        return tarifario.precioDe(motivoDe(turno));
+    }
+
+    // motivo del turno; si se registro sin motivo no hay nada que cobrar
+    private MotivoConsulta motivoDe(Turno turno) throws DatoInvalidoException {
+        return turno.getMotivoConsulta().orElseThrow(
+                () -> new DatoInvalidoException("Tratamiento", "El turno no tiene un tratamiento cargado."));
     }
 
     // true si el paciente del turno accede al descuento de obra social

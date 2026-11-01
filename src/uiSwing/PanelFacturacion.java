@@ -1,11 +1,11 @@
 package uiSwing;
 
 import controller.ControladorFactura;
+import entity.DesgloseMonto;
 import entity.Factura;
 import entity.Turno;
 import exception.ClinicaException;
 import pago.MedioPago;
-import service.DesgloseMonto;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
@@ -196,7 +196,7 @@ public class PanelFacturacion extends JPanel {
         for (Turno t : turnos) {
             String turnoTexto = t.getFecha() + " " + t.getHora();
             String paciente = t.getPaciente().getNombreCompleto();
-            String tratamiento = t.getMotivoConsultaTexto();
+            String tratamiento = TextoMotivo.de(t);
 
             try {
                 // sin medio de pago todavia: solo se ve el descuento de obra social

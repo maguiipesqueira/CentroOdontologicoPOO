@@ -14,6 +14,9 @@ public class PersistenciaTurno {
 
     private static final String ARCHIVO = "turnos.txt";
 
+    // lo que se escribe en la ultima columna cuando el turno no tiene motivo (formato de siempre)
+    private static final String SIN_MOTIVO = "Consulta";
+
     // guarda todos los turnos en el archivo, uno por linea
     public static void guardar(List<Turno> turnos) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(ARCHIVO))) {
@@ -24,7 +27,7 @@ public class PersistenciaTurno {
                         t.getFecha() + "," +
                         t.getHora() + "," +
                         t.getEstado() + "," +
-                        t.getMotivoConsultaTexto();
+                        t.getMotivoConsulta().map(MotivoConsulta::name).orElse(SIN_MOTIVO);
                 writer.println(linea);
             }
         } catch (IOException e) {
@@ -49,14 +52,13 @@ public class PersistenciaTurno {
                     LocalDate fecha = LocalDate.parse(partes[3]);
                     LocalTime hora = LocalTime.parse(partes[4]);
                     EstadoTurno estado = EstadoTurno.valueOf(partes[5]);
-                    String motivo = partes[6];
+                    // un nombre que no es de ningun motivo (ej. "Consulta") deja el turno sin motivo
+                    MotivoConsulta motivo = MotivoConsulta.desdeNombre(partes[6]).orElse(null);
 
                     Paciente paciente = servPaciente.buscarPorId(idPaciente);
                     Odontologo odontologo = servOdontologo.buscarPorId(idOdontologo);
 
-                    Turno turno = new Turno(id, paciente, odontologo, fecha, hora);
-                    turno.setEstado(estado);
-                    turno.setMotivoConsulta(motivo);
+                    Turno turno = new Turno(id, paciente, odontologo, fecha, hora, estado, motivo);
 
                     servTurno.getRepositorio().guardar(turno);
 

@@ -138,7 +138,7 @@ public class PanelAgenda extends JPanel {
         lblNombre.setFont(new Font("Segoe UI", Font.BOLD, 11));
         lblNombre.setForeground(new Color(15, 23, 42));
 
-        JLabel lblTipo = new JLabel(" " + turno.getMotivoConsultaTexto());
+        JLabel lblTipo = new JLabel(" " + TextoMotivo.de(turno));
         lblTipo.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         lblTipo.setForeground(new Color(71, 85, 105));
 

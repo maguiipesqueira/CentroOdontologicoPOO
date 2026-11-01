@@ -12,7 +12,7 @@ import java.util.Map;
 public class Tarifario {
 
     // clave: nombre del tratamiento (ej "LIMPIEZA"), valor: precio base en pesos
-    // se usa el nombre en texto porque Turno guarda el motivo como Object y al recargar desde el archivo queda como String
+    // se usa el nombre tecnico del motivo (name()) como clave; en la etapa 22 el precio pasa a buscarse por MotivoConsulta
     private final Map<String, Double> precios = new HashMap<>();
 
     public Tarifario() {
@@ -35,7 +35,7 @@ public class Tarifario {
         precios.put(TipoOrtodoncia.BRACKETS_CERAMICOS.name(), 250000.0);
     }
 
-    // devuelve el precio base del tratamiento, acepta el enum o el texto que guarda el turno
+    // devuelve el precio base del tratamiento, buscandolo por el nombre del motivo
     public double precioDe(Object motivoConsulta) throws DatoInvalidoException {
         if (motivoConsulta == null) {
             throw new DatoInvalidoException("Tratamiento", "El turno no tiene un tratamiento cargado.");

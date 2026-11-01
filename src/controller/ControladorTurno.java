@@ -1,5 +1,6 @@
 package controller;
 
+import entity.MotivoConsulta;
 import entity.Odontologo;
 import entity.Paciente;
 import entity.Turno;
@@ -40,7 +41,7 @@ public class ControladorTurno {
     }
 
     // misma logica, pero permite indicar el motivo de consulta elegido en el combo del formulario
-    public Turno registrarTurno(long pacienteId, long odontologoId, LocalDate fecha, LocalTime hora, Object motivoConsulta)
+    public Turno registrarTurno(long pacienteId, long odontologoId, LocalDate fecha, LocalTime hora, MotivoConsulta motivoConsulta)
             throws ClinicaException {
 
         Paciente paciente = servicioPaciente.buscarPorId(pacienteId);

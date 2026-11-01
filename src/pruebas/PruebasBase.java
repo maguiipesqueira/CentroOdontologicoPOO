@@ -15,7 +15,6 @@ import repository.RepositorioPaciente;
 import repository.RepositorioTurno;
 import service.CalculadorMonto;
 import service.CierreDelDia;
-import service.DesgloseMonto;
 import service.ServicioFactura;
 import service.ServicioOdontologo;
 import service.ServicioPaciente;
@@ -25,6 +24,7 @@ import uiSwing.PersistenciaFactura;
 import uiSwing.PersistenciaOdontologo;
 import uiSwing.PersistenciaPaciente;
 import uiSwing.PersistenciaTurno;
+import uiSwing.TextoMotivo;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -37,11 +37,12 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * ETAPA 14 - Red de seguridad.
+ * ETAPA 14 - Red de seguridad (se actualiza en cada etapa junto con el codigo que cambia).
  * Fija el comportamiento ACTUAL del sistema (sin Swing ni consola) para poder refactorizar con confianza.
  * Las lineas marcadas con "(actual)" describen comportamientos que la bitacora marca como defectos:
  * se prueban tal como funcionan hoy y se actualizan en la etapa que los corrige.
@@ -59,6 +60,7 @@ public class PruebasBase {
         try {
             v.seccion("Entidades: enums y Domicilio (Etapa 15)", PruebasBase::enumsYDomicilio);
             v.seccion("Entidades: personas (Etapa 16)", PruebasBase::personas);
+            v.seccion("Entidades: turno y factura (Etapa 17)", PruebasBase::turnoYFactura);
             v.seccion("Pacientes (servicio)", PruebasBase::pacientes);
             v.seccion("Odontologos (servicio)", PruebasBase::odontologos);
             v.seccion("Turnos (servicio)", PruebasBase::turnos);
@@ -111,7 +113,7 @@ public class PruebasBase {
 
         // estados del turno: la urgencia ya no es un estado
         v.igual("EstadoTurno: valores del ciclo de vida",
-                List.of("PENDIENTE", "CONFIRMADO", "CANCELADO", "COMPLETADO"),
+                List.of("PENDIENTE", "CONFIRMADO", "CANCELADO", "COMPLETADO", "AUSENTE"),
                 List.of(EstadoTurno.values()).stream().map(Enum::name).collect(Collectors.toList()));
         v.igual("legible: PENDIENTE", "Pendiente", EstadoTurno.PENDIENTE.getNombreLegible());
         v.igual("legible: COMPLETADO", "Completado", EstadoTurno.COMPLETADO.getNombreLegible());
@@ -273,6 +275,216 @@ public class PruebasBase {
                 () -> Especialidad.GENERAL.crear(1L, "A", "B", 1, null));
     }
 
+    // ------------------------------------------------------------------ turno y factura (etapa 17)
+
+    private static void turnoYFactura() throws Exception {
+        Paciente pac = new Paciente(1L, "Ana", "Perez", 100, "a@x.com", LocalDate.of(2026, 1, 1), null, true);
+        Odontologo od = new General(2L, "Luis", "Gomez", 200, TipoConsulta.CONTROL);
+        LocalDate dia = LocalDate.of(2026, 12, 1);
+        LocalTime nueve = LocalTime.of(9, 0);
+
+        // ---- Turno: construccion y datos
+        v.igual("Turno tiene un unico constructor", 1, Turno.class.getConstructors().length);
+        Turno t = new Turno(7L, pac, od, dia, nueve, EstadoTurno.PENDIENTE, TipoCirugia.IMPLANTE);
+        v.igual("id", 7L, t.getId());
+        v.igual("paciente", pac, t.getPaciente());
+        v.igual("odontologo", od, t.getOdontologo());
+        v.igual("fecha", dia, t.getFecha());
+        v.igual("hora", nueve, t.getHora());
+        v.igual("estado inicial", EstadoTurno.PENDIENTE, t.getEstado());
+        v.igual("motivo presente", Optional.of(TipoCirugia.IMPLANTE), t.getMotivoConsulta());
+        v.verdadero("sin motivo: Optional vacio",
+                new Turno(8L, pac, od, dia, nueve, EstadoTurno.PENDIENTE, null).getMotivoConsulta().isEmpty());
+        v.igual("toString",
+                "TURNO #7 | Paciente: Ana Perez | Odontólogo: Luis Gomez | Fecha: 2026-12-01 Hora: 09:00 | Estado: PENDIENTE",
+                t.toString());
+
+        // ---- Turno: no se puede armar a medias ni modificar desde afuera
+        v.lanza("paciente null", NullPointerException.class,
+                () -> new Turno(1L, null, od, dia, nueve, EstadoTurno.PENDIENTE, null));
+        v.lanza("odontologo null", NullPointerException.class,
+                () -> new Turno(1L, pac, null, dia, nueve, EstadoTurno.PENDIENTE, null));
+        v.lanza("fecha null", NullPointerException.class,
+                () -> new Turno(1L, pac, od, null, nueve, EstadoTurno.PENDIENTE, null));
+        v.lanza("hora null", NullPointerException.class,
+                () -> new Turno(1L, pac, od, dia, null, EstadoTurno.PENDIENTE, null));
+        v.lanza("estado null", NullPointerException.class,
+                () -> new Turno(1L, pac, od, dia, nueve, null, null));
+        for (String metodo : List.of("setId", "setPaciente", "setOdontologo", "setFecha", "setHora",
+                "setEstado", "setMotivoConsulta", "getMotivoConsultaTexto")) {
+            v.verdadero("Turno sin " + metodo, !tieneMetodo(Turno.class, metodo));
+        }
+
+        // ---- Turno: igualdad por id
+        Turno mismoId = new Turno(7L, pac, od, dia.plusDays(3), LocalTime.of(15, 0), EstadoTurno.COMPLETADO, null);
+        v.verdadero("mismo id: es el mismo turno", t.equals(mismoId));
+        v.igual("mismo id: mismo hashCode", t.hashCode(), mismoId.hashCode());
+        v.verdadero("otro id: no son iguales",
+                !t.equals(new Turno(9L, pac, od, dia, nueve, EstadoTurno.PENDIENTE, TipoCirugia.IMPLANTE)));
+        v.verdadero("un turno no es igual a null", !t.equals(null));
+        v.verdadero("un turno no es igual a un texto", !t.equals("TURNO #7"));
+
+        // ---- Estados: tabla completa de transiciones (null = no permitida)
+        EstadoTurno P = EstadoTurno.PENDIENTE, C = EstadoTurno.CONFIRMADO, X = EstadoTurno.CANCELADO,
+                F = EstadoTurno.COMPLETADO, A = EstadoTurno.AUSENTE;
+        EstadoTurno[][] esperado = {
+                // confirmar, cancelar, completar, marcarAusente
+                {C,    X,    F,    A},     // desde PENDIENTE
+                {null, X,    F,    A},     // desde CONFIRMADO
+                {null, null, null, null},  // desde CANCELADO
+                {null, null, null, null},  // desde COMPLETADO
+                {null, null, null, null}   // desde AUSENTE
+        };
+        String[] operaciones = {"confirmar", "cancelar", "completar", "marcarAusente"};
+        v.igual("hay 5 estados", 5, EstadoTurno.values().length);
+        v.igual("el orden de los estados coincide con la tabla de la prueba",
+                List.of(P, C, X, F, A), List.of(EstadoTurno.values()));
+        for (EstadoTurno desde : EstadoTurno.values()) {
+            for (int op = 0; op < operaciones.length; op++) {
+                EstadoTurno destino = esperado[desde.ordinal()][op];
+                String nombre = desde + "." + operaciones[op];
+                Turno turno = new Turno(1L, pac, od, dia, nueve, desde, null);
+                int operacion = op;
+                Verificador.Ejecutable transicion = () -> {
+                    switch (operacion) {
+                        case 0 -> turno.confirmar();
+                        case 1 -> turno.cancelar();
+                        case 2 -> turno.completar();
+                        default -> turno.marcarAusente();
+                    }
+                };
+                if (destino == null) {
+                    v.lanza(nombre + " no esta permitido", DatoInvalidoException.class, transicion);
+                    v.igual(nombre + " rechazado: el estado no cambia", desde, turno.getEstado());
+                } else {
+                    transicion.ejecutar();
+                    v.igual(nombre + " -> " + destino, destino, turno.getEstado());
+                }
+            }
+        }
+
+        // ---- Estados: mensajes (los de siempre + los nuevos)
+        Turno cancelado = new Turno(1L, pac, od, dia, nueve, EstadoTurno.CANCELADO, null);
+        Turno completado = new Turno(2L, pac, od, dia, nueve, EstadoTurno.COMPLETADO, null);
+        Turno confirmado = new Turno(3L, pac, od, dia, nueve, EstadoTurno.CONFIRMADO, null);
+        Turno ausente = new Turno(4L, pac, od, dia, nueve, EstadoTurno.AUSENTE, null);
+        v.igual("mensaje: cancelar un cancelado", "Dato inválido en 'Estado': Este turno ya fue cancelado.",
+                mensajeDe(cancelado::cancelar));
+        v.igual("mensaje: cancelar un completado", "Dato inválido en 'Estado': No se puede cancelar un turno completado.",
+                mensajeDe(completado::cancelar));
+        v.igual("mensaje: confirmar un confirmado", "Dato inválido en 'Estado': Solo se pueden confirmar turnos pendientes.",
+                mensajeDe(confirmado::confirmar));
+        v.igual("mensaje: completar un cancelado", "Dato inválido en 'Estado': No se puede completar un turno que fue cancelado.",
+                mensajeDe(cancelado::completar));
+        v.igual("mensaje: completar un completado", "Dato inválido en 'Estado': Este turno ya fue completado.",
+                mensajeDe(completado::completar));
+        v.igual("mensaje: completar un ausente",
+                "Dato inválido en 'Estado': No se puede completar un turno en el que el paciente no asistió.",
+                mensajeDe(ausente::completar));
+        v.igual("mensaje: cancelar un ausente",
+                "Dato inválido en 'Estado': No se puede cancelar un turno en el que el paciente no asistió.",
+                mensajeDe(ausente::cancelar));
+        v.igual("mensaje: ausente sobre un ausente", "Dato inválido en 'Estado': Este turno ya fue marcado como ausente.",
+                mensajeDe(ausente::marcarAusente));
+
+        // ---- Estados: AUSENTE y cobro
+        v.igual("legible: AUSENTE", "Ausente", EstadoTurno.AUSENTE.getNombreLegible());
+        v.verdadero("PENDIENTE se puede cobrar", EstadoTurno.PENDIENTE.esCobrable());
+        v.verdadero("CONFIRMADO se puede cobrar", EstadoTurno.CONFIRMADO.esCobrable());
+        v.verdadero("COMPLETADO se puede cobrar", EstadoTurno.COMPLETADO.esCobrable());
+        v.verdadero("CANCELADO no se puede cobrar", !EstadoTurno.CANCELADO.esCobrable());
+        v.verdadero("AUSENTE no se puede cobrar", !EstadoTurno.AUSENTE.esCobrable());
+        v.igual("valueOf de un estado guardado", EstadoTurno.AUSENTE, EstadoTurno.valueOf("AUSENTE"));
+
+        // ---- MotivoConsulta.desdeNombre
+        List<MotivoConsulta> motivos = new ArrayList<>();
+        motivos.addAll(List.of(TipoConsulta.values()));
+        motivos.addAll(List.of(TipoCirugia.values()));
+        motivos.addAll(List.of(TipoOrtodoncia.values()));
+        for (MotivoConsulta m : motivos) {
+            v.igual("desdeNombre(" + m.name() + ")", Optional.of(m), MotivoConsulta.desdeNombre(m.name()));
+        }
+        v.igual("desdeNombre de un texto que no es un motivo", Optional.empty(), MotivoConsulta.desdeNombre("Consulta"));
+        v.igual("desdeNombre distingue mayusculas", Optional.empty(), MotivoConsulta.desdeNombre("limpieza"));
+        v.igual("desdeNombre(null)", Optional.empty(), MotivoConsulta.desdeNombre(null));
+
+        // ---- Servicio de turnos: motivo tipado y transiciones de la entidad
+        v.verdadero("ServicioTurno.registrarTurno recibe MotivoConsulta (no Object)",
+                ServicioTurno.class.getMethod("registrarTurno", Paciente.class, Odontologo.class, LocalDate.class,
+                        LocalTime.class, MotivoConsulta.class) != null);
+        ServicioTurno st = new ServicioTurno(new RepositorioTurno());
+        Turno nuevo = st.registrarTurno(pac, od, LocalDate.now().plusDays(1), LocalTime.of(10, 0), TipoConsulta.CONTROL);
+        v.igual("el servicio crea el turno PENDIENTE", EstadoTurno.PENDIENTE, nuevo.getEstado());
+        v.igual("cancelar desde el servicio", EstadoTurno.CANCELADO, st.cancelarTurno(nuevo.getId()).getEstado());
+        v.igual("lo guardado en el repositorio tiene el estado nuevo", EstadoTurno.CANCELADO,
+                st.buscarPorId(nuevo.getId()).getEstado());
+
+        // ---- Factura: sin constructor publico, con Builder
+        v.igual("Factura sin constructores publicos", 0, Factura.class.getConstructors().length);
+        DesgloseMonto desglose = new DesgloseMonto(100, 0, 10, 90);
+        LocalDate hoy = LocalDate.now();
+        Factura f = Factura.builder().id(1L).turnoId(10L).pacienteId(5L).pacienteNombre("A B").concepto("LIMPIEZA")
+                .fecha(hoy).metodoPago("Efectivo").desglose(desglose).build();
+        v.igual("factura: id", 1L, f.getId());
+        v.igual("factura: turno", 10L, f.getTurnoId());
+        v.igual("factura: paciente", 5L, f.getPacienteId());
+        v.igual("factura: nombre", "A B", f.getPacienteNombre());
+        v.igual("factura: concepto", "LIMPIEZA", f.getConcepto());
+        v.igual("factura: fecha", hoy, f.getFecha());
+        v.igual("factura: medio", "Efectivo", f.getMetodoPago());
+        v.verdadero("factura: contiene el desglose recibido", f.getDesglose() == desglose);
+        v.casi("factura: base (atajo al desglose)", 100, f.getMontoBase());
+        v.casi("factura: desc. obra social (atajo)", 0, f.getDescuentoObraSocial());
+        v.casi("factura: desc. efectivo (atajo)", 10, f.getDescuentoEfectivo());
+        v.casi("factura: total (atajo)", 90, f.getMontoTotal());
+        v.igual("DesgloseMonto ahora vive en entity", "entity", DesgloseMonto.class.getPackageName());
+        v.igual("toString de la factura",
+                "FACTURA #1 | Turno: 10 | Paciente: A B | Concepto: LIMPIEZA | Fecha: " + hoy
+                        + " | Medio: Efectivo | Base: $100.0 | Desc. obra social: $0.0 | Desc. efectivo: $10.0 | Total: $90.0",
+                f.toString());
+        v.lanza("factura sin desglose", NullPointerException.class,
+                () -> Factura.builder().id(1L).pacienteNombre("A").concepto("C").fecha(hoy).metodoPago("Efectivo").build());
+        v.lanza("factura sin medio de pago", NullPointerException.class,
+                () -> Factura.builder().id(1L).pacienteNombre("A").concepto("C").fecha(hoy).desglose(desglose).build());
+        v.lanza("factura sin fecha", NullPointerException.class,
+                () -> Factura.builder().id(1L).pacienteNombre("A").concepto("C").metodoPago("Efectivo").desglose(desglose).build());
+        v.lanza("factura sin nombre de paciente", NullPointerException.class,
+                () -> Factura.builder().id(1L).concepto("C").fecha(hoy).metodoPago("Efectivo").desglose(desglose).build());
+        v.lanza("factura sin concepto", NullPointerException.class,
+                () -> Factura.builder().id(1L).pacienteNombre("A").fecha(hoy).metodoPago("Efectivo").desglose(desglose).build());
+        v.verdadero("Factura sigue sin setters",
+                java.util.Arrays.stream(Factura.class.getMethods()).noneMatch(m -> m.getName().startsWith("set")));
+
+        // ---- Facturacion con turnos ausentes y sin motivo
+        ServicioPaciente sp = new ServicioPaciente(new RepositorioPaciente());
+        ServicioOdontologo so = new ServicioOdontologo(new RepositorioOdontologo());
+        ServicioTurno stFac = new ServicioTurno(new RepositorioTurno());
+        ServicioFactura sf = new ServicioFactura(new RepositorioFactura(), stFac, new Tarifario(), new CalculadorMonto(),
+                List.of(new Efectivo()));
+        Paciente p = sp.registrarPaciente("Fatima", "Persi", 3001, "f@x.com", null, false);
+        Odontologo o = so.registrarOdontologo(new General(0L, "Magali", "Pesqueira", 31, TipoConsulta.LIMPIEZA));
+        LocalDate manana = LocalDate.now().plusDays(1);
+        Turno aus = stFac.registrarTurno(p, o, manana, LocalTime.of(9, 0), TipoConsulta.LIMPIEZA);
+        stFac.getRepositorio().guardar(new Turno(aus.getId(), p, o, manana, LocalTime.of(9, 0), EstadoTurno.AUSENTE, TipoConsulta.LIMPIEZA));
+        Turno cobrable = stFac.registrarTurno(p, o, manana, LocalTime.of(10, 0), TipoConsulta.CONTROL);
+        v.igual("un turno ausente no aparece para cobrar", 1, sf.listarTurnosPorCobrar().size());
+        v.igual("el unico por cobrar es el otro", cobrable.getId(), sf.listarTurnosPorCobrar().get(0).getId());
+        v.igual("mensaje: cobrar un ausente", "Dato inválido en 'Turno': No se puede cobrar un turno ausente.",
+                mensajeDe(() -> sf.cobrarTurno(aus.getId(), new Efectivo())));
+        v.lanza("vista previa de un ausente", DatoInvalidoException.class, () -> sf.calcularVistaPrevia(aus.getId()));
+        stFac.cancelarTurno(cobrable.getId());
+        v.igual("mensaje: cobrar un cancelado (sin cambios)", "Dato inválido en 'Turno': No se puede cobrar un turno cancelado.",
+                mensajeDe(() -> sf.cobrarTurno(cobrable.getId(), new Efectivo())));
+        Turno urgencia = stFac.registrarTurno(p, o, manana, LocalTime.of(11, 0), TipoConsulta.URGENCIA);
+        Factura emitida = sf.cobrarTurno(urgencia.getId(), new Efectivo());
+        v.igual("la factura emitida toma el concepto del motivo", "URGENCIA", emitida.getConcepto());
+        v.casi("la factura emitida tiene el total del desglose", 36000, emitida.getMontoTotal());
+        Turno sinMotivo = stFac.registrarTurno(p, o, manana, LocalTime.of(12, 0));
+        v.igual("mensaje: cobrar un turno sin motivo",
+                "Dato inválido en 'Tratamiento': El turno no tiene un tratamiento cargado.",
+                mensajeDe(() -> sf.cobrarTurno(sinMotivo.getId(), new Efectivo())));
+    }
+
     // ------------------------------------------------------------------ pacientes
 
     private static void pacientes() throws Exception {
@@ -391,11 +603,12 @@ public class PruebasBase {
         Turno t1 = st.registrarTurno(p1, o1, manana, LocalTime.of(9, 0), TipoConsulta.LIMPIEZA);
         v.igual("primer turno id 1", 1L, t1.getId());
         v.igual("nace PENDIENTE", EstadoTurno.PENDIENTE, t1.getEstado());
-        v.igual("guarda el motivo", TipoConsulta.LIMPIEZA, t1.getMotivoConsulta());
+        v.igual("guarda el motivo", TipoConsulta.LIMPIEZA, t1.getMotivoConsulta().orElse(null));
 
         Turno sinMotivo = st.registrarTurno(p2, o1, manana, LocalTime.of(10, 0));
-        v.verdadero("la version sin motivo deja el motivo en null", sinMotivo.getMotivoConsulta() == null);
-        v.igual("texto del motivo por defecto", "Consulta", sinMotivo.getMotivoConsultaTexto());
+        v.verdadero("la version sin motivo deja el motivo vacio", sinMotivo.getMotivoConsulta().isEmpty());
+        v.igual("la pantalla muestra 'Consulta' cuando no hay motivo", "Consulta", TextoMotivo.de(sinMotivo));
+        v.igual("la pantalla muestra el nombre del motivo", "LIMPIEZA", TextoMotivo.de(t1));
 
         v.lanza("mismo odontologo, misma fecha y hora", TurnoYaReservadoException.class,
                 () -> st.registrarTurno(p2, o1, manana, LocalTime.of(9, 0), TipoConsulta.CONTROL));
@@ -425,7 +638,7 @@ public class PruebasBase {
         v.igual("confirmar", EstadoTurno.CONFIRMADO, st.confirmarTurno(t.getId()).getEstado());
         v.lanza("confirmar un turno ya confirmado", DatoInvalidoException.class, () -> st.confirmarTurno(t.getId()));
         v.igual("completar un confirmado", EstadoTurno.COMPLETADO, st.completarTurno(t.getId()).getEstado());
-        v.igual("completar un completado no falla (actual)", EstadoTurno.COMPLETADO, st.completarTurno(t.getId()).getEstado());
+        v.lanza("completar un completado (corregido en etapa 17)", DatoInvalidoException.class, () -> st.completarTurno(t.getId()));
         v.lanza("cancelar un completado", DatoInvalidoException.class, () -> st.cancelarTurno(t.getId()));
 
         Turno directo = st.registrarTurno(p1, o1, manana, LocalTime.of(14, 0), TipoConsulta.CONTROL);
@@ -662,13 +875,13 @@ public class PruebasBase {
         Paciente pac = new Paciente(1L, "A", "B", 5, "a@b.com", LocalDate.now(), null, false);
         Odontologo od = new General(4L, "O", "D", 44, TipoConsulta.CONTROL);
         LocalDate dia = LocalDate.now().plusDays(1);
-        Turno t = new Turno(7L, pac, od, dia, LocalTime.of(9, 0), TipoConsulta.CONTROL);
+        Turno t = new Turno(7L, pac, od, dia, LocalTime.of(9, 0), EstadoTurno.PENDIENTE, TipoConsulta.CONTROL);
         rt.guardar(t);
         v.igual("siguienteId de turnos = maximo + 1", 8L, rt.siguienteId());
         v.verdadero("existeTurnoSolapado", rt.existeTurnoSolapado(4L, dia, LocalTime.of(9, 0)));
         v.verdadero("no hay solapado en otro horario", !rt.existeTurnoSolapado(4L, dia, LocalTime.of(10, 0)));
         v.verdadero("no hay solapado con otro odontologo", !rt.existeTurnoSolapado(5L, dia, LocalTime.of(9, 0)));
-        t.setEstado(EstadoTurno.CANCELADO);
+        t.cancelar();
         v.verdadero("el repositorio ignora los cancelados al buscar solapados", !rt.existeTurnoSolapado(4L, dia, LocalTime.of(9, 0)));
         v.igual("buscarPorPaciente", 1, rt.buscarPorPaciente(1L).size());
         v.igual("buscarPorOdontologo", 1, rt.buscarPorOdontologo(4L).size());
@@ -676,8 +889,8 @@ public class PruebasBase {
         RepositorioFactura rf = new RepositorioFactura();
         v.igual("siguienteId de facturas vacio", 1L, rf.siguienteId());
         LocalDate hoy = LocalDate.now();
-        rf.guardar(new Factura(1L, 10L, 1L, "A B", "LIMPIEZA", hoy, "Efectivo", 100, 0, 10, 90));
-        rf.guardar(new Factura(2L, 11L, 1L, "A B", "CONTROL", hoy.minusDays(1), "Tarjeta", 100, 0, 0, 100));
+        rf.guardar(factura(1L, 10L, 1L, "A B", "LIMPIEZA", hoy, "Efectivo", 100, 0, 10, 90));
+        rf.guardar(factura(2L, 11L, 1L, "A B", "CONTROL", hoy.minusDays(1), "Tarjeta", 100, 0, 0, 100));
         v.igual("siguienteId de facturas", 3L, rf.siguienteId());
         v.verdadero("existePorTurno", rf.existePorTurno(10L));
         v.verdadero("no existePorTurno", !rf.existePorTurno(99L));
@@ -808,10 +1021,31 @@ public class PruebasBase {
         v.igual("turno a: estado", EstadoTurno.PENDIENTE, ra.getEstado());
         v.igual("turno a: paciente", p.getId(), ra.getPaciente().getId());
         v.igual("turno a: odontologo", o.getId(), ra.getOdontologo().getId());
-        v.igual("turno a: el motivo vuelve como texto", "LIMPIEZA", ra.getMotivoConsulta());
+        v.igual("turno a: el motivo vuelve tipado", TipoConsulta.LIMPIEZA, ra.getMotivoConsulta().orElse(null));
         v.igual("turno b: estado confirmado", EstadoTurno.CONFIRMADO, stNuevo.buscarPorId(b.getId()).getEstado());
         v.igual("turno c: estado cancelado", EstadoTurno.CANCELADO, stNuevo.buscarPorId(c.getId()).getEstado());
-        v.igual("turno c: sin motivo se guarda como 'Consulta'", "Consulta", stNuevo.buscarPorId(c.getId()).getMotivoConsulta());
+        v.verdadero("turno c: sin motivo vuelve sin motivo", stNuevo.buscarPorId(c.getId()).getMotivoConsulta().isEmpty());
+        v.verdadero("turno c: en el archivo sigue guardado como 'Consulta' (formato sin cambios)",
+                Files.readAllLines(Path.of("turnos.txt")).stream().anyMatch(l -> l.endsWith(",CANCELADO,Consulta")));
+
+        // un turno ausente y un completado tambien hacen el viaje de ida y vuelta
+        Turno d = st.registrarTurno(p, o, dia, LocalTime.of(12, 0), TipoConsulta.URGENCIA);
+        st.getRepositorio().guardar(new Turno(d.getId(), p, o, dia, LocalTime.of(12, 0), EstadoTurno.AUSENTE, TipoConsulta.URGENCIA));
+        Turno e = st.registrarTurno(p, o, dia, LocalTime.of(13, 0), TipoConsulta.CONTROL);
+        st.completarTurno(e.getId());
+        PersistenciaTurno.guardar(st.listarTodos());
+        ServicioTurno stEstados = new ServicioTurno(new RepositorioTurno());
+        PersistenciaTurno.cargar(stEstados, sp, so);
+        v.igual("turno ausente: estado", EstadoTurno.AUSENTE, stEstados.buscarPorId(d.getId()).getEstado());
+        v.igual("turno completado: estado", EstadoTurno.COMPLETADO, stEstados.buscarPorId(e.getId()).getEstado());
+        v.igual("al recargar, todos los turnos siguen siendo iguales a los guardados", 5, stEstados.listarTodos().size());
+
+        // un motivo que no es de ningun tratamiento deja el turno sin motivo (antes quedaba como texto suelto)
+        escribir("turnos.txt", "1,1,1," + dia + ",09:00,PENDIENTE,XYZ");
+        ServicioTurno desconocido = new ServicioTurno(new RepositorioTurno());
+        PersistenciaTurno.cargar(desconocido, sp, so);
+        v.igual("motivo desconocido: el turno se carga", 1, desconocido.listarTodos().size());
+        v.verdadero("motivo desconocido: queda sin motivo", desconocido.buscarPorId(1).getMotivoConsulta().isEmpty());
 
         // un turno con un paciente inexistente se ignora, el resto se carga
         escribir("turnos.txt",
@@ -827,8 +1061,8 @@ public class PruebasBase {
     private static void persistenciaFacturas() throws Exception {
         LocalDate hoy = LocalDate.now();
         List<Factura> facturas = List.of(
-                new Factura(1L, 10L, 1L, "Fatima Persi", "LIMPIEZA", hoy, "Efectivo", 25000, 7500, 1750, 15750),
-                new Factura(2L, 11L, 2L, "Barea, Tomas", "IMPLANTE", hoy.minusDays(1), "Tarjeta", 450000, 0, 0, 450000));
+                factura(1L, 10L, 1L, "Fatima Persi", "LIMPIEZA", hoy, "Efectivo", 25000, 7500, 1750, 15750),
+                factura(2L, 11L, 2L, "Barea, Tomas", "IMPLANTE", hoy.minusDays(1), "Tarjeta", 450000, 0, 0, 450000));
         PersistenciaFactura.guardar(facturas);
 
         // le agrega una linea rota al final
@@ -858,6 +1092,24 @@ public class PruebasBase {
     }
 
     // ------------------------------------------------------------------ utilidades de prueba
+
+    // arma una factura con la misma lista de datos que usaba el constructor viejo (solo para escribir menos en las pruebas)
+    private static Factura factura(long id, long turnoId, long pacienteId, String paciente, String concepto,
+                                   LocalDate fecha, String medio, double base, double descOs, double descMedio, double total) {
+        return Factura.builder().id(id).turnoId(turnoId).pacienteId(pacienteId).pacienteNombre(paciente)
+                .concepto(concepto).fecha(fecha).metodoPago(medio)
+                .desglose(new DesgloseMonto(base, descOs, descMedio, total)).build();
+    }
+
+    // mensaje de la excepcion que lanza la accion ("" si no lanza nada)
+    private static String mensajeDe(Verificador.Ejecutable accion) {
+        try {
+            accion.ejecutar();
+            return "";
+        } catch (Exception e) {
+            return e.getMessage();
+        }
+    }
 
     private static void escribir(String archivo, String... lineas) throws IOException {
         Files.writeString(Path.of(archivo), String.join("\n", lineas) + "\n");

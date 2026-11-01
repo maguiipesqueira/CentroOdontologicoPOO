@@ -1,6 +1,7 @@
 package service;
 
 import entity.EstadoTurno;
+import entity.MotivoConsulta;
 import entity.Odontologo;
 import entity.Paciente;
 import entity.Turno;
@@ -34,7 +35,7 @@ public class ServicioTurno {
 
     // misma logica que registrarTurno, pero permite indicar el motivo de consulta elegido
     public Turno registrarTurno(Paciente paciente, Odontologo odontologo,
-                                LocalDate fecha, LocalTime hora, Object motivoConsulta)
+                                LocalDate fecha, LocalTime hora, MotivoConsulta motivoConsulta)
             throws DatoInvalidoException, TurnoYaReservadoException {
 
 
@@ -55,7 +56,7 @@ public class ServicioTurno {
 
         long id = repositorio.siguienteId();
 
-        Turno turno = new Turno(id, paciente, odontologo, fecha, hora, motivoConsulta);
+        Turno turno = new Turno(id, paciente, odontologo, fecha, hora, EstadoTurno.PENDIENTE, motivoConsulta);
         repositorio.guardar(turno);
 
         return turno;
@@ -112,15 +113,7 @@ public class ServicioTurno {
     public Turno cancelarTurno(long id) throws DatoInvalidoException {
         Turno turno = buscarPorId(id);
 
-        if (turno.getEstado() == EstadoTurno.CANCELADO) {
-            throw new DatoInvalidoException("Estado", "Este turno ya fue cancelado.");
-        }
-
-        if (turno.getEstado() == EstadoTurno.COMPLETADO) {
-            throw new DatoInvalidoException("Estado", "No se puede cancelar un turno completado.");
-        }
-
-        turno.setEstado(EstadoTurno.CANCELADO);
+        turno.cancelar();
         repositorio.actualizar(turno);
 
         return turno;
@@ -130,11 +123,7 @@ public class ServicioTurno {
     public Turno confirmarTurno(long id) throws DatoInvalidoException {
         Turno turno = buscarPorId(id);
 
-        if (turno.getEstado() != EstadoTurno.PENDIENTE) {
-            throw new DatoInvalidoException("Estado", "Solo se pueden confirmar turnos pendientes.");
-        }
-
-        turno.setEstado(EstadoTurno.CONFIRMADO);
+        turno.confirmar();
         repositorio.actualizar(turno);
 
         return turno;
@@ -144,12 +133,7 @@ public class ServicioTurno {
     public Turno completarTurno(long id) throws DatoInvalidoException{
         Turno turno = buscarPorId(id);
 
-
-        if (turno.getEstado() == EstadoTurno.CANCELADO) {
-            throw new DatoInvalidoException("Estado", "No se puede completar un turno que fue cancelado.");
-        }
-
-        turno.setEstado(EstadoTurno.COMPLETADO);
+        turno.completar();
         repositorio.actualizar(turno);
 
         return turno;

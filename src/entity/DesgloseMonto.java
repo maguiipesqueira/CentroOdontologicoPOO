@@ -1,4 +1,4 @@
-package service;
+package entity;
 
 // Resultado de calcular un cobro: el precio de lista, cuanto se descuento por cada motivo y el total a pagar
 public class DesgloseMonto {

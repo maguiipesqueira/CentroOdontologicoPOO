@@ -1,5 +1,6 @@
 package uiSwing;
 
+import entity.DesgloseMonto;
 import entity.Factura;
 import service.ServicioFactura;
 
@@ -69,8 +70,16 @@ public class PersistenciaFactura {
                     double descuentoEfectivo = Double.parseDouble(partes[9]);
                     double montoTotal = Double.parseDouble(partes[10]);
 
-                    Factura f = new Factura(id, turnoId, pacienteId, pacienteNombre, concepto, fecha,
-                            metodoPago, montoBase, descuentoObraSocial, descuentoEfectivo, montoTotal);
+                    Factura f = Factura.builder()
+                            .id(id)
+                            .turnoId(turnoId)
+                            .pacienteId(pacienteId)
+                            .pacienteNombre(pacienteNombre)
+                            .concepto(concepto)
+                            .fecha(fecha)
+                            .metodoPago(metodoPago)
+                            .desglose(new DesgloseMonto(montoBase, descuentoObraSocial, descuentoEfectivo, montoTotal))
+                            .build();
                     servicio.getRepositorio().guardar(f);
 
                 } catch (Exception e) {

@@ -119,7 +119,7 @@ public class PanelLateral extends JPanel {
 
         JLabel lblNombre = new JLabel(turno.getPaciente().getApellido());
         lblNombre.setFont(new Font("Segoe UI", Font.BOLD, 12));
-        JLabel lblHorario = new JLabel(turno.getHora().toString() + " - " + turno.getMotivoConsultaTexto());
+        JLabel lblHorario = new JLabel(turno.getHora().toString() + " - " + TextoMotivo.de(turno));
         lblHorario.setFont(new Font("Segoe UI", Font.PLAIN, 10));
         lblHorario.setForeground(new Color(148, 163, 184));
 
@@ -209,7 +209,7 @@ public class PanelLateral extends JPanel {
         if (turnoSeleccionado != null) {
             valPaciente.setText(turnoSeleccionado.getPaciente().getApellido());
             valDni.setText(String.valueOf(turnoSeleccionado.getPaciente().getDni()));
-            valTipo.setText(turnoSeleccionado.getMotivoConsultaTexto());
+            valTipo.setText(TextoMotivo.de(turnoSeleccionado));
             valOdontologo.setText(turnoSeleccionado.getOdontologo().getApellido());
             valEstado.setText(turnoSeleccionado.getEstado().name());
 
